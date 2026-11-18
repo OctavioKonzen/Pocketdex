@@ -1371,32 +1371,79 @@ const runModeTexts = [
 const _modeIcons = {'nuzlocke': '🕯️', 'mono': '🎨', 'noItems': '🎒', 'regionalAll': '🌍'};
 
 /// Uma corrida do histórico: o dia, o andar, as moedas, os itens da árvore, os modos e o time (o MVP com ⭐). Igual ao site.
-Widget _historyRow(BuildContext context, Map h) {
-  final c = SiteColors.of(context);
-  final sum = (h['summary'] as Map?) ?? const {};
-  final mvp = sum['mvp'] as List?;
-  final pieces = piecesLine(FactoryRun.piecesOf(h));
-  return Container(
-    key: const ValueKey('history-row'),
-    margin: const EdgeInsets.only(bottom: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(12)),
-    child: Row(children: [
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${tr('Andar {0} · +{1} moedas').replaceAll('{0}', '${h['floor']}').replaceAll('{1}', '${h['coins']}')}${pieces.isEmpty ? '' : ' · $pieces'}',
-              style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
-          Text('${[for (final m in (h['modes'] as List?) ?? const []) _modeIcons['$m'] ?? ''].join()} ${'${h['date']}'.split('-').reversed.join('/')}',
-              style: TextStyle(color: c.muted, fontSize: 11)),
+Widget _historyRow(BuildContext context, Map h, String Function(Object?) name) => _HistoryRow(h: h, name: name);
+
+/// Uma corrida do histórico; com 📔, o diário dela (o que aconteceu, andar por andar). Igual ao site.
+class _HistoryRow extends StatefulWidget {
+  final Map h;
+  final String Function(Object?) name;
+  const _HistoryRow({required this.h, required this.name});
+
+  @override
+  State<_HistoryRow> createState() => _HistoryRowState();
+}
+
+class _HistoryRowState extends State<_HistoryRow> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = widget.h;
+    final c = SiteColors.of(context);
+    final sum = (h['summary'] as Map?) ?? const {};
+    final mvp = sum['mvp'] as List?;
+    final pieces = piecesLine(FactoryRun.piecesOf(h));
+    final diary = (h['diary'] as List?) ?? const [];
+    String who(Object? v) => v is num ? widget.name(v) : '$v';
+    return Container(
+      key: const ValueKey('history-row'),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${tr('Andar {0} · +{1} moedas').replaceAll('{0}', '${h['floor']}').replaceAll('{1}', '${h['coins']}')}${pieces.isEmpty ? '' : ' · $pieces'}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: c.text, fontSize: 13)),
+              Text('${[for (final m in (h['modes'] as List?) ?? const []) _modeIcons['$m'] ?? ''].join()} ${'${h['date']}'.split('-').reversed.join('/')}',
+                  style: TextStyle(color: c.muted, fontSize: 11)),
+            ]),
+          ),
+          for (final m in ((sum['team'] as List?) ?? const []).take(6))
+            Stack(children: [
+              SizedBox.square(dimension: 28, child: PokemonSprite(((m as List)[0] as num).toInt(), shiny: m[2] == 1, fill: 0.95)),
+              if (mvp != null && mvp[0] == m[0] && mvp[1] == m[1]) const Positioned(right: 0, top: 0, child: Text('⭐', style: TextStyle(fontSize: 9))),
+            ]),
+          if (diary.isNotEmpty)
+            InkWell(
+              key: const ValueKey('history-diary'),
+              onTap: () => setState(() => _open = !_open),
+              child: const Padding(padding: EdgeInsets.all(4), child: Text('📔', style: TextStyle(fontSize: 18))),
+            ),
         ]),
-      ),
-      for (final m in ((sum['team'] as List?) ?? const []).take(6))
-        Stack(children: [
-          SizedBox.square(dimension: 28, child: PokemonSprite(((m as List)[0] as num).toInt(), shiny: m[2] == 1, fill: 0.95)),
-          if (mvp != null && mvp[0] == m[0] && mvp[1] == m[1]) const Positioned(right: 0, top: 0, child: Text('⭐', style: TextStyle(fontSize: 9))),
-        ]),
-    ]),
-  );
+        if (_open)
+          Container(
+            key: const ValueKey('diary'),
+            constraints: const BoxConstraints(maxHeight: 192),
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 4),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0x1AFFFFFF)))),
+            child: SingleChildScrollView(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final e in diary)
+                  Text.rich(TextSpan(children: [
+                    TextSpan(text: '${tr('Andar')} ${(e as List)[1]}', style: TextStyle(color: c.muted)),
+                    TextSpan(
+                        text: ' · ${_diaryText[e[0]]?.$1 ?? ''} ${tr(_diaryText[e[0]]?.$2 ?? '').replaceAll('{0}', who(e[2]))}${e.length > 3 && e[3] == 1 ? ' ✨' : ''}',
+                        style: TextStyle(color: c.text)),
+                  ]), style: const TextStyle(fontSize: 12)),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
 }
 
 /// A troca dos itens da árvore: 3 de um por 1 de outro (quando falta um tipo de chefe). Igual ao site.
@@ -2065,7 +2112,7 @@ class _FactoryHubState extends State<FactoryHub> {
                     if (((factory['gallery'] as List?) ?? const []).isNotEmpty) ...[_bestRuns(context, factory['gallery'] as List), const SizedBox(height: 12)],
                     _panel(context, '📜 ${tr('Últimas corridas')}', key: const ValueKey('factory-history'), [
                       if (((factory['history'] as List?) ?? const []).isEmpty) Text(tr('Nenhuma corrida ainda.'), style: TextStyle(color: c.muted, fontSize: 12)),
-                      for (final h in (factory['history'] as List?) ?? const []) _historyRow(context, Map<String, dynamic>.from(h as Map)),
+                      for (final h in (factory['history'] as List?) ?? const []) _historyRow(context, Map<String, dynamic>.from(h as Map), (id) => _name((id as num).toInt())),
                     ]),
                     if (((factory['hall'] as List?) ?? const []).isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -2274,6 +2321,33 @@ const _keyInfo = {
 /// Os caminhos da rodada 14: a pesca e as árvores. Igual ao site.
 const _fishInfo = ('🎣', 'Pescaria', 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.');
 const _headbuttInfo = ('🌳', 'Árvore sacudida', 'Caiu um Pokémon que vive na árvore.');
+const _callInfo = {
+  'rematch': ('📞', 'Revanche (Pokégear)', 'Quem ligou quer revanche: um treinador forte, com prêmio maior.'),
+  'rare': ('📞', 'Dica do Pokégear', 'Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos.'),
+};
+
+/// O que o Pokémon que segue você acha do lugar. Igual ao site.
+const _moodText = {
+  'tired': 'está cansado: melhor procurar um Centro Pokémon.',
+  'night': 'fica animado com a noite!',
+  'happy': 'adora este lugar!',
+  'wet': 'não gosta nada de tanta água...',
+  'hot': 'está derretendo com esse calor...',
+  'love': 'olha para você, todo contente.',
+  'calm': 'segue você, atento ao caminho.',
+};
+
+/// O que quem ligou no Pokégear disse. Igual ao site.
+const _callText = {
+  'rematch': 'ligou no Pokégear: quer revanche! Está te esperando num dos caminhos.',
+  'rare': 'ligou no Pokégear: viu um Pokémon raro num dos caminhos daqui!',
+};
+
+/// O diário da corrida: o ícone e o texto de cada coisa. Igual ao site.
+const _diaryText = {
+  'c': ('🎯', 'Capturou {0}'), 'h': ('🥚', '{0} saiu do ovo'), 'f': ('💫', '{0} desmaiou'), 'b': ('🏅', 'Insígnia de {0}'), 'w': ('🏆', 'Venceu o Campeão {0}'),
+  'l': ('🌟', 'Missão lendária: {0}'),
+};
 const _radarInfo = ('📶', 'Poké Radar', 'O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.');
 const _honeyInfo = ('🍯', 'Árvore de mel', 'Um Pokémon raro está lambendo o mel (mais chance de shiny).');
 
@@ -2394,7 +2468,7 @@ const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um trein
                                 ? _honeyInfo
                                 : node['radar'] == true
                                     ? _radarInfo
-                                    : null;
+                                    : _callInfo[node['call']];
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
@@ -4384,12 +4458,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   : '🌟 ${tr('Missão lendária cumprida: {0}! +💰{1}').replaceAll('{0}', _name((p['quest'] as Map)['id'])).replaceAll('{1}', '${(p['quest'] as Map)['prize']}')}',
               key: const ValueKey('factory-quest'),
               style: TextStyle(fontWeight: FontWeight.w900, color: (p['quest'] as Map)['lost'] == true ? const Color(0xFF94A3B8) : const Color(0xFFFBBF24))),
+        if (p['scale'] == true)
+          Text('💗 ${tr('Você achou uma Heart Scale! Ela paga o Move Reminder.')}',
+              key: const ValueKey('factory-scale'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFF472B6))),
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
         if (badge != null) ...[
           Text('🏅 ${tr('Você recebeu a insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
               key: const ValueKey('factory-badge'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),
+          if (badge['z'] != null)
+            Text('💎 ${tr('{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.').replaceAll('{0}', '${badge['name']}').replaceAll('{1}', prettySlug('${badge['z']}'))}',
+                key: const ValueKey('factory-badge-z'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF38BDF8))),
           if (badge['tm'] != null)
             Text('💿 ${tr('{0} te deu o TM {1}!').replaceAll('{0}', '${badge['name']}').replaceAll('{1}', prettySlug('${badge['tm']}'))}',
                 key: const ValueKey('factory-badge-tm'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -5834,6 +5914,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final intro = run['boss']['step'] == 0 && pos == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
     final legend = FactoryRun.regionLegend(data, run);
     final quest = FactoryRun.legendQuest(data, run);
+    final mood = FactoryRun.followerMood(data, run, FactoryRun.clockOf().night);
     final clock = FactoryRun.clockOf();
     final mission = run['mission'] as Map?;
     Future<void> pick(int k) async {
@@ -5922,6 +6003,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
         '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
             '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
       if (!town && dungeon == null && pos == 0 && !meeting && quest?['id'] != null) '📜 ${_questLine(quest!, _name)}',
+      if (!town && dungeon == null && pos == 0 && !meeting && mood != null) '🐾 ${_name(mood['id'])} ${tr(_moodText[mood['mood']] ?? '')}',
+      for (final o in options)
+        if (o['call'] != null) '📞 ${o['caller']}: ${tr(_callText[o['call']] ?? '')}',
       if (!meeting && run['chain'] is Map)
         '📶 ${tr('Corrente do Poké Radar')}: ${_name(run['chain']['id'])} ×${run['chain']['n']} · ✨ ${FactoryRun.radarShiny(run['chain'] as Map)}×',
       if (!town && dungeon == null && pos == 0 && !meeting && legend != null && target['kind'] == 'elite')
@@ -6083,7 +6167,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   active: (_panel ?? '').startsWith('deleter'), key: const ValueKey('town-deleter')),
             if (FactoryRun.tutorsOf(data, run).contains('reminder'))
               _menuButton(
-                  '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? ' · 💰${FactoryRun.reminderCost(data, run)}' : ''}',
+                  '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? (_int(run['scales'] ?? 0) > 0 ? ' · 💗 Heart Scale' : ' · 💰${FactoryRun.reminderCost(data, run)}') : ''}',
                   widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
                   key: const ValueKey('town-reminder')),
             // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.

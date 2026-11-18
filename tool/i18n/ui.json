@@ -15172,5 +15172,131 @@
   "fr": "Chaîne du Poké Radar",
   "es": "Cadena del Poké Radar",
   "pt": "Corrente do Poké Radar"
+ },
+ "Revanche (Pokégear)": {
+  "en": "Rematch (Pokégear)",
+  "fr": "Revanche (Pokématos)",
+  "es": "Revancha (Pokégear)",
+  "pt": "Revanche (Pokégear)"
+ },
+ "Quem ligou quer revanche: um treinador forte, com prêmio maior.": {
+  "en": "The caller wants a rematch: a strong trainer with a bigger prize.",
+  "fr": "Celui qui a appelé veut une revanche : un Dresseur fort, avec une plus grosse récompense.",
+  "es": "Quien llamó quiere la revancha: un entrenador fuerte, con mayor premio.",
+  "pt": "Quem ligou quer revanche: um treinador forte, com prêmio maior."
+ },
+ "Dica do Pokégear": {
+  "en": "Pokégear tip",
+  "fr": "Info du Pokématos",
+  "es": "Aviso del Pokégear",
+  "pt": "Dica do Pokégear"
+ },
+ "Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos.": {
+  "en": "The caller saw a rare Pokémon here: better shiny odds and high IVs.",
+  "fr": "Celui qui a appelé a vu un Pokémon rare ici : plus de chances de shiny et de bons IV.",
+  "es": "Quien llamó vio un Pokémon raro aquí: más probabilidad de shiny e IVs altos.",
+  "pt": "Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos."
+ },
+ "está cansado: melhor procurar um Centro Pokémon.": {
+  "en": "is tired: better find a Pokémon Center.",
+  "fr": "est fatigué : mieux vaut trouver un Centre Pokémon.",
+  "es": "está cansado: mejor buscar un Centro Pokémon.",
+  "pt": "está cansado: melhor procurar um Centro Pokémon."
+ },
+ "fica animado com a noite!": {
+  "en": "loves the night!",
+  "fr": "adore la nuit !",
+  "es": "¡se anima con la noche!",
+  "pt": "fica animado com a noite!"
+ },
+ "adora este lugar!": {
+  "en": "loves this place!",
+  "fr": "adore cet endroit !",
+  "es": "¡adora este lugar!",
+  "pt": "adora este lugar!"
+ },
+ "não gosta nada de tanta água...": {
+  "en": "doesn't like all this water...",
+  "fr": "n'aime pas du tout toute cette eau...",
+  "es": "no le gusta nada tanta agua...",
+  "pt": "não gosta nada de tanta água..."
+ },
+ "está derretendo com esse calor...": {
+  "en": "is melting in this heat...",
+  "fr": "fond sous cette chaleur...",
+  "es": "se está derritiendo con este calor...",
+  "pt": "está derretendo com esse calor..."
+ },
+ "olha para você, todo contente.": {
+  "en": "looks at you, very happy.",
+  "fr": "vous regarde, tout content.",
+  "es": "te mira, muy contento.",
+  "pt": "olha para você, todo contente."
+ },
+ "segue você, atento ao caminho.": {
+  "en": "follows you, watching the path.",
+  "fr": "vous suit, attentif au chemin.",
+  "es": "te sigue, atento al camino.",
+  "pt": "segue você, atento ao caminho."
+ },
+ "ligou no Pokégear: quer revanche! Está te esperando num dos caminhos.": {
+  "en": "called on the Pokégear: wants a rematch! Waiting for you on one of the paths.",
+  "fr": "a appelé sur le Pokématos : veut une revanche ! Il vous attend sur un des chemins.",
+  "es": "llamó al Pokégear: ¡quiere la revancha! Te espera en uno de los caminos.",
+  "pt": "ligou no Pokégear: quer revanche! Está te esperando num dos caminhos."
+ },
+ "ligou no Pokégear: viu um Pokémon raro num dos caminhos daqui!": {
+  "en": "called on the Pokégear: saw a rare Pokémon on one of the paths here!",
+  "fr": "a appelé sur le Pokématos : a vu un Pokémon rare sur un des chemins d'ici !",
+  "es": "llamó al Pokégear: ¡vio un Pokémon raro en uno de los caminos de aquí!",
+  "pt": "ligou no Pokégear: viu um Pokémon raro num dos caminhos daqui!"
+ },
+ "Capturou {0}": {
+  "en": "Caught {0}",
+  "fr": "A capturé {0}",
+  "es": "Capturó a {0}",
+  "pt": "Capturou {0}"
+ },
+ "{0} saiu do ovo": {
+  "en": "{0} hatched",
+  "fr": "{0} a éclos",
+  "es": "{0} salió del huevo",
+  "pt": "{0} saiu do ovo"
+ },
+ "{0} desmaiou": {
+  "en": "{0} fainted",
+  "fr": "{0} est K.O.",
+  "es": "{0} se debilitó",
+  "pt": "{0} desmaiou"
+ },
+ "Venceu o Campeão {0}": {
+  "en": "Beat Champion {0}",
+  "fr": "A battu le Maître {0}",
+  "es": "Venció al Campeón {0}",
+  "pt": "Venceu o Campeão {0}"
+ },
+ "Missão lendária: {0}": {
+  "en": "Legendary quest: {0}",
+  "fr": "Mission légendaire : {0}",
+  "es": "Misión legendaria: {0}",
+  "pt": "Missão lendária: {0}"
+ },
+ "Diário da corrida": {
+  "en": "Run diary",
+  "fr": "Journal de la partie",
+  "es": "Diario de la partida",
+  "pt": "Diário da corrida"
+ },
+ "{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.": {
+  "en": "{0} gave you the {1}! Holding it, a Pokémon can use its Z-Move.",
+  "fr": "{0} vous a donné le {1} ! En le tenant, le Pokémon peut utiliser une Capacité Z.",
+  "es": "¡{0} te dio el {1}! Equipándolo, el Pokémon usa el Movimiento Z.",
+  "pt": "{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move."
+ },
+ "Você achou uma Heart Scale! Ela paga o Move Reminder.": {
+  "en": "You found a Heart Scale! It pays the Move Reminder.",
+  "fr": "Vous avez trouvé une Écaille Cœur ! Elle paie le Maître des Capacités.",
+  "es": "¡Encontraste una Escama Corazón! Paga al Recordador de Movimientos.",
+  "pt": "Você achou uma Heart Scale! Ela paga o Move Reminder."
  }
 }

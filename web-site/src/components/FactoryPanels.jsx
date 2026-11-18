@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, radarPath, radarShiny, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, radarPath, radarShiny, followerMood, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -700,8 +700,11 @@ const MODE_ICONS = { nuzlocke: '🕯️', mono: '🎨', noItems: '🎒', regiona
 function HistoryRow({ h, byId }) {
   const sum = h.summary ?? {}
   const pieces = piecesLine(piecesOf(h))
+  const [open, setOpen] = useState(false)
+  const who = (v) => (typeof v === 'number' ? t(prettyName(byId?.get(v)?.name ?? '')) : v)
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-card px-2 py-1" data-testid="history-row">
+    <div className="rounded-xl bg-card px-2 py-1" data-testid="history-row">
+    <div className="flex items-center gap-2">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold">{t('Andar {0} · +{1} moedas').replace('{0}', h.floor).replace('{1}', h.coins)}{pieces ? ` · ${pieces}` : ''}</p>
         <p className="text-[11px] text-muted">{(h.modes ?? []).map((m) => MODE_ICONS[m] ?? '').join('')} {h.date.split('-').reverse().join('/')}</p>
@@ -716,6 +719,14 @@ function HistoryRow({ h, byId }) {
           </span>
         )
       })}
+      {(h.diary ?? []).length > 0 && <button type="button" className="cursor-pointer text-lg" onClick={() => setOpen(!open)} data-testid="history-diary" title={t('Diário da corrida')}>📔</button>}
+    </div>
+    {/* O diário da corrida: o que aconteceu, andar por andar. Igual ao app. */}
+    {open && (
+      <ol className="mt-1 max-h-48 space-y-0.5 overflow-y-auto border-t border-white/10 pt-1 text-xs" data-testid="diary" data-no-translate>
+        {h.diary.map(([kind, floor, v, shiny], i) => <li key={i}><span className="text-muted">{t('Andar')} {floor}</span> · {DIARY_TEXT[kind]?.[0]} {t(DIARY_TEXT[kind]?.[1] ?? '').replace('{0}', who(v))}{shiny ? ' ✨' : ''}</li>)}
+      </ol>
+    )}
     </div>
   )
 }
@@ -1200,6 +1211,10 @@ const KEY_INFO = {
 /** Os caminhos e as ações da rodada 14: a pesca, as árvores e a bicicleta. */
 const FISH_INFO = { icon: '🎣', label: 'Pescaria', help: 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.' }
 const HEADBUTT_INFO = { icon: '🌳', label: 'Árvore sacudida', help: 'Caiu um Pokémon que vive na árvore.' }
+const CALL_INFO = {
+  rematch: { icon: '📞', label: 'Revanche (Pokégear)', help: 'Quem ligou quer revanche: um treinador forte, com prêmio maior.' },
+  rare: { icon: '📞', label: 'Dica do Pokégear', help: 'Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos.' },
+}
 const RADAR_INFO = { icon: '📶', label: 'Poké Radar', help: 'O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.' }
 const HONEY_INFO = { icon: '🍯', label: 'Árvore de mel', help: 'Um Pokémon raro está lambendo o mel (mais chance de shiny).' }
 /**
@@ -1278,7 +1293,7 @@ const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com C
 const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
 const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
 /** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
-const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : node.radar ? RADAR_INFO : null)
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : node.radar ? RADAR_INFO : node.call ? CALL_INFO[node.call] : null)
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -1543,6 +1558,24 @@ const MISSION_TEXT = {
 function missionText(m) {
   return t(MISSION_TEXT[m.kind]).replace('{0}', m.need).replace('{1}', m.type ? m.type[0].toUpperCase() + m.type.slice(1) : '')
 }
+/** O que o Pokémon que segue você acha do lugar. Igual ao app. */
+const MOOD_TEXT = {
+  tired: 'está cansado: melhor procurar um Centro Pokémon.',
+  night: 'fica animado com a noite!',
+  happy: 'adora este lugar!',
+  wet: 'não gosta nada de tanta água...',
+  hot: 'está derretendo com esse calor...',
+  love: 'olha para você, todo contente.',
+  calm: 'segue você, atento ao caminho.',
+}
+/** O que quem ligou no Pokégear disse. Igual ao app. */
+const CALL_TEXT = {
+  rematch: 'ligou no Pokégear: quer revanche! Está te esperando num dos caminhos.',
+  rare: 'ligou no Pokégear: viu um Pokémon raro num dos caminhos daqui!',
+}
+/** O diário da corrida: o ícone e o texto de cada coisa. Igual ao app. */
+const DIARY_TEXT = { c: ['🎯', 'Capturou {0}'], h: ['🥚', '{0} saiu do ovo'], f: ['💫', '{0} desmaiou'], b: ['🏅', 'Insígnia de {0}'], w: ['🏆', 'Venceu o Campeão {0}'], l: ['🌟', 'Missão lendária: {0}'] }
+
 /** O lugar do covil de um lendário (o nome do jogo). */
 const LEGEND_LAIR_NAME = (id) => LEGEND_LAIRS[id]?.[0] ?? '???'
 /** A missão do lendário em uma linha: quem (??? até a 2ª pista), as pistas e o covil (depois da 1ª pista). */
@@ -3068,6 +3101,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
+        {p.badge?.z && <p className="text-sm font-semibold text-sky-400" data-testid="factory-badge-z" data-no-translate>💎 {t('{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.z))}</p>}
+        {p.scale && <p className="text-sm font-semibold text-pink-400" data-testid="factory-scale">💗 {t('Você achou uma Heart Scale! Ela paga o Move Reminder.')}</p>}
         {p.badge?.tm && <p className="text-sm font-semibold" data-testid="factory-badge-tm" data-no-translate>💿 {t('{0} te deu o TM {1}!').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.tm))}</p>}
         {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}
         {p.center ? (
@@ -3534,6 +3569,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
     const legend = regionLegend(data, run)
     const quest = run.floor >= 1 ? legendQuest(data, run) : null
+    const mood = followerMood(data, run, clockOf().night)
     const clock = clockOf()
     const pickNode = (index) => {
       // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
@@ -3642,6 +3678,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
       !town && !inside && pos === 0 && !meeting && quest?.id != null && `📜 ${questLine(quest, name)}`,
+      !town && !inside && pos === 0 && !meeting && mood && `🐾 ${name(mood.id)} ${t(MOOD_TEXT[mood.mood])}`,
+      ...route.options.filter((o) => o.call).map((o) => `📞 ${o.caller}: ${t(CALL_TEXT[o.call])}`),
       !meeting && run.chain && `📶 ${t('Corrente do Poké Radar')}: ${name(run.chain.id)} ×${run.chain.n} · ✨ ${radarShiny(run.chain)}×`,
       !town && !inside && pos === 0 && !meeting && legend != null && target.kind === 'elite' && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
@@ -3705,7 +3743,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             {tutorsOf(data, run).includes('deleter') && <MenuButton testid="town-deleter" disabled={busy} onClick={() => setPanel(String(panel).startsWith('deleter') ? null : 'deleter')} active={String(panel).startsWith('deleter')}>🧓 Move Deleter</MenuButton>}
             {tutorsOf(data, run).includes('reminder') && (
               <MenuButton testid="town-reminder" disabled={busy || !townReminder(run, data)} onClick={() => save(townReminder(run, data))}>
-                💭 Move Reminder{run.town?.reminded ? ' ✓' : reminderCost(data, run) ? ` · 💰${reminderCost(data, run)}` : ''}
+                💭 Move Reminder{run.town?.reminded ? ' ✓' : reminderCost(data, run) ? (run.scales ? ' · 💗 Heart Scale' : ` · 💰${reminderCost(data, run)}`) : ''}
               </MenuButton>
             )}
           </div>
