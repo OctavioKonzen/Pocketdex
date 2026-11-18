@@ -7,8 +7,10 @@ Cada jogo tem:
   bosses: "Nome@Cidade" (a ordem dos chefes no Pokelike): before (antes da luta), after (depois), last (o último Pokémon).
 Sem francês e espanhol, as falas aparecem em inglês nessas línguas. Usado por tool/build_factory_data.py.
 """
+from .hoenn import GAMES as _hoenn
+from .johto import GAMES as _johto
 from .kanto import GAMES as _kanto
 
 GAMES = {}
-for part in (_kanto,):
+for part in (_kanto, _johto, _hoenn):
     GAMES.update(part)
