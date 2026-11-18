@@ -11,7 +11,8 @@ from .hoenn import GAMES as _hoenn
 from .johto import GAMES as _johto
 from .kanto import GAMES as _kanto
 from .sinnoh import GAMES as _sinnoh
+from .unova_kalos import GAMES as _unova_kalos
 
 GAMES = {}
-for part in (_kanto, _johto, _hoenn, _sinnoh):
+for part in (_kanto, _johto, _hoenn, _sinnoh, _unova_kalos):
     GAMES.update(part)
