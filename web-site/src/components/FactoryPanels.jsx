@@ -3435,10 +3435,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     menu = c.done ? (
       <MenuButton onClick={() => save(finishContest(run))} testid="contest-done">{t('CONTINUAR')}</MenuButton>
     ) : (
-      <>
+      // Os 4 golpes de uma vez (2 × 2, como o LUTAR da batalha).
+      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[4%]">
         {moves.slice(0, 4).map((m, k) => <MenuButton key={m} testid={`contest-move-${k}`} disabled={busy} onClick={() => save(contestAct(run, m, typeOfMove(m)))}>{CONTEST_CATS[CONTEST_OF_TYPE[typeOfMove(m)]]?.[0] ?? '·'} {prettySlug(m)}</MenuButton>)}
-      </>
+      </div>
     )
+    if (!c.done) menuFill = true
   } else if (step === 'puzzle') {
     const v = puzzleView(run)
     const title = puzzleTitle(v.gym) ?? PUZZLE_INFO[v.type].title
