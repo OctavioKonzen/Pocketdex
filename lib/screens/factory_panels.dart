@@ -4032,7 +4032,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       });
     }
     if (step == 'result' && _learn != null && _learnStep == 'forget') _framePanel = _forgetPanel(run);
-    if (step == 'result' && _evoList != null) {
+    if (step == 'result' && p!['champion'] == true && _evoList == null && _creditsDone != '${run['floor']}-${run['leg']}') {
+      frame = _creditsFrame(run);
+    } else if (step == 'result' && _evoList != null) {
       frame = _evolutionFrame(run);
     } else if (step == 'result' && _lvList != null) {
       frame = _levelFrame(run, p!);
@@ -4464,10 +4466,61 @@ class _FactoryScreenState extends State<FactoryScreen> {
   int _actionCount(List<Widget> extras) => extras.fold(0, (n, e) => n + (e is KeyedSubtree && e.key == const ValueKey('route-actions') ? _routeActionCount : 1));
   int _routeActionCount = 0;
 
+  /// Os créditos depois do Campeão (como nos jogos): o time campeão passando, o treinador, a região, os números da
+  /// corrida, "Obrigado por jogar!" e FIM. Tocar em PULAR (ou o fim) segue para o resultado. Igual ao site.
+  Widget _creditsFrame(Json run) {
+    final team = FactoryRun.teamOf(run);
+    final game = _data == null || _data!.bosses.isEmpty ? null : _data!.bosses[(run['boss']['region'] as num).toInt()];
+    final me = Trainers.mine;
+    final key = '${run['floor']}-${run['leg']}';
+    void done() => setState(() => _creditsDone = key);
+    return _frame(
+      run: run,
+      field: _field('town-league', key: const ValueKey('factory-credits'), (w, h) => [
+            Positioned.fill(
+              child: ColoredBox(
+                color: const Color(0xF2020617),
+                child: _Credits(
+                  key: ValueKey('credits-$key'),
+                  onEnd: done,
+                  children: [
+                    Text('🏆 ${tr('Campeão de {0}!').replaceAll('{0}', '${game?['region'] ?? ''}')}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),
+                    const SizedBox(height: 18),
+                    for (final m in team) ...[
+                      SizedBox(width: 72, height: 72, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9)),
+                      Text('${(m['nick'] as String?) ?? _name(m['id'])} · Nv. ${m['level']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 10),
+                    ],
+                    const SizedBox(height: 12),
+                    if (me != null) ...[TrainerSprite(me, height: 90, still: true), Text(me.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900))],
+                    const SizedBox(height: 14),
+                    for (final line in [
+                      '🏅 ${tr('Insígnias')}: ${run['badges'] ?? 0}',
+                      '📖 ${tr('Pokédex')}: ${FactoryRun.dexOf(run).length}',
+                      '🧗 ${tr('Andar')}: ${run['floor']}',
+                      '⏱️ ${tr('Tempo de jogo')}: ${playTimeText(((run['playMs'] as num?) ?? 0).toInt())}',
+                    ])
+                      Text(line, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 15)),
+                    const SizedBox(height: 28),
+                    const Text('PocketDex', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                    Text(tr('Obrigado por jogar!'), style: const TextStyle(color: Colors.white, fontSize: 16)),
+                    const SizedBox(height: 40),
+                    Text(tr('FIM'), key: const ValueKey('credits-end'), style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: 6)),
+                  ],
+                ),
+              ),
+            ),
+          ]),
+      text: [Text('🎬 ${tr('Créditos')}', style: const TextStyle(fontWeight: FontWeight.w900))],
+      menu: _menuButton(tr('PULAR'), done, key: const ValueKey('credits-skip')),
+    );
+  }
+
   /// A evolução (como nos jogos): "O quê? Fulano está evoluindo!", o brilho trocando as formas e PARAR (o B dos jogos);
   /// terminando, a musiquinha e "Parabéns!". Uma de cada vez, antes do resultado do andar. Igual ao site.
   List<(int, int, int)>? _evoList; // (posição no time, de, para)
   String? _badgeKey; // a fanfarra da insígnia já tocou
+  String? _creditsDone; // os créditos do Campeão já passaram (a chave do andar)
   int _evoAt = 0;
   String? _evoKey;
   String _evoPhase = 'run'; // run | done | stopped
@@ -6246,6 +6299,53 @@ const _villainLines = [
 
 /// A evolução, como nos jogos: o Pokémon fica branco e pisca alternando com a forma nova, cada vez mais rápido, até ela
 /// aparecer com brilho. Igual ao site (EvolutionFx).
+/// Os créditos subindo devagar (como nos jogos); no fim, avisa (onEnd).
+class _Credits extends StatefulWidget {
+  const _Credits({super.key, required this.children, required this.onEnd});
+  final List<Widget> children;
+  final VoidCallback onEnd;
+
+  @override
+  State<_Credits> createState() => _CreditsState();
+}
+
+class _CreditsState extends State<_Credits> {
+  final _scroll = ScrollController();
+  Timer? _end;
+
+  @override
+  void initState() {
+    super.initState();
+    BattleSounds.play('victory', volume: 0.6);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_scroll.hasClients) return;
+      final end = _scroll.position.maxScrollExtent;
+      await _scroll.animateTo(end, duration: Duration(milliseconds: (end * 28).round().clamp(4000, 30000)), curve: Curves.linear);
+      if (mounted) _end = Timer(const Duration(milliseconds: 1500), () => mounted ? widget.onEnd() : null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _end?.cancel();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) => SingleChildScrollView(
+          controller: _scroll,
+          physics: const NeverScrollableScrollPhysics(),
+          child: SizedBox(
+            width: box.maxWidth,
+            // Começa embaixo da tela e termina com o FIM no meio dela.
+            child: Column(children: [SizedBox(height: box.maxHeight), ...widget.children, SizedBox(height: box.maxHeight * 0.45)]),
+          ),
+        ),
+      );
+}
+
 /// A insígnia recebida (como nos jogos): um losango na cor do tipo do ginásio, crescendo e brilhando. Igual ao site.
 class _BadgeShine extends StatelessWidget {
   const _BadgeShine({required this.color, required this.size});

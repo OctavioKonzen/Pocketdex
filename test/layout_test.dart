@@ -328,6 +328,7 @@ final screens = <String, Widget Function()>{
   // A evolução (como nos jogos) e a insígnia com o TM do líder.
   'Battle Factory (evolução)': () => _factory({'exp': 300, 'money': 120, 'levels': [{'index': 0, 'from': 15, 'to': 16, 'evolved': 5}], 'joy': false, 'capture': null, 'cards': null, 'shop': null}),
   'Battle Factory (insígnia)': () => _factory({'exp': 300, 'money': 900, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'beat': {'kind': 'gym', 'name': 'Brock'}, 'badge': {'name': 'Brock', 'type': 'rock', 'tm': 'rock-tomb'}, 'hm': 'cut'}),
+  'Battle Factory (créditos)': () => _factory({'exp': 300, 'money': 900, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'beat': {'kind': 'champion', 'name': 'Blue'}, 'champion': true}, null, {'playMs': 5400000, 'badges': 8}),
   // O desafio do ginásio na cidade (o botão junto do líder).
   'Battle Factory (cidade, desafio)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion'], 'got': ['old-rod']}, 'keyItems': ['old-rod']}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
@@ -655,6 +656,16 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
   'Battle Factory (insígnia)': (tester) async {
     expect(find.byKey(const ValueKey('factory-badge')), findsOneWidget);
     expect(find.byKey(const ValueKey('factory-badge-tm')), findsOneWidget);
+  },
+  'Battle Factory (créditos)': (tester) async {
+    expect(find.byKey(const ValueKey('factory-credits')), findsOneWidget);
+    // Em pé o menu fica estreito (o Pokelike é deitado): toca direto no botão.
+    tester.widget<InkWell>(find.descendant(of: find.byKey(const ValueKey('credits-skip')), matching: find.byType(InkWell)).first).onTap!();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    // A troca de tela tem um fade: o resultado já está lá.
+    expect(find.byKey(const ValueKey('factory-result')), findsOneWidget);
   },
   'Battle Factory (álbum)': (tester) async {
     await _openTown(tester, 'factory-album');

@@ -2128,6 +2128,11 @@
   "fr": "Maître",
   "es": "Campeón"
  },
+ "Campeão de {0}!": {
+  "en": "Champion of {0}!",
+  "fr": "Maître de {0} !",
+  "es": "¡Campeón de {0}!"
+ },
  "Campeão no andar {0}": {
   "en": "Champion on floor {0}",
   "fr": "Champion à l'étage {0}",
@@ -3329,6 +3334,11 @@
   "en": "Z-Crystal: a move of its type becomes a Z-Move (once per battle)",
   "fr": "Cristal Z : une capacité de son type devient une capacité Z (une fois par combat)",
   "es": "Cristal Z: un movimiento de su tipo se vuelve Movimiento Z (una vez por combate)"
+ },
+ "Créditos": {
+  "en": "Credits",
+  "fr": "Crédits",
+  "es": "Créditos"
  },
  "Cumpra 30 missões diárias do Pokelike.": {
   "en": "Complete 30 Pokelike daily missions.",
@@ -5061,6 +5071,11 @@
   "en": "Exploration",
   "fr": "Exploration",
   "es": "Exploración"
+ },
+ "FIM": {
+  "en": "THE END",
+  "fr": "FIN",
+  "es": "FIN"
  },
  "FOTO": {
   "en": "PHOTO",
@@ -8413,6 +8428,11 @@
   "fr": "Merci pour la note !",
   "es": "¡Gracias por tu nota!"
  },
+ "Obrigado por jogar!": {
+  "en": "Thanks for playing!",
+  "fr": "Merci d'avoir joué !",
+  "es": "¡Gracias por jugar!"
+ },
  "Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.": {
   "en": "Required: win to face {0} (and get a prize). If you lose, try again.",
   "fr": "Obligatoire : gagne pour affronter {0} (et reçois un prix). En cas d'échec, réessaie.",
@@ -8799,6 +8819,11 @@
   "en": "LOOK FOR ANOTHER",
   "fr": "CHERCHER UN AUTRE",
   "es": "BUSCAR OTRO"
+ },
+ "PULAR": {
+  "en": "SKIP",
+  "fr": "PASSER",
+  "es": "SALTAR"
  },
  "Paciência": {
   "en": "Patience",

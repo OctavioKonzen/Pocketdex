@@ -2045,6 +2045,45 @@ const HELP = [
   ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
+/** Os créditos depois do Campeão (como nos jogos): o time campeão passando, o treinador, a região, os números da corrida,
+ * "Obrigado por jogar!" e FIM, subindo devagar; no fim (ou PULAR) segue para o resultado. Igual ao app. */
+function Credits({ run, data, name, onEnd }) {
+  const me = useMyTrainer()
+  const box = useRef(null)
+  const inner = useRef(null)
+  useEffect(() => {
+    playSound('victory', 0.6)
+    const el = box.current, c = inner.current
+    if (!el || !c?.animate) return
+    const dist = c.scrollHeight - el.clientHeight * 0.55
+    const anim = c.animate([{ transform: `translateY(${el.clientHeight}px)` }, { transform: `translateY(${-dist}px)` }], { duration: Math.min(30000, Math.max(4000, dist * 28)), easing: 'linear', fill: 'forwards' })
+    let timer
+    anim.finished.then(() => { timer = setTimeout(onEnd, 1500) }).catch(() => {})
+    return () => { anim.cancel(); clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const game = data?.bosses?.[run.boss.region]
+  return (
+    <div ref={box} className="absolute inset-0 overflow-hidden bg-[#020617f2]" data-testid="credits">
+      <div ref={inner} className="flex flex-col items-center gap-[1.2cqw] text-center text-white" style={{ transform: 'translateY(100%)' }}>
+        <p className="text-[3.4cqw] font-black text-yellow-400">🏆 {t('Campeão de {0}!').replace('{0}', game?.region ?? '')}</p>
+        {run.team.map((m, i) => (
+          <div key={i} className="flex flex-col items-center"><PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-[9cqw] w-[9cqw]" /><span className="text-[2cqw] font-bold" data-no-translate>{m.nick ?? name(m.id)} · Nv. {m.level}</span></div>
+        ))}
+        {me && <div className="mt-[2cqw] flex flex-col items-center"><TrainerSprite trainer={me} height={90} still /><span className="text-[2.2cqw] font-black">{me.name}</span></div>}
+        <p className="mt-[2cqw] text-[2cqw] text-slate-300">🏅 {t('Insígnias')}: {run.badges ?? 0}</p>
+        <p className="text-[2cqw] text-slate-300">📖 {t('Pokédex')}: {dexOf(run).length}</p>
+        <p className="text-[2cqw] text-slate-300">🧗 {t('Andar')}: {run.floor}</p>
+        <p className="text-[2cqw] text-slate-300">⏱️ {t('Tempo de jogo')}: {playTimeText(run.playMs)}</p>
+        <p className="mt-[3cqw] text-[3cqw] font-black">PocketDex</p>
+        <p className="text-[2.2cqw]">{t('Obrigado por jogar!')}</p>
+        <p className="mt-[5cqw] text-[4.5cqw] font-black tracking-[0.4em]" data-testid="credits-end">{t('FIM')}</p>
+      </div>
+      <button type="button" className="port-chip absolute bottom-[3%] right-[2%] cursor-pointer px-4 py-1.5 text-sm font-black" onClick={onEnd} data-testid="credits-skip">▸ {t('PULAR')}</button>
+    </div>
+  )
+}
+
 /** Como o "Continuar" dos jogos: o treinador, a região, as insígnias, a Pokédex e o tempo de jogo. Igual ao app. */
 function ContinueCard({ run, data }) {
   const me = useMyTrainer()
@@ -2655,6 +2694,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   }, [evo?.at, evo?.phase])
   // A fanfarra da insígnia (uma vez).
   const badgeShown = useRef(null)
+  // Os créditos do Campeão já passaram (a chave do andar).
+  const [creditsDone, setCreditsDone] = useState(null)
   // O PC no Centro Pokémon da cidade (aberto).
   const [pcOpen, setPcOpen] = useState(false)
   const [unlocked, setUnlocked] = useState(null)
@@ -2891,7 +2932,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       )
   }
 
-  if (step === 'result' && evo) {
+  if (step === 'result' && p.champion && !evo && creditsDone !== `${run.floor}-${run.leg}`) {
+    const done = () => setCreditsDone(`${run.floor}-${run.leg}`)
+    field = <Field biome="town-league" fieldRef={fieldRef} testid="factory-credits" />
+    // Por cima de tudo (a caixa de HP também), como a tela dos créditos dos jogos.
+    below = <div className="relative h-full overflow-hidden"><Credits key={`${run.floor}-${run.leg}`} run={run} data={data} name={name} onEnd={done} /></div>
+    text = <p className="font-black">🎬 {t('Créditos')}</p>
+    menu = null
+  } else if (step === 'result' && evo) {
     const [i, from, to] = evo.list[evo.at]
     const mon = run.team[i]
     const nm = mon?.nick ?? name(from)
