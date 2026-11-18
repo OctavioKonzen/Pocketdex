@@ -16,7 +16,7 @@ globalThis.PocketDexFx = {
   // As cenas: 'sendout' (a Poké Ball abre), 'recall' (o raio vermelho) e 'faint' (desmaio) do lado [o.side].
   scene(o) {
     const stage = fxStage(anchors, String(o.near), String(o.far))
-    return fxScene({ kind: o.kind, side: o.side, stage, seed: o.seed ?? 1 })
+    return fxScene({ kind: o.kind, side: o.side, stage, seed: o.seed ?? 1, ball: o.ball ?? 'poke-ball' })
   },
   plan(o) {
     const stage = fxStage(anchors, String(o.near), String(o.far))

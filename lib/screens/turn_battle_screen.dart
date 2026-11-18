@@ -1599,11 +1599,14 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   /// A Poké Ball abre na plataforma e o Pokémon sai dela.
   /// As cenas como no Black & White (mesma câmera e efeitos dos golpes): 'sendout' (a Poké Ball voa e abre),
   /// 'recall' (o raio vermelho) e 'faint' (desmaio). Devolve false quando não dá (sem os dados): usa a de antes.
+  /// A bola de quem entra: a da captura dele (Battle Factory) ou a escolhida nos cosméticos. Igual ao site.
+  String _ballOf(int side) => side == 0 ? (_b.teams[0][_active[0]].ball ?? _ballKind[0]) : 'poke-ball';
+
   Future<bool> _playScene(String kind, int side) async {
     if (!_fxReady || !mounted || !AppSettings.instance.battleAnims) return false;
     final near = _form[0] ?? _b.teams[0][_active[0]].id, far = _form[1] ?? _b.teams[1][_active[1]].id;
     if (_portStage(near, far, _b.teams[0][_active[0]].shiny, _b.teams[1][_active[1]].shiny) == null) return false;
-    final p = BattleFx.scene(kind: kind, side: side, near: near, far: far, seed: (_turnNo * 7 + side) % 997);
+    final p = BattleFx.scene(kind: kind, side: side, near: near, far: far, seed: (_turnNo * 7 + side) % 997, ball: _ballOf(side));
     if (p == null) return false;
     if (kind == 'sendout') BattleSounds.play('open');
     if (kind == 'recall') BattleSounds.play('recall');
@@ -1717,7 +1720,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     setState(() => _meGone = true);
     BattleSounds.play('throw');
     if (!await _playScene('sendout', 0)) {
-      setState(() => _ball[0] = 'throw');
+      setState(() {
+        _ballKind[0] = _ballOf(0);
+        _ball[0] = 'throw';
+      });
       await _wait(520);
       if (!mounted) return;
       await _release(0);

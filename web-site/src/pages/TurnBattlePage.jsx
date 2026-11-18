@@ -1184,12 +1184,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
    * As cenas como no Black & White (mesma câmera e efeitos dos golpes): 'sendout' (a Poké Ball voa e abre),
    * 'recall' (o raio vermelho) e 'faint' (desmaio). Devolve false quando não dá (sem os dados): usa a de antes.
    */
+  // A bola de quem entra: a da captura dele (Battle Factory) ou a escolhida nos cosméticos. Igual ao app.
+  const ballOf = (side) => (side === 0 ? battle.sides[0].team[shownRef.current.active[0]]?.ball || ballKind[0] : 'poke-ball')
   const playScene = async (kind, side) => {
     if (!canPlayFx() || !fxAnchors.current || !world.current || !fxCanvas.current || !field.current) return false
     const ids = [0, 1].map((i) => String(shownRef.current.form[i] ?? battle.sides[i].team[shownRef.current.active[i]]?.id))
     const stage = fxStage(fxAnchors.current, ids[0], ids[1])
     if (!stage?.near?.box || !stage?.far?.box || !sprites[side].current) return false
-    const plan = fxScene({ kind, side, stage, seed: (turnNo.current * 7 + side) % 997 })
+    const plan = fxScene({ kind, side, stage, seed: (turnNo.current * 7 + side) % 997, ball: ballOf(side) })
     if (kind === 'sendout') playSound('open')
     if (kind === 'recall') playSound('recall')
     // O som do status (queimou, envenenou, paralisado, dormindo, congelado, confuso). Igual ao app.
@@ -1271,6 +1273,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     setIntro((i) => ({ ...i, me: 'out' }))
     playSound('throw')
     if (!(await playScene('sendout', 0))) {
+      setSide(setBallKind, 0, ballOf(0))
       setSide(setBall, 0, 'throw')
       await wait(520)
       await release(0)

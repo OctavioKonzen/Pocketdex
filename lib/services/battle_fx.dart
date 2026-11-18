@@ -110,9 +110,9 @@ class BattleFx {
   }
 
   /// A cena [kind] ('sendout', 'recall' ou 'faint') do lado [side] (0 você, 1 o outro), como no Black & White.
-  static MoveFxPlan? scene({required String kind, required int side, required int near, required int far, int seed = 1}) {
+  static MoveFxPlan? scene({required String kind, required int side, required int near, required int far, int seed = 1, String ball = 'poke-ball'}) {
     final raw = _call('scene', [
-      {'kind': kind, 'side': side, 'near': near, 'far': far, 'seed': seed}
+      {'kind': kind, 'side': side, 'near': near, 'far': far, 'seed': seed, 'ball': ball}
     ]);
     if (raw is! Map) return null;
     try {

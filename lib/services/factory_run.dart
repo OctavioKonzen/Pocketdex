@@ -6443,6 +6443,7 @@ class FactoryRun {
           'item': nuzRule(run, 'noHeldItems') ? '' : mon['item'] ?? '', 'moves': own.isNotEmpty ? own : moveList, 'lockMoves': true, 'shiny': mon['shiny'] == true,
           if (gimmick.isNotEmpty) 'gimmick': gimmick,
           if (mon['ha'] == true) 'ability': 'hidden',
+          if (mon['ball'] != null) 'ball': mon['ball'],
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
       );

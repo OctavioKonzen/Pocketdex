@@ -171,6 +171,8 @@ const usable = (scene) => (SCENE_IMAGES.includes(scene) || SCENE_COLORS[scene] ?
 const NIGHT_SCENES = ['grass', 'forest', 'water', 'beach', 'swamp', 'mountain', 'desert', 'volcano', 'snow', 'city', 'sky', 'ruins', 'flowers', 'bamboo', 'lake', 'lakeside', 'acuity', 'wildarea', 'skypillar', 'town-village', 'town-port', 'town-metro', 'town-snow', 'town-mountain', 'town-island', 'town-old', 'town-forest', 'town-flower', 'town-desert', 'town-industrial', 'town-water', 'town-volcano', 'town-league']
 /** Noite pelo relógio de verdade: das 19h às 6h (igual a clockOf em lib/factoryRun.js). */
 export const isNight = (date = new Date()) => date.getHours() >= 19 || date.getHours() < 6
+/** A hora do dia no cenário (pelo relógio de quem joga): amanhecer (6h–8h), entardecer (17h–19h), noite ou dia. Igual ao app. */
+export const dayPhase = (date = new Date()) => (isNight(date) ? 'night' : date.getHours() < 8 ? 'dawn' : date.getHours() >= 17 ? 'dusk' : 'day')
 /** O clima na imagem (o granizo usa a de neve). */
 const WEATHER_IMAGE = { sun: 'sun', rain: 'rain', sand: 'sand', hail: 'snow', snow: 'snow' }
 /** Batalha comum (sem lugar): um destes, sorteado pela semente. */
@@ -242,6 +244,9 @@ export function BattleBackground({ weather = '', scene = 'grass', layout = 'clas
         ))}
         {/* À noite (pelo relógio de quem joga), os lugares abertos ficam escuros e azulados. */}
         {NIGHT_SCENES.includes(scene) && isNight() && <div className="night-tint absolute inset-0" data-testid="night-tint" />}
+        {/* E as estrelas no céu; no amanhecer e no entardecer, a luz rosada ou alaranjada. */}
+        {NIGHT_SCENES.includes(scene) && isNight() && <div className="night-stars absolute inset-x-0 top-0 h-[45%]" data-testid="night-stars" />}
+        {NIGHT_SCENES.includes(scene) && ['dawn', 'dusk'].includes(dayPhase()) && <div className={`${dayPhase()}-tint absolute inset-0`} data-testid={`${dayPhase()}-tint`} />}
       </>
     )
     return (

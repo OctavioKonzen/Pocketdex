@@ -213,6 +213,15 @@ class BattleBackdrop extends StatelessWidget {
       return Stack(fit: StackFit.expand, children: [
         _withWeather(base, sky),
         const IgnorePointer(child: ColoredBox(key: ValueKey('night-tint'), color: Color(0x5A101848))),
+        // E as estrelas no céu (piscando).
+        const IgnorePointer(child: FractionallySizedBox(alignment: Alignment.topCenter, heightFactor: 0.45, child: _NightStars(key: ValueKey('night-stars')))),
+      ]);
+    }
+    // No amanhecer (6h–8h), luz rosada; no entardecer (17h–19h), alaranjada. Igual ao site.
+    if (_nightScenes.contains(scene) && (now < 8 || now >= 17)) {
+      return Stack(fit: StackFit.expand, children: [
+        _withWeather(base, sky),
+        IgnorePointer(child: ColoredBox(key: ValueKey(now < 8 ? 'dawn-tint' : 'dusk-tint'), color: now < 8 ? const Color(0x2EFFAABE) : const Color(0x38FF7828))),
       ]);
     }
     return _withWeather(base, sky);
@@ -402,4 +411,29 @@ class SceneBleed extends StatelessWidget {
               ),
         ]);
       });
+}
+
+/// As estrelas da noite no céu do cenário (paradas: uma animação sem fim prenderia as telas que esperam tudo parar).
+class _NightStars extends StatelessWidget {
+  const _NightStars({super.key});
+
+  @override
+  Widget build(BuildContext context) => const CustomPaint(painter: _StarsPainter(), size: Size.infinite);
+}
+
+class _StarsPainter extends CustomPainter {
+  const _StarsPainter();
+  static const _stars = [(0.08, 0.20, 1.5), (0.22, 0.08, 1.0), (0.37, 0.30, 1.5), (0.51, 0.12, 1.0), (0.66, 0.24, 2.0), (0.78, 0.06, 1.0), (0.90, 0.18, 1.5), (0.15, 0.38, 1.0), (0.72, 0.40, 1.0)];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = const Color(0xFFFFFFFF);
+    final k = size.width / 256;
+    for (final (x, y, r) in _stars) {
+      canvas.drawCircle(Offset(size.width * x, size.height * y / 0.45), r * k, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

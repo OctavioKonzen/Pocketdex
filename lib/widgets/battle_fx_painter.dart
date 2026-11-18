@@ -331,7 +331,8 @@ class FxPainter extends CustomPainter {
         canvas.translate(x, y);
         canvas.rotate(rot);
         final rect = Rect.fromCircle(center: Offset.zero, radius: s);
-        canvas.drawArc(rect, math.pi, math.pi, true, Paint()..color = const Color(0xFFEF4444));
+        // A cor de cima é a da bola (Great Ball azul, Ultra Ball amarela, Master Ball roxa...). Igual ao site.
+        canvas.drawArc(rect, math.pi, math.pi, true, Paint()..color = _rgba(color, 1));
         canvas.drawArc(rect, 0, math.pi, true, Paint()..color = const Color(0xFFF8FAFC));
         final edge = _stroke(const Color(0xFF111827), math.max(2, s * 0.16));
         canvas.drawCircle(Offset.zero, s, edge);

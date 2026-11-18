@@ -3023,7 +3023,14 @@ export const STATUS_TEXT_SCENE = { hurtBurn: 'brn', hurtPoison: 'psn', fullPara:
  *   brn psn par slp frz cnf  o status na vez dele (chamas, bolhas, faíscas, Zzz, cristais, estrelas girando)
  * [side] 0 o seu (perto, de costas), 1 o outro. A câmera vai até ele e volta.
  */
-export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
+/** A cor de cima de cada Poké Ball (a bola em que o Pokémon foi capturado, na cena em que ele sai dela). */
+export const BALL_TOP = {
+  'poke-ball': '#ef4444', 'great-ball': '#2563eb', 'ultra-ball': '#facc15', 'master-ball': '#7e22ce', 'quick-ball': '#38bdf8', 'net-ball': '#14b8a6',
+  'dusk-ball': '#16a34a', 'timer-ball': '#dc2626', 'safari-ball': '#65a30d', 'premier-ball': '#f1f5f9', 'luxury-ball': '#1f2937', 'heal-ball': '#f472b6',
+  'cherish-ball': '#b91c1c', 'dive-ball': '#0ea5e9', 'nest-ball': '#84cc16', 'repeat-ball': '#f97316', 'friend-ball': '#22c55e', 'love-ball': '#ec4899',
+  'level-ball': '#eab308', 'lure-ball': '#06b6d4', 'moon-ball': '#1e3a8a', 'heavy-ball': '#64748b', 'fast-ball': '#f59e0b', 'dream-ball': '#f9a8d4', 'beast-ball': '#38bdf8',
+}
+export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1, ball = 'poke-ball' }) {
   const S = side === 0 ? stage.near : stage.far
   const c = body(S)
   const NEUTRAL = [stage.w / 2, stage.h / 2, 1, 0]
@@ -3040,7 +3047,7 @@ export function fxScene({ kind, side = 1, stage = FX_STAGE, seed = 1 }) {
     const from = side === 0 ? { x: -60, y: stage.h * 0.8 } : { x: stage.w + 60, y: S.y - S.h * 1.2 }
     const land = { x: S.x, y: S.y - 30 }
     cam = [[0, ...look({ x: (from.x + land.x) / 2, y: (from.y + land.y) / 2 }, side === 0 ? 1.0 : 1.05, 0)], [500, ...look(c, side === 0 ? 1.2 : 1.45, -2 * toward)], [1350, ...look(c, side === 0 ? 1.15 : 1.4, -toward)], [1800, ...NEUTRAL]]
-    L.push({ s: 'shot', t0: 0, t1: 520, x: [from.x, land.x], y: [from.y, land.y], r: 14, c: ['#ffffff', '#ef4444', '#991b1b', '#111827'], style: 'pokeball', arc: 140, spin: toward })
+    L.push({ s: 'shot', t0: 0, t1: 520, x: [from.x, land.x], y: [from.y, land.y], r: 14, c: ['#ffffff', BALL_TOP[ball] ?? BALL_TOP['poke-ball'], '#991b1b', '#111827'], style: 'pokeball', arc: 140, spin: toward })
     // Abre: clarão, raios, anel e brilhos subindo.
     L.push({ s: 'tint', t0: 520, t1: 680, color: '#ffffff', a: [0.7, 0] })
     L.push({ s: 'glow', t0: 520, t1: 900, x: land.x, y: land.y - S.h * 0.3, r: [10, S.h * 0.75], c: ['#ffffff', '#fff7d6', '#ffd6e0'], a: [1, 0] })

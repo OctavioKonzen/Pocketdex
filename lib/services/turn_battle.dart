@@ -60,6 +60,9 @@ class BattleMon {
   Map<String, double>? boost;
   double? hpRatio;
 
+  /// A Poké Ball em que ele foi capturado (Battle Factory): ele sai dela no começo da batalha.
+  String? ball;
+
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
   int id, maxHp, spe;
@@ -138,7 +141,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -2156,7 +2159,8 @@ class TurnBattleSetup {
         ..levelCap = m.$2?['levelCap'] == 'none' ? 'none' : (m.$2?['levelCap'] as num?)?.toInt()
         ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null
         ..boost = m.$2?['boost'] is Map ? {for (final e in (m.$2!['boost'] as Map).entries) '${e.key}': (e.value as num).toDouble()} : null
-        ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble());
+        ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble()
+        ..ball = m.$2?['ball'] as String?);
     }
     return out;
   }

@@ -331,7 +331,8 @@ function particle(g, style, x, y, s, color, a, rot) {
       g.translate(x, y)
       g.rotate(rot)
       g.globalAlpha = 1
-      g.fillStyle = '#ef4444'
+      // A cor de cima é a da bola (Great Ball azul, Ultra Ball amarela, Master Ball roxa...).
+      g.fillStyle = color
       g.beginPath()
       g.arc(0, 0, s, Math.PI, 0)
       g.fill()
