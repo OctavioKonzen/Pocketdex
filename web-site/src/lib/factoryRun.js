@@ -2601,7 +2601,7 @@ export function chooseNode(run, data, index, clock = null) {
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
     const sky = weatherOf(run, shownScene(run, scene, data), null, data)
     const mist = fieldOf(run, shownScene(run, scene, data), data)
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run) }), scene })
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
@@ -2643,7 +2643,7 @@ export function chooseNode(run, data, index, clock = null) {
     }
     // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
     if (node.kind === 'trainer' && !scene.startsWith('base-') && rand() < DOUBLE_CHANCE) {
-      const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when })
+      const second = encounterFor(data, out.floor, rand, null, false, { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) })
       // Até 3 de cada (a batalha tem no máximo 6 de cada lado).
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes.slice(0, PAIR_TEAM), ...second.foes.slice(0, PAIR_TEAM)], pair: true }
     }
@@ -2730,6 +2730,27 @@ export function bossGimmick(data, f, rand) {
  * caminho escolhido no mapa (selvagem do bioma, treinador ou treinador forte);
  * sem ele, selvagem ou treinador ao acaso.
  */
+/**
+ * Os eventos de época (como os dos jogos): pela data, sozinhos. Halloween traz mais Fantasma e Sombrio; o Natal, Gelo;
+ * as férias de verão, Água; os Namorados, Fada; o aniversário dos Pokémon (27 de fevereiro), o dobro de shiny. A tela
+ * guarda o de hoje na corrida (run.event) e o sorteio usa esse (os dias não mudam o resultado dos testes). Igual ao app.
+ */
+export const SEASON_EVENTS = {
+  halloween: { icon: '🎃', label: 'Halloween', help: 'Mais Pokémon Fantasma e Sombrio', types: ['ghost', 'dark'], from: [10, 20], to: [11, 3] },
+  natal: { icon: '🎄', label: 'Natal', help: 'Mais Pokémon de Gelo', types: ['ice'], from: [12, 15], to: [1, 6] },
+  verao: { icon: '🏖️', label: 'Férias de verão', help: 'Mais Pokémon de Água', types: ['water'], from: [1, 7], to: [2, 9] },
+  namorados: { icon: '💗', label: 'Dia dos Namorados', help: 'Mais Pokémon Fada', types: ['fairy'], from: [2, 10], to: [2, 16] },
+  aniversario: { icon: '🎂', label: 'Aniversário dos Pokémon', help: 'O dobro de chance de shiny', types: [], shiny: 2, from: [2, 24], to: [3, 2] },
+}
+/** O evento de hoje ([mês, dia]) ou null. */
+export function eventOn(month, day) {
+  const at = month * 100 + day
+  for (const [id, e] of Object.entries(SEASON_EVENTS)) {
+    const a = e.from[0] * 100 + e.from[1], b = e.to[0] * 100 + e.to[1]
+    if (a <= b ? at >= a && at <= b : at >= a || at <= b) return id
+  }
+  return null
+}
 export function encounterFor(data, floor, rand, boss = null, wild = false, node = null) {
   const level = Math.max(2, foeLevelAt(floor) + Math.floor(rand() * 2))
   const iv = foeIvsAt(floor), ev = foeEvsAt(floor)
@@ -2803,7 +2824,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
   // Os tipos do lugar aparecem bem mais (ROUTE_TYPE_WEIGHT; nos treinadores, ROUTE_TYPE_TRAINER).
   // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
   // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
-  const drawn = [...(WEATHER_TYPES[node?.weather] ?? []), ...(FIELD_TYPES[node?.field] ?? [])]
+  const drawn = [...(WEATHER_TYPES[node?.weather] ?? []), ...(FIELD_TYPES[node?.field] ?? []), ...(SEASON_EVENTS[node?.event]?.types ?? [])]
   const types = BIOMES[node?.biome] && [...BIOMES[node.biome], ...(node.night ? NIGHT_TYPES : []), ...(SEASON_TYPES[node.season] ?? []), ...drawn]
   const pulled = (p) => drawn.length > 0 && (data.species[p.id]?.[4] ?? []).some((t) => drawn.includes(t))
   const local = (p) => Boolean(types && (data.species[p.id]?.[4] ?? []).some((t) => types.includes(t)))
@@ -2855,7 +2876,7 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
     const foes = Array.from({ length: HORDE_SIZE }, () => foe(id, Math.max(2, level - HORDE_LEVELS), rand() < rate ? { shiny: true } : {}))
     return { kind, foes, horde: true, ...(node?.biome ? { biome: node.biome } : {}) }
   }
-  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (node?.meteor ? 8 : 1) * (burst ? OUTBREAK_SHINY : 1) * (node?.tree === 'honey' ? HONEY_SHINY : 1) * huntBoost(data, node, id)
+  const shinyRate = SHINY_CHANCE * (node?.shiny ?? 1) * (SEASON_EVENTS[node?.event]?.shiny ?? 1) * (node?.meteor ? 8 : 1) * (burst ? OUTBREAK_SHINY : 1) * (node?.tree === 'honey' ? HONEY_SHINY : 1) * huntBoost(data, node, id)
   return { kind, foes: [foe(id, level, rand() < shinyRate ? { shiny: true } : {})], ...(node?.biome ? { biome: node.biome } : {}), ...(node?.meteor ? { meteor: true } : {}) }
 }
 

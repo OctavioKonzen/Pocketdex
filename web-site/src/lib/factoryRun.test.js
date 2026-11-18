@@ -2007,7 +2007,13 @@ function round14Trace(F) {
   const egg = cared.eggs[0]
   const born = F.capturedMon({ ...base, pending: { capture: { id: egg.id, level: 5, egg: true, parent: egg.parent } } })
   const inherit = [egg, born.ivs, F.eggMoves(['dragon-dance', 'flamethrower', 'tackle'], [['dragon-dance', 'egg', 0], ['flamethrower', 'level-up', 38], ['scratch', 'level-up', 1]], ['scratch', 'growl'])]
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit }
+  // Os eventos de época: as datas e os selvagens (o mesmo no app).
+  const days = [[10, 19], [10, 20], [11, 3], [11, 4], [12, 31], [1, 6], [1, 7], [2, 12], [2, 27], [3, 3], [7, 1]].map(([m, d]) => F.eventOn(m, d))
+  const season = ['halloween', 'natal', 'aniversario'].map((event) => Array.from({ length: 30 }, (_, k) => {
+    const e = F.encounterFor(data, 20, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', event })
+    return e.foes.map((f) => [f.id, f.shiny ? 1 : 0])
+  }))
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

@@ -82,9 +82,25 @@ String playTimeText(int ms) {
   return min >= 60 ? '${min ~/ 60}h ${'${min % 60}'.padLeft(2, '0')}min' : '$min min';
 }
 
+/// O evento de época de hoje na corrida (o sorteio dos selvagens usa esse). Igual ao site.
+Json _withEvent(Json factory) {
+  final run = factory['run'] as Map?;
+  if (run == null) return factory;
+  final now = DateTime.now();
+  final id = FactoryRun.eventOn(now.month, now.day);
+  if (run['event'] == id) return factory;
+  final next = Map<String, dynamic>.from(run);
+  if (id == null) {
+    next.remove('event');
+  } else {
+    next['event'] = id;
+  }
+  return {...factory, 'run': next};
+}
+
 /// Salva a Factory na conta.
 void saveFactory(Json factory) {
-  factory = _withPlayTime(factory);
+  factory = _withEvent(_withPlayTime(factory));
   // As missões do dia andam com o que mudou na corrida. Igual ao site.
   final before = currentFactory();
   factory = FactoryDaily.track(before, factory);
@@ -2886,6 +2902,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 if (run['honey'] != null)
                   Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
                 if (FactoryRun.repelOn(run)) Text('🧴${FactoryRun.repelLeft(run)}', key: const ValueKey('factory-repel-on'), style: style),
+                if (FactoryRun.seasonEvents[run['event']] case final ev?)
+                  Tooltip(message: '${tr(ev.label)}: ${tr(ev.help)}', child: Text(ev.icon, key: const ValueKey('factory-event'), style: style)),
                 if (run['berry'] != null)
                   Text('🌱${max(0, (run['berry']['need'] as num).toInt() - ((run['floor'] as num).toInt() - (run['berry']['floor'] as num).toInt()))}', key: const ValueKey('factory-berry'), style: style),
                 if (run['daycare'] != null) Text('🏡', style: style),

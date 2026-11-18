@@ -1135,6 +1135,11 @@
   "fr": "Animations et sprites",
   "es": "Animaciones y sprites"
  },
+ "Aniversário dos Pokémon": {
+  "en": "Pokémon Day",
+  "fr": "Journée Pokémon",
+  "es": "Día de Pokémon"
+ },
  "Anterior": {
   "en": "Previous",
   "fr": "Précédent",
@@ -3817,6 +3822,11 @@
   "fr": "Jour",
   "es": "Día"
  },
+ "Dia dos Namorados": {
+  "en": "Valentine's Day",
+  "fr": "Saint-Valentin",
+  "es": "San Valentín"
+ },
  "Diamantes começaram a cair do teto da caverna!": {
   "en": "Diamonds started falling from the cave ceiling!",
   "fr": "Des diamants tombent du plafond de la grotte !",
@@ -5503,6 +5513,11 @@
   "fr": "Facile : l'ordinateur attaque au hasard, sans changer ni utiliser d'objets.\nNormal : IV et EV aléatoires.\nDifficile : sets compétitifs.",
   "es": "Fácil: la computadora ataca al azar, sin cambiar ni usar objetos.\nNormal: IVs y EVs aleatorios.\nDifícil: sets competitivos."
  },
+ "Férias de verão": {
+  "en": "Summer holidays",
+  "fr": "Vacances d'été",
+  "es": "Vacaciones de verano"
+ },
  "Físico": {
   "en": "Physical",
   "fr": "Physique",
@@ -5820,6 +5835,11 @@
   "en": "Hall of Fame",
   "fr": "Panthéon",
   "es": "Salón de la Fama"
+ },
+ "Halloween": {
+  "en": "Halloween",
+  "fr": "Halloween",
+  "es": "Halloween"
  },
  "Heavy-Duty Boots": {
   "en": "Heavy-Duty Boots",
@@ -6471,6 +6491,26 @@
   "fr": "+{0} % de pièces en plus à la fin de la partie",
   "es": "+{0}% más de monedas al final de la partida"
  },
+ "Mais Pokémon Fada": {
+  "en": "More Fairy Pokémon",
+  "fr": "Plus de Pokémon Fée",
+  "es": "Más Pokémon Hada"
+ },
+ "Mais Pokémon Fantasma e Sombrio": {
+  "en": "More Ghost and Dark Pokémon",
+  "fr": "Plus de Pokémon Spectre et Ténèbres",
+  "es": "Más Pokémon Fantasma y Siniestro"
+ },
+ "Mais Pokémon de Gelo": {
+  "en": "More Ice Pokémon",
+  "fr": "Plus de Pokémon Glace",
+  "es": "Más Pokémon Hielo"
+ },
+ "Mais Pokémon de Água": {
+  "en": "More Water Pokémon",
+  "fr": "Plus de Pokémon Eau",
+  "es": "Más Pokémon Agua"
+ },
  "Mais chance de acerto crítico (+1 nível)": {
   "en": "Higher critical hit chance (+1 stage)",
   "fr": "Plus de chances de coup critique (+1 niveau)",
@@ -7101,6 +7141,11 @@
   "en": "In the shadows, whoever strikes first wins.",
   "fr": "Dans l'ombre, celui qui frappe le premier gagne.",
   "es": "En las sombras, gana quien ataca primero."
+ },
+ "Natal": {
+  "en": "Christmas",
+  "fr": "Noël",
+  "es": "Navidad"
  },
  "Nature": {
   "en": "Nature",
@@ -8106,6 +8151,11 @@
   "en": "Drayton's challenge",
   "fr": "Le défi de Drayton",
   "es": "El desafío de Drayton"
+ },
+ "O dobro de chance de shiny": {
+  "en": "Double shiny chance",
+  "fr": "Deux fois plus de chances de chromatique",
+  "es": "El doble de probabilidad de variocolor"
  },
  "O dojo do Kubfu": {
   "en": "The Kubfu dojo",

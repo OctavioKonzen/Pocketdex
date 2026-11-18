@@ -615,6 +615,16 @@ void main() {
       FactoryRun.eggMoves(['dragon-dance', 'flamethrower', 'tackle'], [['dragon-dance', 'egg', 0], ['flamethrower', 'level-up', 38], ['scratch', 'level-up', 1]], ['scratch', 'growl']),
     ];
     expect(norm(inherit), expected['inherit']);
+    // Os eventos de época: as datas e os selvagens (o mesmo no site).
+    expect([for (final (m, d) in const [(10, 19), (10, 20), (11, 3), (11, 4), (12, 31), (1, 6), (1, 7), (2, 12), (2, 27), (3, 3), (7, 1)]) FactoryRun.eventOn(m, d)], expected['days']);
+    final season = [
+      for (final event in const ['halloween', 'natal', 'aniversario'])
+        [
+          for (var k = 0; k < 30; k++)
+            [for (final f in FactoryRun.encounterFor(data, 20, League.seededRandom(k + 1), null, false, {'kind': 'wild', 'biome': 'grass', 'event': event})['foes'] as List) [f['id'], f['shiny'] == true ? 1 : 0]]
+        ]
+    ];
+    expect(norm(season), expected['season']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

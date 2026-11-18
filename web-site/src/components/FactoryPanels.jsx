@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -69,8 +69,17 @@ export const playTimeText = (ms) => {
   return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min} min`
 }
 /** Salva a Factory (meta e corrida) na conta. */
+/** O evento de época de hoje na corrida (o sorteio dos selvagens usa esse). Igual ao app. */
+function withEvent(factory) {
+  if (!factory?.run) return factory
+  const now = new Date()
+  const id = eventOn(now.getMonth() + 1, now.getDate())
+  if ((factory.run.event ?? null) === id) return factory
+  const { event: _old, ...run } = factory.run
+  return { ...factory, run: id ? { ...run, event: id } : run }
+}
 export const saveFactory = (factory) => {
-  factory = withPlayTime(factory)
+  factory = withEvent(withPlayTime(factory))
   // As missões do dia andam com o que mudou na corrida.
   factory = trackDaily(factoryOf(useStore.getState().league), factory)
   // Os vistos na corrida vão para a Pokédex (visto × capturado). Igual ao app.
@@ -2640,6 +2649,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
             {repelOn(run) && <span title={t('Repelente')} data-testid="factory-repel-on">🧴{repelLeft(run)}</span>}
+            {SEASON_EVENTS[run.event] && <span title={`${t(SEASON_EVENTS[run.event].label)}: ${t(SEASON_EVENTS[run.event].help)}`} data-testid="factory-event">{SEASON_EVENTS[run.event].icon}</span>}
             {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
             {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
             {run.daycare && <span title={t('Creche')}>🏡</span>}

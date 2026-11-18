@@ -2424,7 +2424,7 @@ class FactoryRun {
       final mist = fieldOf(run, shownScene(run, scene, data), data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run)}),
+                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2480,7 +2480,7 @@ class FactoryRun {
       }
       // Dupla de treinadores: dois treinadores juntos (os dois times na mesma batalha).
       if (node['kind'] == 'trainer' && !scene.startsWith('base-') && rand() < doubleChance) {
-        final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when});
+        final second = encounterFor(data, floor, rand, null, false, {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (seasonEvents.containsKey(run['event'])) 'event': run['event']});
         out['encounter'] = {
           ...out['encounter'] as Map<String, dynamic>,
           // Até 3 de cada (a batalha tem no máximo 6 de cada lado).
@@ -2588,6 +2588,27 @@ class FactoryRun {
 
   /// O que aparece no andar: chefe da história, chefe sem treinador (wild: Mega, Gigantamax ou lendário), selvagem ou treinador.
   /// node: o caminho escolhido no mapa (selvagem do bioma, treinador ou treinador forte). Igual ao site.
+  /// Os eventos de época (como os dos jogos): pela data, sozinhos. Halloween traz mais Fantasma e Sombrio; o Natal, Gelo;
+  /// as férias de verão, Água; os Namorados, Fada; o aniversário dos Pokémon (27 de fevereiro), o dobro de shiny. A tela
+  /// guarda o de hoje na corrida (run['event']) e o sorteio usa esse (os dias não mudam o resultado dos testes). Igual ao site.
+  static const seasonEvents = <String, ({String icon, String label, String help, List<String> types, int shiny, (int, int) from, (int, int) to})>{
+    'halloween': (icon: '🎃', label: 'Halloween', help: 'Mais Pokémon Fantasma e Sombrio', types: ['ghost', 'dark'], shiny: 1, from: (10, 20), to: (11, 3)),
+    'natal': (icon: '🎄', label: 'Natal', help: 'Mais Pokémon de Gelo', types: ['ice'], shiny: 1, from: (12, 15), to: (1, 6)),
+    'verao': (icon: '🏖️', label: 'Férias de verão', help: 'Mais Pokémon de Água', types: ['water'], shiny: 1, from: (1, 7), to: (2, 9)),
+    'namorados': (icon: '💗', label: 'Dia dos Namorados', help: 'Mais Pokémon Fada', types: ['fairy'], shiny: 1, from: (2, 10), to: (2, 16)),
+    'aniversario': (icon: '🎂', label: 'Aniversário dos Pokémon', help: 'O dobro de chance de shiny', types: [], shiny: 2, from: (2, 24), to: (3, 2)),
+  };
+
+  /// O evento de hoje (mês, dia) ou null.
+  static String? eventOn(int month, int day) {
+    final at = month * 100 + day;
+    for (final e in seasonEvents.entries) {
+      final a = e.value.from.$1 * 100 + e.value.from.$2, b = e.value.to.$1 * 100 + e.value.to.$2;
+      if (a <= b ? at >= a && at <= b : at >= a || at <= b) return e.key;
+    }
+    return null;
+  }
+
   static Json encounterFor(FactoryData data, int floor, double Function() rand, [Json? boss, bool wild = false, Json? node]) {
     final level = math.max(2, foeLevelAt(floor) + (rand() * 2).floor());
     final iv = foeIvsAt(floor), ev = foeEvsAt(floor);
@@ -2692,7 +2713,7 @@ class FactoryRun {
     // Os tipos do lugar aparecem bem mais (routeTypeWeight; nos treinadores, routeTypeTrainer).
     // À noite, mais Fantasma e Sombrio; em cada estação, os tipos dela (node.night, node.season: o relógio de quem joga).
     // O clima da rota também: com chuva, mais Água, Elétrico e Inseto; com sol, Fogo, Planta e Terra; areia, Pedra, Terra e Aço; neve, Gelo.
-    final drawn = [...?weatherTypes[node?['weather']], ...?fieldTypes[node?['field']]];
+    final drawn = [...?weatherTypes[node?['weather']], ...?fieldTypes[node?['field']], ...?seasonEvents[node?['event']]?.types];
     final types = biomes[node?['biome']] == null
         ? null
         : [...biomes[node!['biome']]!, if (node['night'] == true) ...nightTypes, ...?seasonTypes[node['season']], ...drawn];
@@ -2779,7 +2800,7 @@ class FactoryRun {
       'kind': kind,
       'foes': [
         foe(id, level,
-            rand() < shinyChance * _shinyRate(node) * (meteor ? 8 : 1) * (burst ? outbreakShiny : 1) * (node?['tree'] == 'honey' ? honeyShiny : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})
+            rand() < shinyChance * _shinyRate(node) * (seasonEvents[node?['event']]?.shiny ?? 1) * (meteor ? 8 : 1) * (burst ? outbreakShiny : 1) * (node?['tree'] == 'honey' ? honeyShiny : 1) * _huntBoost(data, node, id) ? {'shiny': true} : const {})
       ],
       if (node?['biome'] != null) 'biome': node!['biome'],
       if (meteor) 'meteor': true,
