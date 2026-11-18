@@ -2172,6 +2172,12 @@ class FactoryRun {
         if (legend != null) options[options.length - 1] = {'kind': 'wildboss', 'legend': legend};
       }
       if (pos == forks[1] && !options.any((o) => o['legend'] != null) && rand() < wildBossChance) options[options.length - 1] = {'kind': 'wildboss'};
+      // A missão do lendário: a pista na primeira ou na última bifurcação (não em toda) e, com as pistas todas, o covil na segunda.
+      final quest = !inside && _int(run['floor']) >= questFloor ? legendQuest(data, run) : null;
+      if (quest?['id'] != null && _int(quest!['clues']) < questClues && (pos == forks[0] || pos == forks[2]) && followRoll(run, 2654435761) < questChance) options[options.length - 1] = {'kind': 'clue', 'target': quest['id']};
+      if (quest?['id'] != null && _int(quest!['clues']) >= questClues && pos == forks[1]) {
+        options[options.any((o) => o['legend'] != null) ? 0 : options.length - 1] = {'kind': 'wildboss', 'legend': quest['id'], 'quest': true, 'biome': quest['scene']};
+      }
       // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
       if (run['rematch'] != null && pos == forks[0]) options[options.length - 1] = {'kind': 'rematch'};
     }
@@ -2266,6 +2272,65 @@ class FactoryRun {
     'Unova': [643, 644, 646, 638, 639, 640], 'Kalos': [716, 717, 718], 'Alola': [791, 792, 800, 785], 'Galar': [888, 889, 890], 'Paldea': [1007, 1008, 1001, 1002],
     'Orre': [243, 244, 245, 249], 'Fiore': [243, 244, 245], 'Almia': [485, 486, 384], 'Oblivia': [249, 250, 243, 244, 245], 'Kitakami': [1017, 1014, 1015, 1016], 'Blueberry': [1024, 1009, 1010], 'Sevii': [146, 386, 201], 'Armor': [891, 10164], 'Crown': [898, 894, 895, 10169, 10170, 10171], 'Orange': [144, 145, 146, 249],
   };
+
+  /// As missões dos lendários (a linha de história de cada região): o próximo lendário da lista que você ainda não
+  /// capturou. Siga questClues pistas (um caminho 🔍 numa bifurcação da rota) e o covil dele aparece na rota
+  /// seguinte; capturando, a missão se cumpre na conta para sempre e vem o próximo. Derrotado ou fugindo, falta mais uma
+  /// pista. Igual ao site.
+  static const questClues = 3;
+  static const questFloor = 3;
+  static const questChance = 0.5;
+  static const questPrize = 500;
+
+  /// O covil de cada lendário: (o lugar dos jogos, o cenário da batalha).
+  static const legendLairs = <int, (String, String)>{
+    150: ('Cerulean Cave', 'cave'), 144: ('Seafoam Islands', 'icecave'), 145: ('Power Plant', 'plant'), 146: ('Mt. Ember', 'volcano'),
+    249: ('Whirl Islands', 'seacave'), 250: ('Bell Tower', 'tower'), 243: ('Burned Tower', 'tower'), 244: ('Burned Tower', 'tower'), 245: ('Burned Tower', 'tower'),
+    382: ('Seafloor Cavern', 'seacave'), 383: ('Cave of Origin', 'lavacave'), 384: ('Sky Pillar', 'skypillar'), 380: ('Southern Island', 'beach'), 381: ('Southern Island', 'beach'),
+    483: ('Spear Pillar', 'spearpillar'), 484: ('Spear Pillar', 'spearpillar'), 487: ('Turnback Cave', 'ruins'), 480: ('Lake Acuity', 'acuity'), 481: ('Lake Verity', 'lake'), 482: ('Lake Valor', 'lake'),
+    905: ('Scarlet Bog', 'swamp'), 643: ('Dragonspiral Tower', 'tower'), 644: ('Dragonspiral Tower', 'tower'), 646: ('Giant Chasm', 'icecave'),
+    638: ('Mistralton Cave', 'cave'), 639: ('Victory Road', 'mountain'), 640: ('Pinwheel Forest', 'forest'), 641: ('Route 7', 'sky'), 642: ('Route 7', 'sky'),
+    716: ('Team Flare Secret HQ', 'crystal'), 717: ('Team Flare Secret HQ', 'crystal'), 718: ('Terminus Cave', 'cave'),
+    791: ('Altar of the Sunne', 'ruins'), 792: ('Altar of the Moone', 'ruins'), 800: ('Mount Lanakila', 'snow'), 785: ('Ruins of Conflict', 'ruins'),
+    888: ('Slumbering Weald', 'forest'), 889: ('Slumbering Weald', 'forest'), 890: ('Energy Plant', 'plant'),
+    1007: ('Area Zero', 'crystal'), 1008: ('Area Zero', 'crystal'), 1001: ('Grasswither Shrine', 'temple'), 1002: ('Icerend Shrine', 'temple'),
+    1017: ('Oni Mountain', 'mountain'), 1014: ('Loyalty Plaza', 'flowers'), 1015: ('Loyalty Plaza', 'flowers'), 1016: ('Loyalty Plaza', 'flowers'),
+    1024: ('Area Zero Underdepths', 'crystal'), 1009: ('Area Zero', 'crystal'), 1010: ('Area Zero', 'crystal'),
+    386: ('Birth Island', 'beach'), 201: ('Tanoby Ruins', 'ruins'), 485: ('Stark Mountain', 'volcano'), 486: ('Snowpoint Temple', 'temple'),
+    891: ('Tower of Two Fists', 'temple'), 10164: ('Tower of Two Fists', 'temple'), 898: ('Crown Shrine', 'temple'), 894: ('Split-Decision Ruins', 'ruins'), 895: ('Split-Decision Ruins', 'ruins'),
+    10169: ('Crown Tundra', 'snow'), 10170: ('Crown Tundra', 'snow'), 10171: ('Crown Tundra', 'snow'),
+  };
+
+  /// A lista de lendários da região de agora (só os que existem nos dados).
+  static List<int> questList(FactoryData data, Json run) => [for (final id in regionLegends[_regionName(data, run)] ?? const <int>[]) if (data.species[id] != null) id];
+
+  /// A missão de agora: {region, id, clues, lair, scene, list, done} (id null: todos capturados). null fora de uma região com lendários.
+  static Json? legendQuest(FactoryData data, Json run) {
+    final region = _regionName(data, run);
+    final list = questList(data, run);
+    if (list.isEmpty) return null;
+    final done = [for (final x in (run['legends'] as List?) ?? const []) _int(x)];
+    final id = list.cast<int?>().firstWhere((x) => !done.contains(x), orElse: () => null);
+    final quest = run['quest'] as Map?;
+    final clues = id != null && quest?['region'] == region && quest?['id'] == id ? _int(quest?['clues']) : 0;
+    final lair = legendLairs[id] ?? ('???', 'ruins');
+    return {'region': region, 'id': id, 'clues': clues, 'lair': lair.$1, 'scene': lair.$2, 'list': list, 'done': [for (final x in list) if (done.contains(x)) x]};
+  }
+
+  /// Ainda conta para a missão (o lendário da lista que você capturou, de qualquer jeito: covil, fujão, lugar).
+  static bool _questCaught(FactoryData data, Json run, Json out, int id) {
+    final have = [for (final x in (run['legends'] as List?) ?? const []) _int(x)];
+    if (!questList(data, run).contains(id) || have.contains(id)) return false;
+    out['legends'] = [...have, id];
+    return true;
+  }
+
+  /// Os lendários cumpridos na corrida entram na conta (para sempre).
+  static Json withLegends(Json factory) {
+    final legends = [for (final x in (factory['run']?['legends'] as List?) ?? const []) _int(x)];
+    final have = [for (final x in (factory['legends'] as List?) ?? const []) _int(x)];
+    return legends.any((id) => !have.contains(id)) ? {...factory, 'legends': [...have, for (final id in legends) if (!have.contains(id)) id]} : factory;
+  }
 
   /// O lendário da região da corrida (sempre o mesmo para a mesma corrida e região).
   static int? regionLegend(FactoryData data, Json run) {
@@ -2451,6 +2516,7 @@ class FactoryRun {
       }
       // O lendário do lugar e o que dormia no caminho: vencendo (ou capturando), o lugar ou a rota seguem.
       if (node['placeLegend'] == true) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'placeLegend': true};
+      if (node['quest'] == true) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'quest': true};
       if (node['blocker'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'blocker': true};
       if (node['around'] == true) out['blockLeg'] = legOf(run);
       // A revanche: o Campeão vencido, com o time do andar de agora (e mais forte).
@@ -2517,6 +2583,14 @@ class FactoryRun {
       // De bicicleta: passa o andar sem batalha (e sem prêmio).
       out['pending'] = {
         'event': {'kind': 'bike'}
+      };
+    } else if (node['kind'] == 'clue') {
+      // A pista do lendário: mais uma (com todas, o covil aparece na próxima rota).
+      final quest = legendQuest(data, run);
+      final clues = math.min(questClues, _int(quest?['clues'] ?? 0) + 1);
+      out['quest'] = {'region': quest?['region'], 'id': node['target'], 'clues': clues};
+      out['pending'] = {
+        'event': {'kind': 'clue', 'legend': node['target'], 'clues': clues, 'lair': quest?['lair'] ?? '???'}
       };
     } else if (rand() < choiceChance) {
       // Uma escolha na rota: ajudar alguém, seguir um Pokémon ferido ou entrar numa caverna secreta.
@@ -2868,6 +2942,7 @@ class FactoryRun {
         'shinyRate': math.min(maxShinyRate, 1 + up('shiny') + fxTotal(factory, 'shiny')) * (factory['charm'] == true ? shinyCharm : 1),
       if (factory['hunt'] is Map) 'hunt': _int((factory['hunt'] as Map)['id']),
       if (factory['hunt'] is Map) 'huntCount': _int((factory['hunt'] as Map)['count'] ?? 0),
+      if (((factory['legends'] as List?) ?? const []).isNotEmpty) 'legends': [...(factory['legends'] as List)],
       'tms': <String, dynamic>{}, 'tokens': {'move-tutor': 0, 'move-reminder': 0}, 'stash': <String>[], 'dmax': up('dmax') > 0, 'tera': up('tera') > 0, 'expShare': up('expShare') > 0,
       'leg': 1, 'route': null, 'encounter': null, 'pending': null,
       if (up('map') > 0) 'townMap': true,
@@ -3137,6 +3212,16 @@ class FactoryRun {
       final region = _regionName(data, run);
       out['roamer'] = fled ? {'id': roamer, 'region': region, 'hp': _round3(math.max(0.01, foeHp ?? 1))} : {'id': roamer, 'region': region, 'done': captured ? 'caught' : 'fainted'};
     }
+    // A missão do lendário: capturado (no covil ou em qualquer lugar), cumprida; no covil sem capturar, falta mais uma pista.
+    final legendFoe = kind == 'wildboss' && !fled && foes.isNotEmpty ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : null;
+    final questDone = captured && legendFoe != null && _questCaught(data, run, out, _int(legendFoe['id'])) ? _int(legendFoe['id']) : null;
+    final questFight = run['encounter']['quest'] == true;
+    if (questDone != null) {
+      out['money'] = _int(out['money']) + questPrize;
+      out['quest'] = null;
+    } else if (questFight) {
+      out['quest'] = {'region': _regionName(data, run), 'id': allFoes.isNotEmpty ? allFoes.first['id'] : null, 'clues': questClues - 1};
+    }
     // O item escondido do caminho (Dowsing Machine).
     final dowsed = run['dowsed'] as String?;
     if (dowsed != null) _giveItem(out, dowsed);
@@ -3336,6 +3421,7 @@ class FactoryRun {
       if (hm != null) 'hm': hm,
       if (badge != null) 'badge': badge,
       if (pokerus.isNotEmpty) 'pokerus': pokerus,
+      if (questDone != null) 'quest': {'id': questDone, 'prize': questPrize} else if (questFight) 'quest': {'id': allFoes.isNotEmpty ? allFoes.first['id'] : null, 'lost': true},
       if (key != null) 'key': key,
       if (placeReward != null) 'placeReward': placeReward,
       if (fled) 'fled': roamer,

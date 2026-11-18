@@ -637,6 +637,41 @@ void main() {
         }()
     ];
     expect(norm(contest), expected['contest']);
+    // A missão do lendário: as pistas e o covil no mapa, seguir a pista e o covil (capturando ou não). O mesmo no site.
+    Json questAt(int seed, int floor, int clues, List<int>? legends) => {
+          ...FactoryRun.startRun({...FactoryRun.empty(), if (legends != null) 'legends': legends}, data, 1, 42)!,
+          'seed': seed, 'floor': floor, 'leg': 1, 'encounter': null, 'pending': null, 'boss': {'region': red, 'step': 2},
+          'quest': {'region': 'Kanto', 'id': legends != null ? 144 : 150, 'clues': clues},
+        };
+    final quest = [
+      for (var k = 0; k < 52; k++)
+        () {
+          final r = FactoryRun.nextFloor(questAt(30 + k % 4, 3 + k ~/ 4, const [0, 2, 3, 3][k % 4], k % 4 == 3 ? [150] : null), data);
+          final opts = [for (final o in (r['route']?['options'] as List?) ?? const []) o as Map];
+          final at = opts.indexWhere((o) => o['kind'] == 'clue' || o['quest'] == true);
+          final next = at >= 0 ? FactoryRun.chooseNode(r, data, at) : null;
+          List? fight(bool captured) {
+            if (next?['encounter'] == null) return null;
+            final won = FactoryRun.winFloor(next!, data, captured: captured, capturedIndex: captured ? 0 : null);
+            return [won['quest'], won['legends'], (won['money'] as num) - (next['money'] as num), won['pending']['quest']];
+          }
+
+          return [
+            [for (final o in opts) [o['kind'], o['target'] ?? o['legend'], o['quest'] == true ? 1 : 0, o['biome']]],
+            FactoryRun.legendQuest(data, r),
+            next == null ? null : [next['quest'], next['pending'], next['encounter']?['quest'], ((next['encounter']?['foes'] as List?)?.firstOrNull as Map?)?['id']],
+            fight(true),
+            fight(false),
+          ];
+        }()
+    ];
+    expect(norm(quest), expected['quest']);
+    expect(
+        norm(FactoryRun.withLegends({
+          'legends': [150],
+          'run': {'legends': [150, 144]},
+        })),
+        expected['kept']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

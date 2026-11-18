@@ -15070,5 +15070,77 @@
   "en": "🤝 {0} challenged you!",
   "fr": "🤝 {0} vous a défié !",
   "es": "🤝 ¡{0} te desafió!"
+ },
+ "Pista do lendário": {
+  "en": "Legendary clue",
+  "fr": "Indice légendaire",
+  "es": "Pista del legendario",
+  "pt": "Pista do lendário"
+ },
+ "Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.": {
+  "en": "Follow the clue to the region's legendary (no battle). With every clue, its lair appears on the next route.",
+  "fr": "Suivez l'indice du légendaire de la région (sans combat). Avec tous les indices, son repaire apparaît sur la route suivante.",
+  "es": "Sigue la pista del legendario de la región (sin combate). Con todas las pistas, su guarida aparece en la ruta siguiente.",
+  "pt": "Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte."
+ },
+ "O covil do lendário da missão: capture para cumprir a missão (+💰{0}). Sem capturar, falta mais uma pista.": {
+  "en": "The lair of the quest legendary: catch it to complete the quest (+💰{0}). Without a catch, you need one more clue.",
+  "fr": "Le repaire du légendaire de la mission : capturez-le pour accomplir la mission (+💰{0}). Sans capture, il faudra un indice de plus.",
+  "es": "La guarida del legendario de la misión: captúralo para cumplir la misión (+💰{0}). Sin capturarlo, falta una pista más.",
+  "pt": "O covil do lendário da missão: capture para cumprir a missão (+💰{0}). Sem capturar, falta mais uma pista."
+ },
+ "Um velho conta uma lenda: um Pokémon lendário dorme em {0}.": {
+  "en": "An old man tells a legend: a Legendary Pokémon sleeps in {0}.",
+  "fr": "Un vieil homme raconte une légende : un Pokémon légendaire dort à {0}.",
+  "es": "Un anciano cuenta una leyenda: un Pokémon legendario duerme en {0}.",
+  "pt": "Um velho conta uma lenda: um Pokémon lendário dorme em {0}."
+ },
+ "Pegadas enormes no caminho, rumo a {0}... o lendário está perto.": {
+  "en": "Huge footprints on the path, heading to {0}... the legendary is close.",
+  "fr": "D'énormes empreintes sur le chemin, vers {0}... le légendaire est proche.",
+  "es": "Huellas enormes en el camino, rumbo a {0}... el legendario está cerca.",
+  "pt": "Pegadas enormes no caminho, rumo a {0}... o lendário está perto."
+ },
+ "O caminho para {0} se abriu: o covil do lendário aparece na próxima rota!": {
+  "en": "The way to {0} is open: the legendary's lair appears on the next route!",
+  "fr": "Le chemin vers {0} est ouvert : le repaire du légendaire apparaît sur la prochaine route !",
+  "es": "¡El camino a {0} se abrió: la guarida del legendario aparece en la próxima ruta!",
+  "pt": "O caminho para {0} se abriu: o covil do lendário aparece na próxima rota!"
+ },
+ "pista": {
+  "en": "clue",
+  "fr": "indice",
+  "es": "pista",
+  "pt": "pista"
+ },
+ "pistas": {
+  "en": "clues",
+  "fr": "indices",
+  "es": "pistas",
+  "pt": "pistas"
+ },
+ "Missão lendária": {
+  "en": "Legendary quest",
+  "fr": "Mission légendaire",
+  "es": "Misión legendaria",
+  "pt": "Missão lendária"
+ },
+ "o covil está na próxima bifurcação!": {
+  "en": "the lair is at the next fork!",
+  "fr": "le repaire est au prochain embranchement !",
+  "es": "¡la guarida está en la próxima bifurcación!",
+  "pt": "o covil está na próxima bifurcação!"
+ },
+ "{0} sumiu de novo: falta mais uma pista para achar o covil.": {
+  "en": "{0} vanished again: you need one more clue to find the lair.",
+  "fr": "{0} a de nouveau disparu : il faut un indice de plus pour trouver le repaire.",
+  "es": "{0} desapareció otra vez: falta una pista más para encontrar la guarida.",
+  "pt": "{0} sumiu de novo: falta mais uma pista para achar o covil."
+ },
+ "Missão lendária cumprida: {0}! +💰{1}": {
+  "en": "Legendary quest complete: {0}! +💰{1}",
+  "fr": "Mission légendaire accomplie : {0} ! +💰{1}",
+  "es": "¡Misión legendaria cumplida: {0}! +💰{1}",
+  "pt": "Missão lendária cumprida: {0}! +💰{1}"
  }
 }

@@ -113,6 +113,8 @@ void saveFactory(Json factory) {
   factory = FactoryRun.withSeen(factory, FactoryData.loaded);
   // Completou a Pokédex: o Shiny Charm para sempre. Igual ao site.
   factory = FactoryRun.withShinyCharm(factory, FactoryData.loaded);
+  // Os lendários capturados nas missões ficam na conta. Igual ao site.
+  factory = FactoryRun.withLegends(factory);
   // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada). Igual ao site.
   final last = factory['last'] as Map?;
   if (last?['weekly'] != null && last?['posted'] != true) {
@@ -2367,6 +2369,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'mythic': ('✨', 'Pokémon mítico', 'Um Pokémon mítico, raríssimo. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
   'bike': ('🚲', 'Pedalar', 'De bicicleta: passa o andar sem batalha (e sem prêmio).'),
+  'clue': ('🔍', 'Pista do lendário', 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.'),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
   'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
   'leave': ('↩️', 'Voltar', 'Sai da água e volta para onde você entrou.'),
@@ -2481,6 +2484,17 @@ Object? _keyNeeded(Json run, Map? node) {
 const _blockerInfo = ('💤', '{0} bloqueia o caminho', 'Com o item certo, ele acorda e luta. Dá para capturar.');
 const _aroundInfo = ('↪️', 'Dar a volta', 'Um treinador no desvio; ele continua lá, dormindo.');
 const _placeLegendHelp = 'O lendário daqui: é o chefe do lugar. Dá para capturar.';
+const _questHelp = 'O covil do lendário da missão: capture para cumprir a missão (+💰{0}). Sem capturar, falta mais uma pista.';
+
+/// As pistas da missão do lendário (a 1ª, a 2ª e a última, que abre o covil). Igual ao site.
+const _questClueText = [
+  'Um velho conta uma lenda: um Pokémon lendário dorme em {0}.',
+  'Pegadas enormes no caminho, rumo a {0}... o lendário está perto.',
+  'O caminho para {0} se abriu: o covil do lendário aparece na próxima rota!',
+];
+
+/// O lugar do covil de um lendário (o nome do jogo).
+String _lairName(Object? id) => FactoryRun.legendLairs[(id as num?)?.toInt()]?.$1 ?? '???';
 String _hmHint(Json run, Map? node) => _keyNeeded(run, node) != null
     ? tr(node?['blocker'] != null ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replaceAll('{0}', FactoryRun.keyItems[_keyNeeded(run, node)] ?? '')
     : node?['kind'] == 'safari' && FactoryRun.hmNeeded(run, node) == null
@@ -2530,7 +2544,7 @@ const _eventText = {
   'noPotion': 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 };
 const _eventIcon = {
-  'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
+  'clue': '🔍', 'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
   'bought': '🧳', 'betWon': '🎰', 'betLost': '🎰', 'injuredJoined': '💚', 'noPotion': '🩹',
 };
 
@@ -2556,6 +2570,13 @@ String _mission(Map m) {
 }
 
 /// As pistas do lendário da região (a última: na rota para a Liga). Igual ao site.
+/// A missão do lendário em uma linha: quem (??? até a 2ª pista), as pistas e o covil (depois da 1ª pista). Igual ao site.
+String _questLine(Map quest, String Function(Object?) name) {
+  final clues = _int(quest['clues']);
+  final who = clues >= 2 ? name(quest['id']) : '???';
+  return '${tr('Missão lendária')}: $who · ${tr('pistas')} $clues/${FactoryRun.questClues}${clues > 0 ? ' · ${quest['lair']}' : ''}${clues >= FactoryRun.questClues ? ' · ${tr('o covil está na próxima bifurcação!')}' : ''}';
+}
+
 const _legendClues = [
   'Os moradores falam de um Pokémon lendário que vive nesta região...',
   'Pegadas enormes no caminho: algo muito poderoso passou por aqui.',
@@ -3342,6 +3363,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e
   /// as vitórias. Fica na AJUDA (🪪). Igual ao site.
   Widget _trainerCard(FactoryData? data, Json run) {
+    final quest = data == null || data.bosses.isEmpty ? null : FactoryRun.legendQuest(data, run);
     final me = Trainers.mine;
     final game = data == null || data.bosses.isEmpty ? null : data.bosses[(run['boss']['region'] as num).toInt()];
     final sum = FactoryRun.runSummary(run);
@@ -3394,6 +3416,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
             row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
             row('⏱️', 'Tempo de jogo', text(playTimeText(((run['playMs'] as num?) ?? 0).toInt()), 'card-time')),
             row('✨', 'Shiny Charm', text(currentFactory()['charm'] == true ? '✅ ${FactoryRun.shinyCharm}×' : '—', 'card-charm')),
+            if (quest != null)
+              row('🌟', 'Lendários', Row(mainAxisSize: MainAxisSize.min, children: [
+                for (final id in quest['list'] as List)
+                  Opacity(
+                    opacity: (quest['done'] as List).contains(id) || id == quest['id'] ? 1 : 0.4,
+                    child: SizedBox.square(dimension: 18, child: PokemonSprite((id as num).toInt(), fill: 0.95, lite: true, silhouette: (quest['done'] as List).contains(id) ? null : const Color(0xFF0F172A))),
+                  ),
+                const SizedBox(width: 4),
+                text('${(quest['done'] as List).length}/${(quest['list'] as List).length}', 'card-legends'),
+              ])),
             row('⚔️', 'Vencidos', text('${sum['defeated']} · 👑 ${sum['bosses']}')),
             // Perguntar o apelido ao capturar (vem desligado: a captura segue direto).
             row('✏️', 'Apelido ao capturar', InkWell(
@@ -4460,6 +4492,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
               _far(_farPerson(healerSprite, w), w, h)
             else if (items.isNotEmpty)
               _far(_itemIcon(items.first, w * 0.16), w, h)
+            else if (event != null && event['kind'] == 'clue')
+              _far(
+                  SizedBox.square(
+                      key: const ValueKey('quest-silhouette'),
+                      dimension: w * 0.22,
+                      child: PokemonSprite((event['legend'] as num).toInt(), fill: 0.9, silhouette: _int(event['clues']) >= FactoryRun.questClues ? null : const Color(0xFF0F172A))),
+                  w,
+                  h)
             else if (event != null)
               _far(Text(eventIcon, style: TextStyle(fontSize: w * 0.12)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
@@ -4468,6 +4508,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14))),
           ]),
       text: [
+        if (p['quest'] is Map)
+          Text(
+              (p['quest'] as Map)['lost'] == true
+                  ? '🌫️ ${tr('{0} sumiu de novo: falta mais uma pista para achar o covil.').replaceAll('{0}', _name((p['quest'] as Map)['id']))}'
+                  : '🌟 ${tr('Missão lendária cumprida: {0}! +💰{1}').replaceAll('{0}', _name((p['quest'] as Map)['id'])).replaceAll('{1}', '${(p['quest'] as Map)['prize']}')}',
+              key: const ValueKey('factory-quest'),
+              style: TextStyle(fontWeight: FontWeight.w900, color: (p['quest'] as Map)['lost'] == true ? const Color(0xFF94A3B8) : const Color(0xFFFBBF24))),
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
@@ -4484,6 +4531,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['center'] == true)
           Text(town ? '🏥 ${tr('Centro Pokémon: o seu time foi curado!')}' : '⛺ ${tr('{0} cuidou do seu time: todos curados!').replaceAll('{0}', healerName)}',
               key: const ValueKey('factory-center'))
+        else if (event != null && event['kind'] == 'clue')
+          Text(
+              '${tr(_questClueText[min(_questClueText.length, _int(event['clues'])) - 1]).replaceAll('{0}', '${event['lair']}')} (${tr('pista')} ${event['clues']}/${FactoryRun.questClues})',
+              key: const ValueKey('factory-event'))
         else if (event != null)
           Text(
               tr(_eventText['${event['kind']}'] ?? '')
@@ -5911,6 +5962,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final region = '${boss['region']}';
     final intro = run['boss']['step'] == 0 && pos == 0 ? FactoryRun.storyLine(data, region, 'intro') : '';
     final legend = FactoryRun.regionLegend(data, run);
+    final quest = FactoryRun.legendQuest(data, run);
     final clock = FactoryRun.clockOf();
     final mission = run['mission'] as Map?;
     Future<void> pick(int k) async {
@@ -5998,7 +6050,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (!town && dungeon == null && pos == 0 && !meeting)
         '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
             '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
-      if (!town && dungeon == null && pos == 0 && !meeting && legend != null)
+      if (!town && dungeon == null && pos == 0 && !meeting && quest?['id'] != null) '📜 ${_questLine(quest!, _name)}',
+      if (!town && dungeon == null && pos == 0 && !meeting && legend != null && target['kind'] == 'elite')
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
         '🕳️ ${tr('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
@@ -6087,7 +6140,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 }
                 return btn(
                   kind: node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
-                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['quest'] == true ? ' · 🌟 ${_lairName(node['legend'])} · ${_name(node['legend'])}' : node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null && node['quest'] != true ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
                       ? _hmHint(run, node)
@@ -6099,7 +6152,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                                   : tr('O chefe da rota: vencendo, você chega em {0}.').replaceAll('{0}', cities.to)
                               : node['hidden'] != null
                                   ? '📡 ${tr('A Dowsing Machine apita: tem um item escondido aqui!')}'
-                                  : tr(placeLegend ? _placeLegendHelp : info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
+                                  : node['quest'] == true
+                                      ? tr(_questHelp).replaceAll('{0}', '${FactoryRun.questPrize}')
+                                      : tr(placeLegend ? _placeLegendHelp : info.$3).replaceAll('{0}', '${FactoryRun.roamTurns}'),
                   key: ValueKey('map-node-$k'),
                 );
               }),
@@ -6433,7 +6488,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               child: Row(mainAxisSize: MainAxisSize.min, children: [
                                 CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Text(b?.$2 ?? info.$1, style: const TextStyle(fontSize: 13))),
                                 const SizedBox(width: 4),
-                                Text('${node['placeLegend'] == true || node['routeLegend'] == true ? _name(node['legend']) : tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                                Text('${node['quest'] == true ? '${_lairName(node['legend'])} · ${_name(node['legend'])}' : node['placeLegend'] == true || node['routeLegend'] == true ? _name(node['legend']) : tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
                               ]),
                             ),
                           ),
@@ -7853,7 +7908,7 @@ const _cardColors = {
   'area': (Color(0xFFA855F7), Color(0xFF6B21A8)), 'wildboss': (Color(0xFFD946EF), Color(0xFF86198F)), 'mart': (Color(0xFF3B82F6), Color(0xFF1D4ED8)),
   'center': (Color(0xFFEC4899), Color(0xFFBE185D)), 'event': (Color(0xFFEAB308), Color(0xFFA16207)), 'trade': (Color(0xFF06B6D4), Color(0xFF0E7490)),
   'safari': (Color(0xFF84CC16), Color(0xFF4D7C0F)), 'meteor': (Color(0xFFF59E0B), Color(0xFFB45309)), 'mythic': (Color(0xFFF0ABFC), Color(0xFFA21CAF)),
-  'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
+  'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'clue': (Color(0xFFA78BFA), Color(0xFF6D28D9)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
   'dungeon': (Color(0xFF78716C), Color(0xFF44403C)),
 };
 

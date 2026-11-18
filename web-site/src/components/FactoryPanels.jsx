@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -86,6 +86,8 @@ export const saveFactory = (factory) => {
   factory = withSeen(factory, loadedData)
   // Completou a Pokédex: o Shiny Charm para sempre. Igual ao app.
   factory = withShinyCharm(factory, loadedData)
+  // Os lendários capturados nas missões ficam na conta. Igual ao app.
+  factory = withLegends(factory)
   // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada).
   const last = factory?.last
   if (last?.weekly && !last.posted) {
@@ -1241,6 +1243,7 @@ const NODE_INFO = {
   mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
   bike: { icon: '🚲', label: 'Pedalar', help: 'De bicicleta: passa o andar sem batalha (e sem prêmio).' },
+  clue: { icon: '🔍', label: 'Pista do lendário', help: 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.' },
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
   rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
   leave: { icon: '↩️', label: 'Voltar', help: 'Sai da água e volta para onde você entrou.' },
@@ -1338,6 +1341,13 @@ const keyNeeded = (run, node) => [node?.needs, node?.blocker].find((k) => k != n
 const BLOCKER_INFO = { icon: '💤', label: '{0} bloqueia o caminho', help: 'Com o item certo, ele acorda e luta. Dá para capturar.' }
 const AROUND_INFO = { icon: '↪️', label: 'Dar a volta', help: 'Um treinador no desvio; ele continua lá, dormindo.' }
 const PLACE_LEGEND_HELP = 'O lendário daqui: é o chefe do lugar. Dá para capturar.'
+const QUEST_HELP = 'O covil do lendário da missão: capture para cumprir a missão (+💰{0}). Sem capturar, falta mais uma pista.'
+/** As pistas da missão do lendário (a 1ª, a 2ª e a última, que abre o covil). */
+const QUEST_CLUE_TEXT = [
+  'Um velho conta uma lenda: um Pokémon lendário dorme em {0}.',
+  'Pegadas enormes no caminho, rumo a {0}... o lendário está perto.',
+  'O caminho para {0} se abriu: o covil do lendário aparece na próxima rota!',
+]
 const hmHint = (run, node) => (keyNeeded(run, node) ? t(node.blocker ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replace('{0}', KEY_ITEMS[keyNeeded(run, node)]) : node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
 /** O clima do lugar (a previsão no mapa). */
 const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
@@ -1365,7 +1375,7 @@ const EVENT_TEXT = {
   injuredJoined: 'Você usou {0} e o Pokémon ferido quis ir com você!',
   noPotion: 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 }
-const EVENT_ICON = { bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
+const EVENT_ICON = { clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
 /** O símbolo de cada melhoria (no círculo da árvore). */
 const UPGRADE_ICONS = {
   level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
@@ -1589,6 +1599,7 @@ function SkillTree({ factory }) {
 function eventText(event) {
   const item = itemName(event.item ?? '')
   if (event.kind === 'money' || event.kind === 'betWon' || event.kind === 'betLost') return t(EVENT_TEXT[event.kind]).replace('{0}', event.money)
+  if (event.kind === 'clue') return `${t(QUEST_CLUE_TEXT[Math.min(QUEST_CLUE_TEXT.length, event.clues) - 1])} (${t('pista')} ${event.clues}/${QUEST_CLUES})`.replace('{0}', event.lair)
   if (event.kind === 'secretFound') return t(EVENT_TEXT.secretFound).replace('{0}', item).replace('{1}', event.money)
   return t(EVENT_TEXT[event.kind]).replace('{0}', item).replace('{1}', event.count ?? '')
 }
@@ -1609,6 +1620,13 @@ const MISSION_TEXT = {
 }
 function missionText(m) {
   return t(MISSION_TEXT[m.kind]).replace('{0}', m.need).replace('{1}', m.type ? m.type[0].toUpperCase() + m.type.slice(1) : '')
+}
+/** O lugar do covil de um lendário (o nome do jogo). */
+const LEGEND_LAIR_NAME = (id) => LEGEND_LAIRS[id]?.[0] ?? '???'
+/** A missão do lendário em uma linha: quem (??? até a 2ª pista), as pistas e o covil (depois da 1ª pista). */
+function questLine(quest, name) {
+  const who = quest.clues >= 2 ? name(quest.id) : '???'
+  return `${t('Missão lendária')}: ${who} · ${t('pistas')} ${quest.clues}/${QUEST_CLUES}${quest.clues ? ` · ${quest.lair}` : ''}${quest.clues >= QUEST_CLUES ? ` · ${t('o covil está na próxima bifurcação!')}` : ''}`
 }
 /** As pistas do lendário da região, conforme a história anda (a última: na rota para a Liga). */
 const LEGEND_CLUES = [
@@ -2128,6 +2146,7 @@ function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = nul
   const [ref, width] = useWidth()
   const game = data?.bosses?.[run.boss.region]
   const sum = runSummary(run)
+  const quest = data ? legendQuest(data, run) : null
   const row = (icon, name, value, testid) => (
     <div className="flex min-h-0 flex-1 items-center rounded bg-black/40 px-[1.5cqw] text-[1.9cqw]">
       <span className="text-slate-300">{icon} {t(name)}</span>
@@ -2148,6 +2167,7 @@ function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = nul
         {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
         {row('⏱️', 'Tempo de jogo', playTimeText(run.playMs), 'card-time')}
         {row('✨', 'Shiny Charm', charm ? `✅ ${SHINY_CHARM}×` : '—', 'card-charm')}
+        {quest && row('🌟', 'Lendários', <>{quest.list.map((id) => <span key={id} style={quest.done.includes(id) ? undefined : { filter: 'brightness(0)', opacity: id === quest.id ? 1 : 0.4 }}><PokeIcon id={id} className="h-[3.4cqw] w-[3.4cqw]" /></span>)}<span>{quest.done.length}/{quest.list.length}</span></>, 'card-legends')}
         {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
         {/* Perguntar o apelido ao capturar (vem desligado: a captura segue direto). Igual ao app. */}
         {onAskNick && row('✏️', 'Apelido ao capturar', <button type="button" className="cursor-pointer text-yellow-400" onClick={onAskNick} data-testid="card-ask-nick">{askNick ? `✅ ${t('SIM')}` : `⬜ ${t('NÃO')}`}</button>)}
@@ -2401,7 +2421,7 @@ const CARD_COLORS = {
   wild: ['#22c55e', '#15803d'], trainer: ['#ef4444', '#b91c1c'], ace: ['#f97316', '#c2410c'], rival: ['#f43f5e', '#9f1239'],
   boss: ['#a855f7', '#6b21a8'], dboss: ['#7c3aed', '#4c1d95'], area: ['#a855f7', '#6b21a8'], wildboss: ['#d946ef', '#86198f'],
   mart: ['#3b82f6', '#1d4ed8'], center: ['#ec4899', '#be185d'], event: ['#eab308', '#a16207'], trade: ['#06b6d4', '#0e7490'],
-  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'],
+  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'], clue: ['#a78bfa', '#6d28d9'],
   rematch: ['#facc15', '#a16207'], leave: ['#64748b', '#334155'], dungeon: ['#78716c', '#44403c'],
 }
 
@@ -2578,7 +2598,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
             style={{ left: `${(ox / W) * 100}%`, top: `${(ys[k] / H) * 100}%` }}>
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm sm:h-7 sm:w-7 sm:text-base">{b ? b.icon : info.icon}</span>
-            {node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
+            {node.quest ? <span data-no-translate>{node.biome && LEGEND_LAIR_NAME(node.legend)} · {monName?.(node.legend)}</span> : node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
           </button>
         )
       })}
@@ -3115,7 +3135,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     field = (
       <Field biome={here} fieldRef={fieldRef} testid="factory-result">
         {shown && <FarStand scene={here}>{shown}</FarStand>}
-        {!shown && event && <FarStand scene={here}><span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span></FarStand>}
+        {!shown && event && <FarStand scene={here}>{event.kind === 'clue' ? <span data-testid="quest-silhouette" style={event.clues >= QUEST_CLUES ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={event.legend} className="h-28 w-28" /></span> : <span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span>}</FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
         {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
         {p.badge && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
@@ -3123,6 +3143,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
+        {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
         {p.badge?.tm && <p className="text-sm font-semibold" data-testid="factory-badge-tm" data-no-translate>💿 {t('{0} te deu o TM {1}!').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.tm))}</p>}
@@ -3590,6 +3611,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const coach = trainers?.find((x) => x.id === (rival ?? boss).trainer) ?? null
     const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, boss.region, 'intro') : ''
     const legend = regionLegend(data, run)
+    const quest = run.floor >= 1 ? legendQuest(data, run) : null
     const clock = clockOf()
     const pickNode = (index) => {
       // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
@@ -3661,8 +3683,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           }
           return (
             <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
-              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
-              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : node.quest ? t(QUEST_HELP).replace('{0}', QUEST_PRIZE) : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.quest ? <span data-no-translate> · 🌟 {LEGEND_LAIR_NAME(node.legend)} · {name(node.legend)}</span> : node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b && !node.quest ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
             </Btn>
           )
         })) || []),
@@ -3697,7 +3719,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       ...arrival,
       ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
-      !town && !inside && pos === 0 && !meeting && legend != null && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
+      !town && !inside && pos === 0 && !meeting && quest?.id != null && `📜 ${questLine(quest, name)}`,
+      !town && !inside && pos === 0 && !meeting && legend != null && target.kind === 'elite' && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
       ...before,
       meeting && !before.length && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,

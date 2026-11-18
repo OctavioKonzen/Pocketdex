@@ -2019,7 +2019,22 @@ function round14Trace(F) {
     for (const [move, type] of [['ember', 'fire'], ['ember', 'fire'], ['tackle', 'normal']]) r = F.contestAct(r, move, type)
     return [r.pending.contest, r.money - base.money, r.team[0].ribbons ?? null, F.finishContest(r).pending]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest }
+  // A missão do lendário: as pistas e o covil no mapa, seguir a pista e o covil (capturando ou não). O mesmo no app.
+  const questAt = (seed, floor, clues, legends) => ({ ...F.startRun({ ...F.emptyFactory(), ...(legends ? { legends } : {}) }, data, 1, 42), seed, floor, leg: 1, encounter: null, pending: null, boss: { region: red, step: 2 }, quest: { region: 'Kanto', id: legends ? 144 : 150, clues } })
+  const quest = Array.from({ length: 52 }, (_, k) => {
+    const r = F.nextFloor(questAt(30 + (k % 4), 3 + Math.floor(k / 4), [0, 2, 3, 3][k % 4], k % 4 === 3 ? [150] : null), data)
+    const opts = r.route?.options ?? []
+    const at = opts.findIndex((o) => o.kind === 'clue' || o.quest)
+    const next = at >= 0 ? F.chooseNode(r, data, at) : null
+    const fight = (captured) => {
+      if (!next?.encounter) return null
+      const won = F.winFloor(next, data, { captured, ...(captured ? { capturedIndex: 0 } : {}) })
+      return [won.quest ?? null, won.legends ?? null, won.money - next.money, won.pending.quest ?? null]
+    }
+    return [opts.map((o) => [o.kind, o.target ?? o.legend ?? null, o.quest ? 1 : 0, o.biome ?? null]), F.legendQuest(data, r), next ? [next.quest ?? null, next.pending ?? null, next.encounter?.quest ?? null, next.encounter?.foes?.[0]?.id ?? null] : null, fight(true), fight(false)]
+  })
+  const kept = F.withLegends({ legends: [150], run: { legends: [150, 144] } })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {
