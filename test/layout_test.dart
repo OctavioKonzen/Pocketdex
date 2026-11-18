@@ -333,6 +333,10 @@ final screens = <String, Widget Function()>{
   'Battle Factory (concurso, fim)': () => _factory({'contest': {'cat': 'cool', 'index': 0, 'round': 3, 'hearts': [6, 3, 3], 'used': ['ember', 'ember', 'tackle'], 'rivals': [{'name': 'Pip', 'rounds': [3, 4, 5]}], 'done': true, 'place': 1, 'prize': 450, 'last': {'move': 'tackle', 'hearts': 3, 'match': false, 'repeat': false, 'cheer': true}}}, null, {'town': {'leg': 1, 'shop': ['potion']}}),
   // O desafio do ginásio na cidade (o botão junto do líder).
   'Battle Factory (cidade, desafio)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion'], 'got': ['old-rod']}, 'keyItems': ['old-rod']}),
+  // A missão do lendário: a pista (silhueta) e o covil no mapa.
+  'Battle Factory (pista do lendário)': () => _factory({'event': {'kind': 'clue', 'legend': 150, 'clues': 2, 'lair': 'Cerulean Cave'}}, null, {'quest': {'region': 'Kanto', 'id': 150, 'clues': 2}}),
+  'Battle Factory (covil do lendário)': () => _factory(null, {'floor': 5, 'biome': 'cave', 'options': [{'kind': 'trainer'}, {'kind': 'wild', 'biome': 'cave'}, {'kind': 'wildboss', 'legend': 150, 'quest': true, 'biome': 'cave'}]}, {'floor': 5, 'quest': {'region': 'Kanto', 'id': 150, 'clues': 3}}),
+  'Battle Factory (missão cumprida)': () => _factory({'exp': 300, 'money': 900, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'quest': {'id': 150, 'prize': 500}}, null, {'legends': [150]}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -654,6 +658,13 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.tap(find.byKey(const ValueKey('evo-continue')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('factory-evolved')), findsOneWidget);
+  },
+  'Battle Factory (pista do lendário)': (tester) async {
+    expect(find.byKey(const ValueKey('quest-silhouette')), findsOneWidget);
+    expect(find.byKey(const ValueKey('factory-event')), findsOneWidget);
+  },
+  'Battle Factory (missão cumprida)': (tester) async {
+    expect(find.byKey(const ValueKey('factory-quest')), findsOneWidget);
   },
   'Battle Factory (insígnia)': (tester) async {
     expect(find.byKey(const ValueKey('factory-badge')), findsOneWidget);

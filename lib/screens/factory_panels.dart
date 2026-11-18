@@ -2694,7 +2694,7 @@ String? _stepOf(Map? p) {
 /// direto para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao site.
 bool _quickResult(Map p) {
   if (p['seen'] == true || p['exp'] == null || p['center'] == true || p['event'] != null) return false;
-  for (final k in const ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission']) {
+  for (final k in const ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission', 'quest']) {
     final v = p[k];
     if (v == null || v == false || (v is List && v.isEmpty) || (v is Map && v.isEmpty)) continue;
     return false;
@@ -6124,9 +6124,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                             ? _roamInfo
                             : node['plot'] != null
                             ? _plotInfo
-                            : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
+                            : _hmPathInfo(node) ?? (node['quest'] == true ? ('🌟', _lairName(node['legend']), _questHelp) : node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
                 final placeLegend = node['placeLegend'] == true || node['routeLegend'] == true;
-                final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
+                final b = _hmPathInfo(node) != null || node['quest'] == true ? null : _biomeInfo[node['biome']];
                 final isBoss = node['kind'] == 'boss';
                 final foeName = isBoss ? '${boss['name']}' : node['kind'] == 'rival' && rival != null ? '${rival['name']}' : null;
                 final noSurf = FactoryRun.nodeBlocked(run, node);
@@ -6140,7 +6140,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 }
                 return btn(
                   kind: node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
-                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['quest'] == true ? ' · 🌟 ${_lairName(node['legend'])} · ${_name(node['legend'])}' : node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null && node['quest'] != true ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
+                  '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['quest'] == true ? ' · ${_name(node['legend'])}' : node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null && node['quest'] != true ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
                       ? _hmHint(run, node)
@@ -6470,8 +6470,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               ? _roamInfo
                               : node['plot'] != null
                               ? _plotInfo
-                              : _hmPathInfo(node) ?? (node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
-                      final b = _hmPathInfo(node) != null ? null : _biomeInfo[node['biome']];
+                              : _hmPathInfo(node) ?? (node['quest'] == true ? ('🌟', _lairName(node['legend']), _questHelp) : node['legend'] != null ? _legendInfo : _nodeInfo[node['kind']] ?? _nodeInfo['wild']!);
+                      final b = _hmPathInfo(node) != null || node['quest'] == true ? null : _biomeInfo[node['biome']];
                       final off = onPick == null || blocked(node);
                       return Opacity(
                         opacity: off ? 0.5 : 1,
@@ -6488,7 +6488,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                               child: Row(mainAxisSize: MainAxisSize.min, children: [
                                 CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Text(b?.$2 ?? info.$1, style: const TextStyle(fontSize: 13))),
                                 const SizedBox(width: 4),
-                                Text('${node['quest'] == true ? '${_lairName(node['legend'])} · ${_name(node['legend'])}' : node['placeLegend'] == true || node['routeLegend'] == true ? _name(node['legend']) : tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                                Text('${node['quest'] == true ? _lairName(node['legend']) : node['placeLegend'] == true || node['routeLegend'] == true ? _name(node['legend']) : tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['hidden'] != null ? ' 📡' : ''}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
                               ]),
                             ),
                           ),

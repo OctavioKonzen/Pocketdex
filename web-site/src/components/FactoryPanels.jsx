@@ -1739,7 +1739,7 @@ function stepOf(p) {
  */
 function quickResult(p) {
   if (!p || p.seen || p.exp == null || p.center || p.event) return false
-  for (const k of ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission']) {
+  for (const k of ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission', 'quest']) {
     const v = p[k]
     if (v == null || v === false || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue
     return false
@@ -2591,14 +2591,14 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
-        const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+        const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
             style={{ left: `${(ox / W) * 100}%`, top: `${(ys[k] / H) * 100}%` }}>
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm sm:h-7 sm:w-7 sm:text-base">{b ? b.icon : info.icon}</span>
-            {node.quest ? <span data-no-translate>{node.biome && LEGEND_LAIR_NAME(node.legend)} · {monName?.(node.legend)}</span> : node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
+            {node.quest ? <span data-no-translate>{LEGEND_LAIR_NAME(node.legend)}</span> : node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
           </button>
         )
       })}
@@ -3668,8 +3668,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))) || []),
       ...(((hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
-          const b = node.biome && !hmPathInfo(node) ? BIOME_INFO[node.biome] : null
+          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+          const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece). Igual ao app.
           if (gymLocked(data, run, node)) {
@@ -3684,7 +3684,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           return (
             <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
               sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : node.quest ? t(QUEST_HELP).replace('{0}', QUEST_PRIZE) : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
-              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.quest ? <span data-no-translate> · 🌟 {LEGEND_LAIR_NAME(node.legend)} · {name(node.legend)}</span> : node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b && !node.quest ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.quest ? <span data-no-translate> · {name(node.legend)}</span> : node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b && !node.quest ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
             </Btn>
           )
         })) || []),

@@ -832,7 +832,7 @@ describe('mapa da corrida', () => {
     const won = winFloor({ ...inside, team: runAt(20).team, bag: { ...runAt(20).bag, 'master-ball': 0 }, encounter: { kind: 'wildboss', foes: [{ id: end.legend, level: 30, iv: 31, ev: 0 }] } }, data, {})
     expect(won.bag['master-ball']).toBe(1)
     expect(won.dungeon).toBe(null)
-    expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'event', 'mart', 'trade', 'trainer', 'wild', 'wildboss'])
+    expect(Object.keys(kinds).sort()).toEqual(['ace', 'center', 'clue', 'event', 'mart', 'trade', 'trainer', 'wild', 'wildboss'])
     expect(kinds.center).toBeLessThan(kinds.mart)
     for (let i = 0; i < 50; i++) for (const o of routeOptions(at(1), data, rand).options) expect(['wild', 'trainer']).toContain(o.kind)
   })
