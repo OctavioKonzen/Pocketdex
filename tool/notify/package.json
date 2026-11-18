@@ -1,0 +1,11 @@
+{
+  "name": "pocketdex-notify",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node notify.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
