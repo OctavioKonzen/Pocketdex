@@ -815,10 +815,10 @@ describe('mapa da corrida', () => {
     }
     for (let i = 0; i < 600; i++) {
       const route = routeOptions(at(1 + FORKS[i % 3]), data, rand)
-      // (o lugar raro, quando aparece, é a mais.)
-      expect(route.options.filter((o) => !RARE_PLACES[o.place]).length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
+      // (o lugar raro e o Hidden Grotto, quando aparecem, são a mais.)
+      expect(route.options.filter((o) => !RARE_PLACES[o.place] && o.kind !== 'grotto').length).toBe((1 + FORKS[i % 3] <= 2 ? 2 : 3) + (i % 3 === 2 ? 1 : 0))
       expect(route.options.some(isBattleNode)).toBe(true)
-      for (const o of route.options.filter((o) => o.kind !== 'dungeon')) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
+      for (const o of route.options.filter((o) => o.kind !== 'dungeon' && o.kind !== 'grotto')) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1
       for (const o of route.options.filter((o) => o.kind === 'wild')) expect(Object.keys(BIOMES)).toContain(o.biome)
     }
     // O lugar raro: às vezes na última bifurcação; dentro, só selvagens e, no fim, o lendário do lugar; vencer deixa uma Master Ball.
@@ -2034,7 +2034,26 @@ function round14Trace(F) {
     return [opts.map((o) => [o.kind, o.target ?? o.legend ?? null, o.quest ? 1 : 0, o.biome ?? null]), F.legendQuest(data, r), next ? [next.quest ?? null, next.pending ?? null, next.encounter?.quest ?? null, next.encounter?.foes?.[0]?.id ?? null] : null, fight(true), fight(false)]
   })
   const kept = F.withLegends({ legends: [150], run: { legends: [150, 144] } })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept }
+  // O Poké Radar: a corrente, a espécie, o shiny e os IVs; e o Hidden Grotto (o mesmo no app).
+  const radar = [null, { id: 16, n: 4 }, { id: 16, n: 12 }, { id: 19, n: 25 }, { id: 16, n: 40 }].map((chain, k) => {
+    const r0 = { ...route, seed: 60 + k, keyItems: ['poke-radar'], ...(chain ? { chain } : {}) }
+    const opened = F.radarPath(r0)
+    const at = opened.route.options.length - 1
+    const met = F.chooseNode(opened, data, at)
+    const won = F.winFloor(met, data, { captured: true, capturedIndex: 0 })
+    const other = F.chooseNode(opened, data, 0)
+    return [opened.route.options[at], met.encounter.foes, met.encounter.radar ?? null, won.chain, F.capturedMon(won).ivs, other.chain ?? null]
+  })
+  const grotto = Array.from({ length: 50 }, (_, k) => {
+    const r = k >= 40 ? { ...route, seed: 80 + k, floor: 5 + k, route: { floor: 5 + k, biome: 'forest', options: [{ kind: 'trainer' }, { kind: 'grotto' }] } } : F.nextFloor({ ...F.startRun(F.emptyFactory(), data, 1, 42), seed: 70 + (k % 5), floor: 3 + Math.floor(k / 5), leg: 1, encounter: null, pending: null, boss: { region: red, step: 0 } }, data)
+    const at = (r.route?.options ?? []).findIndex((o) => o.kind === 'grotto')
+    if (at < 0) return [r.route?.biome ?? null, null]
+    const next = F.chooseNode(r, data, at)
+    const won = next.encounter ? F.winFloor(next, data, { captured: true, capturedIndex: 0 }) : null
+    const mon = won ? F.capturedMon(won) : null
+    return [r.route.biome, next.grottoLeg, next.pending ?? null, next.encounter?.foes ?? null, mon ? [mon.ha ?? null, mon.ivs, F.memberOf(won, mon, ['tackle']).set.ability ?? null] : null]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

@@ -1501,7 +1501,7 @@ class FactoryRun {
   /// molha o Sudowoodo. Ficam com você a corrida toda. Igual ao site.
   static const keyItems = {
     'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle', 'old-rod': 'Old Rod', 'good-rod': 'Good Rod', 'super-rod': 'Super Rod',
-    'bicycle': 'Bicycle', 'ss-ticket': 'S.S. Ticket',
+    'bicycle': 'Bicycle', 'ss-ticket': 'S.S. Ticket', 'poke-radar': 'Poké Radar',
   };
   static bool hasKey(Json run, Object? item) => ((run['keyItems'] as List?) ?? const []).contains(item);
   static String? _addKey(Json out, Object? item) {
@@ -2180,6 +2180,10 @@ class FactoryRun {
       }
       // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
       if (run['rematch'] != null && pos == forks[0]) options[options.length - 1] = {'kind': 'rematch'};
+      // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
+      if (!inside && pos == forks[1] && floor >= questFloor && grottoBiomes.contains(biome) && run['grottoLeg'] != legOf(run) && followRoll(run, 1103515245) < grottoChance) {
+        options.add({'kind': 'grotto'});
+      }
     }
     // Os lugares (enquanto não forem vencidos nesta rota): na cidade, os dela (e a base vilã, se a equipe estiver lá);
     // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
@@ -2449,9 +2453,11 @@ class FactoryRun {
   static Json chooseNode(Json run, FactoryData data, int index, [({bool night, String season, int? day})? clock]) {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
-    final node = Map<String, dynamic>.from(options[index] as Map);
+    var node = Map<String, dynamic>.from(options[index] as Map);
     if (nodeBlocked(run, node) || gymLocked(data, run, node)) return run;
     final out = _copy(run)..['route'] = null;
+    // O Poké Radar: outro caminho quebra a corrente.
+    if (run['chain'] != null && node['radar'] != true) out['chain'] = null;
     // Entra no lugar perto da cidade (esgoto, casa assombrada, base vilã...): 10 andares e o chefe dele; depois volta para a cidade.
     if (node['kind'] == 'dungeon') {
       out['leg'] = run['leg'] ?? legOf(run);
@@ -2469,6 +2475,21 @@ class FactoryRun {
       if (run['dungeon'] != null) _leavePlace(run, out);
       out['route'] = routeOptions(out, data, _dice(out));
       return out;
+    }
+    // O Hidden Grotto: um Pokémon com a habilidade oculta ou um item raro (sem batalha).
+    if (node['kind'] == 'grotto') {
+      out['grottoLeg'] = legOf(run);
+      if (followRoll(run, 2891336453) >= grottoMon) {
+        final item = grottoItems[(followRoll(run, 1500450271) * grottoItems.length).floor()];
+        out['floor'] = _int(out['floor']) + 1;
+        out['scene'] = shownScene(run, '${run['route']?['biome'] ?? 'grass'}', data);
+        _giveItem(out, item);
+        out['pending'] = {
+          'event': {'kind': 'grotto', 'item': item}
+        };
+        return out;
+      }
+      node = {'kind': 'wild', 'grotto': true};
     }
     final rand = _dice(out);
     final floor = _int(out['floor']);
@@ -2489,7 +2510,7 @@ class FactoryRun {
       final mist = fieldOf(run, shownScene(run, scene, data), data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': run['shinyRate'] ?? 1, ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
+                {...node, 'biome': scene, 'shiny': ((run['shinyRate'] as num?) ?? 1) * (node['radar'] == true ? radarShiny(run['chain'] as Map?) : 1), ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2500,6 +2521,21 @@ class FactoryRun {
         for (var k = 0; k < 8 && dupe(); k++) {
           out['encounter'] = roll();
         }
+      }
+      // O Poké Radar (a espécie da corrente) e o Hidden Grotto (a habilidade oculta): um só, sem horda.
+      if (node['radar'] == true || node['grotto'] == true) {
+        final f = Map<String, dynamic>.from((out['encounter']['foes'] as List).first as Map);
+        final chain = run['chain'] as Map?;
+        final id = node['radar'] == true && chain?['id'] != null && data.species[_int(chain!['id'])] != null ? chain['id'] : f['id'];
+        final minIv = node['grotto'] == true ? grottoIvs : radarIvs(_int(chain?['n'] ?? 0));
+        out['encounter'] = {
+          ...Map<String, dynamic>.from(out['encounter'] as Map),
+          'horde': false,
+          'foes': [
+            {...f, 'id': id, if (minIv > 0) 'minIv': minIv, if (node['grotto'] == true) 'ha': true}
+          ],
+          if (node['radar'] == true) 'radar': true else 'grotto': true,
+        };
       }
       _countHunt(data, out);
       // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
@@ -3222,6 +3258,12 @@ class FactoryRun {
     } else if (questFight) {
       out['quest'] = {'region': _regionName(data, run), 'id': allFoes.isNotEmpty ? allFoes.first['id'] : null, 'clues': questClues - 1};
     }
+    // O Poké Radar: vencendo ou capturando, a corrente sobe (outra espécie começa outra).
+    if (run['encounter']['radar'] == true && !fled && foes.isNotEmpty) {
+      final chain = run['chain'] as Map?;
+      final id = foes.first['id'];
+      out['chain'] = {'id': id, 'n': math.min(radarMax, (chain?['id'] == id ? _int(chain!['n']) : 0) + 1)};
+    }
     // O item escondido do caminho (Dowsing Machine).
     final dowsed = run['dowsed'] as String?;
     if (dowsed != null) _giveItem(out, dowsed);
@@ -3295,6 +3337,8 @@ class FactoryRun {
         }
         // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
         key = _addKey(out, (featuresOf(data, run)['keys'] as Map?)?['gym']) ?? key;
+        // O Poké Radar vem com a radarBadges ª insígnia.
+        if (out['badges'] == radarBadges) key = _addKey(out, 'poke-radar') ?? key;
         // A insígnia (a cena dela) e o TM do líder, como nos jogos.
         final type = leaderType(data, beaten);
         final tm = gymTmOf(data, type, _int(out['badges']));
@@ -3528,7 +3572,9 @@ class FactoryRun {
     final foe = pendingOf(run)?['capture'];
     if (foe == null) return null;
     final rand = _dice(into ?? _copy(run));
-    var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : 0, foe['shiny'] == true);
+    var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : _int(foe['minIv'] ?? 0), foe['shiny'] == true);
+    // O do Hidden Grotto: com a habilidade oculta.
+    if (foe['ha'] == true) mon = {...mon, 'ha': true};
     // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao site.
     if ((foe['parent'] as Map?)?['ivs'] is Map) mon = {...mon, 'ivs': inheritIvs(mon['ivs'] as Map?, (foe['parent'] as Map)['ivs'] as Map)};
     // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
@@ -3790,6 +3836,28 @@ class FactoryRun {
     }
     return out;
   }
+
+  /// O Poké Radar (vem com a radarBadges ª insígnia): nas rotas de mato, abre um caminho com o mato balançando. Vencendo
+  /// ou capturando, a corrente sobe e o próximo do radar é da mesma espécie, com mais chance de shiny (radarShiny) e IVs
+  /// mais altos (radarIvs). Escolher outro caminho quebra a corrente. Não vale no último andar da rota. Igual ao site.
+  static const radarBadges = 3;
+  static const radarMax = 40;
+  static const radarBiomes = ['grass', 'forest', 'flowers', 'bamboo', 'swamp', 'wildarea'];
+  static int radarShiny(Map? chain) => 1 + math.min(radarMax, _int(chain?['n'] ?? 0)) ~/ 5;
+  static int radarIvs(int n) => n >= 30 ? 31 : n >= 20 ? 25 : n >= 10 ? 20 : 0;
+  static Json? radarPath(Json run) {
+    if (!hasKey(run, 'poke-radar') || !_routeAction(run) || run['dungeon'] != null || !radarBiomes.contains(run['route']['biome']) || routePos(run) >= routeLength - 1) return null;
+    if ((run['route']['options'] as List).any((o) => o['radar'] == true)) return null;
+    return _withOption(run, const {}, {'kind': 'wild', 'radar': true, 'biome': run['route']['biome']});
+  }
+
+  /// O Hidden Grotto: nas rotas de mato, às vezes um buraco escondido na segunda bifurcação (uma vez por rota). Dentro, um
+  /// Pokémon com a habilidade oculta (e IVs de pelo menos grottoIvs) ou um item raro. Igual ao site.
+  static const grottoBiomes = ['grass', 'forest', 'flowers', 'bamboo', 'swamp'];
+  static const grottoChance = 0.35;
+  static const grottoMon = 0.6;
+  static const grottoIvs = 20;
+  static const grottoItems = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash'];
 
   /// A Bicycle: uma vez por rota (duas na Cycling Road), passa um andar sem batalha. Não vale no último andar da rota.
   static int bikeUses(FactoryData data, Json run) => featuresOf(data, run)['cycling'] == true ? 2 : 1;
@@ -6282,6 +6350,7 @@ class FactoryRun {
           'level': mon['level'], 'levelCap': 'none', 'nature': mon['nature'], 'ivs': _cap(mon['ivs'] as Map?, 31), 'evs': _cap(mon['evs'] as Map?, 252),
           'item': nuzRule(run, 'noHeldItems') ? '' : mon['item'] ?? '', 'moves': own.isNotEmpty ? own : moveList, 'lockMoves': true, 'shiny': mon['shiny'] == true,
           if (gimmick.isNotEmpty) 'gimmick': gimmick,
+          if (mon['ha'] == true) 'ability': 'hidden',
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
       );
@@ -6313,6 +6382,7 @@ class FactoryRun {
         'bonus': overflowPoints(ivs, evs, _int(foe['level'])),
         if (boost != 0) 'boost': {for (final s in stats) s: _round3(boost)},
         if (foe['shiny'] == true) 'shiny': true,
+        if (foe['ha'] == true) 'ability': 'hidden',
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],

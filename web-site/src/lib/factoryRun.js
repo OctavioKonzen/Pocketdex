@@ -1319,7 +1319,7 @@ export const daycareHere = (data, run) => Boolean(featuresOf(data, run).daycare)
  * a Poké Flute (do Mr. Fuji, no alto da torre) acorda o Snorlax; a Squirt Bottle (depois do ginásio de Goldenrod)
  * molha o Sudowoodo. Ficam com você a corrida toda. Igual ao app.
  */
-export const KEY_ITEMS = { 'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle', 'old-rod': 'Old Rod', 'good-rod': 'Good Rod', 'super-rod': 'Super Rod', bicycle: 'Bicycle', 'ss-ticket': 'S.S. Ticket' }
+export const KEY_ITEMS = { 'silph-scope': 'Silph Scope', 'poke-flute': 'Poké Flute', 'squirt-bottle': 'Squirt Bottle', 'old-rod': 'Old Rod', 'good-rod': 'Good Rod', 'super-rod': 'Super Rod', bicycle: 'Bicycle', 'ss-ticket': 'S.S. Ticket', 'poke-radar': 'Poké Radar' }
 export const hasKey = (run, item) => (run.keyItems ?? []).includes(item)
 function addKey(out, item) {
   if (!item || hasKey(out, item)) return null
@@ -1569,6 +1569,31 @@ export function bikePath(run, data) {
   if (used >= bikeUses(data, run) || run.route.options.some((o) => o.kind === 'bike')) return null
   return { ...run, bike: { leg: run.leg ?? 1, n: used + 1 }, route: { ...run.route, options: [...run.route.options, { kind: 'bike' }] } }
 }
+
+/**
+ * O Poké Radar (vem com a RADAR_BADGES ª insígnia): nas rotas de mato, abre um caminho com o mato balançando. Vencendo
+ * ou capturando, a corrente sobe e o próximo do radar é da mesma espécie, com mais chance de shiny (radarShiny) e IVs
+ * mais altos (radarIvs). Escolher outro caminho quebra a corrente. Não vale no último andar da rota. Igual ao app.
+ */
+export const RADAR_BADGES = 3
+export const RADAR_MAX = 40
+export const RADAR_BIOMES = ['grass', 'forest', 'flowers', 'bamboo', 'swamp', 'wildarea']
+export const radarShiny = (chain) => 1 + Math.floor(Math.min(RADAR_MAX, chain?.n ?? 0) / 5)
+export const radarIvs = (n = 0) => (n >= 30 ? 31 : n >= 20 ? 25 : n >= 10 ? 20 : 0)
+export function radarPath(run) {
+  if (!hasKey(run, 'poke-radar') || !routeAction(run) || run.dungeon || !RADAR_BIOMES.includes(run.route.biome) || routePos(run) >= ROUTE_LENGTH - 1) return null
+  if (run.route.options.some((o) => o.radar)) return null
+  return { ...run, route: { ...run.route, options: [...run.route.options, { kind: 'wild', radar: true, biome: run.route.biome }] } }
+}
+/**
+ * O Hidden Grotto: nas rotas de mato, às vezes um buraco escondido na segunda bifurcação (uma vez por rota). Dentro, um
+ * Pokémon com a habilidade oculta (e IVs de pelo menos GROTTO_IVS) ou um item raro. Igual ao app.
+ */
+export const GROTTO_BIOMES = ['grass', 'forest', 'flowers', 'bamboo', 'swamp']
+export const GROTTO_CHANCE = 0.35
+export const GROTTO_MON = 0.6
+export const GROTTO_IVS = 20
+export const GROTTO_ITEMS = ['bottle-cap', 'rare-candy', 'ultra-ball', 'max-potion', 'leftovers', 'focus-sash']
 
 /** As fotos da corrida: um álbum com os momentos guardados (o lugar, o Pokémon e o andar). Até PHOTO_MAX. */
 export const PHOTO_MAX = 24
@@ -2508,6 +2533,8 @@ export function routeOptions(run, data, rand) {
     if (quest?.id != null && quest.clues >= QUEST_CLUES && pos === FORKS[1]) options[options.some((o) => o.legend) ? 0 : options.length - 1] = { kind: 'wildboss', legend: quest.id, quest: true, biome: quest.scene }
     // Depois de virar Campeão: o Campeão vencido quer revanche (num dos caminhos da primeira bifurcação).
     if (run.rematch && pos === FORKS[0]) options[options.length - 1] = { kind: 'rematch' }
+    // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
+    if (!inside && pos === FORKS[1] && run.floor >= QUEST_FLOOR && GROTTO_BIOMES.includes(biome) && run.grottoLeg !== legOf(run) && followRoll(run, 1103515245) < GROTTO_CHANCE) options.push({ kind: 'grotto' })
   }
   // Os lugares (enquanto não forem vencidos nesta rota): na cidade, os dela (e a base vilã, se a equipe estiver lá);
   // na rota, o mar (numa rota de praia) e o lugar no caminho (Mt. Moon, Rock Tunnel...).
@@ -2574,9 +2601,11 @@ export const CHOICE_CHANCE = 0.4
  * Os sem batalha também contam como um andar (sem XP nem dinheiro).
  */
 export function chooseNode(run, data, index, clock = null) {
-  const node = run.route?.options?.[index]
+  let node = run.route?.options?.[index]
   if (!node || run.encounter || run.pending || nodeBlocked(run, node) || gymLocked(data, run, node)) return run
   const out = { ...run, route: null }
+  // O Poké Radar: outro caminho quebra a corrente.
+  if (run.chain && !node.radar) out.chain = null
   // Entra num lugar (Mt. Moon, esgoto, base vilã, a praia...): 10 andares e o chefe dele; depois volta para o andar em que entrou.
   // Da praia para o mar (e assim por diante), a volta continua sendo para onde você entrou na água.
   if (node.kind === 'dungeon') {
@@ -2590,6 +2619,19 @@ export function chooseNode(run, data, index, clock = null) {
     if (run.dungeon) leavePlace(run, out)
     out.route = routeOptions(out, data, dice(out))
     return out
+  }
+  // O Hidden Grotto: um Pokémon com a habilidade oculta ou um item raro (sem batalha).
+  if (node.kind === 'grotto') {
+    out.grottoLeg = legOf(run)
+    if (followRoll(run, 2891336453) >= GROTTO_MON) {
+      const item = GROTTO_ITEMS[Math.floor(followRoll(run, 1500450271) * GROTTO_ITEMS.length)]
+      out.floor += 1
+      out.scene = shownScene(run, run.route.biome ?? 'grass', data)
+      giveItem(out, item)
+      out.pending = { event: { kind: 'grotto', item } }
+      return out
+    }
+    node = { kind: 'wild', grotto: true }
   }
   const rand = dice(out)
   // O item escondido (Dowsing Machine): fica com você quando vencer a batalha desse caminho.
@@ -2605,12 +2647,19 @@ export function chooseNode(run, data, index, clock = null) {
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
     const sky = weatherOf(run, shownScene(run, scene, data), null, data)
     const mist = fieldOf(run, shownScene(run, scene, data), data)
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: run.shinyRate ?? 1, ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: (run.shinyRate ?? 1) * (node.radar ? radarShiny(run.chain) : 1), ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
       const had = new Set(dexOf(run).map((id) => baseForm(data, id)))
       for (let k = 0; k < 8 && out.encounter.foes.every((f) => had.has(baseForm(data, f.id))); k++) out.encounter = roll()
+    }
+    // O Poké Radar (a espécie da corrente) e o Hidden Grotto (a habilidade oculta): um só, sem horda.
+    if (node.radar || node.grotto) {
+      const f = out.encounter.foes[0]
+      const id = node.radar && run.chain?.id != null && data.species[run.chain.id] ? run.chain.id : f.id
+      const minIv = node.grotto ? GROTTO_IVS : radarIvs(run.chain?.n)
+      out.encounter = { ...out.encounter, horde: false, foes: [{ ...f, id, ...(minIv ? { minIv } : {}), ...(node.grotto ? { ha: true } : {}) }], ...(node.radar ? { radar: true } : { grotto: true }) }
     }
     countHunt(data, out)
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
@@ -3214,6 +3263,8 @@ export function winFloor(run, data, after = {}) {
     out.money += QUEST_PRIZE
     out.quest = null
   } else if (run.encounter.quest) out.quest = { region, id: run.encounter.foes[0]?.id ?? null, clues: QUEST_CLUES - 1 }
+  // O Poké Radar: vencendo ou capturando, a corrente sobe (outra espécie começa outra).
+  if (run.encounter.radar && !fled && foes[0]) out.chain = { id: foes[0].id, n: Math.min(RADAR_MAX, (run.chain?.id === foes[0].id ? run.chain.n : 0) + 1) }
   // O item escondido do caminho (Dowsing Machine).
   const dowsed = run.dowsed ?? null
   if (dowsed) giveItem(out, dowsed)
@@ -3271,6 +3322,8 @@ export function winFloor(run, data, after = {}) {
       else hm = null
       // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
       key = addKey(out, featuresOf(data, run).keys?.gym) ?? key
+      // O Poké Radar vem com a RADAR_BADGES ª insígnia.
+      if (out.badges === RADAR_BADGES) key = addKey(out, 'poke-radar') ?? key
       // A insígnia (a cena dela) e o TM do líder, como nos jogos.
       const type = leaderType(data, beaten)
       const tm = gymTmOf(data, type, out.badges)
@@ -3447,7 +3500,9 @@ export function capturedMon(run, into = null) {
   if (!foe) return null
   // into: a corrida em que o sorteio avança (na captura de verdade).
   const rand = dice(into ?? { ...run })
-  let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : 0, Boolean(foe.shiny))
+  let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : foe.minIv ?? 0, Boolean(foe.shiny))
+  // O do Hidden Grotto: com a habilidade oculta.
+  if (foe.ha) mon = { ...mon, ha: true }
   // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao app.
   if (foe.parent?.ivs) mon = { ...mon, ivs: inheritIvs(mon.ivs, foe.parent.ivs) }
   // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
@@ -4930,7 +4985,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }
@@ -4945,6 +5000,7 @@ export function foeMember(foe, moveList) {
       level: foe.level, levelCap: 'none', ivs: capStats(ivs, 31), evs: capStats(evs, 252), moves: moveList, lockMoves: true, bonus: overflowPoints(ivs, evs, foe.level),
       ...(foe.boost || foe.shiny ? { boost: Object.fromEntries(STATS.map((s) => [s, round3((foe.boost ?? 0) + (foe.shiny ? FOE_SHINY_BOOST : 0))])) } : {}),
       ...(foe.shiny ? { shiny: true } : {}),
+      ...(foe.ha ? { ability: 'hidden' } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),

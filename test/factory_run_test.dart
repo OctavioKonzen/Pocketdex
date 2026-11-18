@@ -672,6 +672,40 @@ void main() {
           'run': {'legends': [150, 144]},
         })),
         expected['kept']);
+    // O Poké Radar: a corrente, a espécie, o shiny e os IVs; e o Hidden Grotto (o mesmo no site).
+    final rt = {...gym(5), 'town': null, 'floor': 3, 'route': {'floor': 3, 'biome': 'grass', 'options': [{'kind': 'trainer'}]}};
+    final radar = [
+      for (final (k, chain) in const [null, {'id': 16, 'n': 4}, {'id': 16, 'n': 12}, {'id': 19, 'n': 25}, {'id': 16, 'n': 40}].indexed)
+        () {
+          final r0 = {...rt, 'seed': 60 + k, 'keyItems': ['poke-radar'], if (chain != null) 'chain': chain};
+          final opened = FactoryRun.radarPath(r0)!;
+          final at = (opened['route']['options'] as List).length - 1;
+          final met = FactoryRun.chooseNode(opened, data, at);
+          final won = FactoryRun.winFloor(met, data, captured: true, capturedIndex: 0);
+          final other = FactoryRun.chooseNode(opened, data, 0);
+          return [opened['route']['options'][at], met['encounter']['foes'], met['encounter']['radar'], won['chain'], FactoryRun.capturedMon(won)!['ivs'], other['chain']];
+        }()
+    ];
+    expect(norm(radar), expected['radar']);
+    final grotto = [
+      for (var k = 0; k < 50; k++)
+        () {
+          final r = k >= 40
+              ? {...rt, 'seed': 80 + k, 'floor': 5 + k, 'route': {'floor': 5 + k, 'biome': 'forest', 'options': [{'kind': 'trainer'}, {'kind': 'grotto'}]}}
+              : FactoryRun.nextFloor({...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'seed': 70 + k % 5, 'floor': 3 + k ~/ 5, 'leg': 1, 'encounter': null, 'pending': null, 'boss': {'region': red, 'step': 0}}, data);
+          final opts = (r['route']?['options'] as List?) ?? const [];
+          final at = opts.indexWhere((o) => o['kind'] == 'grotto');
+          if (at < 0) return [r['route']?['biome'], null];
+          final next = FactoryRun.chooseNode(r, data, at);
+          final won = next['encounter'] != null ? FactoryRun.winFloor(next, data, captured: true, capturedIndex: 0) : null;
+          final mon = won != null ? FactoryRun.capturedMon(won) : null;
+          return [
+            r['route']['biome'], next['grottoLeg'], next['pending'], next['encounter']?['foes'],
+            mon == null ? null : [mon['ha'], mon['ivs'], FactoryRun.memberOf(won!, mon, ['tackle']).$2['ability']],
+          ];
+        }()
+    ];
+    expect(norm(grotto), expected['grotto']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

@@ -19,6 +19,8 @@ export function duelResult(d) {
   return d.faster ? 1 : -1
 }
 
+/** A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto) vira a habilidade oculta da forma. Igual ao app. */
+export const setAbility = (set, form) => (set?.ability === 'hidden' ? form?.abilities?.find((x) => x[1])?.[0] ?? form?.abilities?.[0]?.[0] ?? '' : set?.ability ?? '')
 export async function fighter(calc, byId, { id, set }) {
   const entry = byId.get(id)
   if (!entry) return null
@@ -30,7 +32,7 @@ export async function fighter(calc, byId, { id, set }) {
     // Battle Factory: o nível vai até 100 (levelCap 100) ou não tem limite ('none').
     level: set?.levelCap === 'none' || set?.levelCap === 100 ? Math.max(1, Math.min(set.levelCap === 'none' ? 9999 : 100, Math.trunc(set.level || 1))) : battleLevel(set?.level),
     nature: set?.nature || 'Hardy',
-    ability: calc.abilityName(set?.ability ?? '') || calc.abilityName(form.abilities?.[0]?.[0] ?? ''),
+    ability: calc.abilityName(setAbility(set, form)) || calc.abilityName(form.abilities?.[0]?.[0] ?? ''),
     item: calc.itemName(set?.item ?? ''),
   }
   if (set?.evs) side.evs = { ...side.evs, ...set.evs }

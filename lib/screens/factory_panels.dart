@@ -2232,6 +2232,7 @@ const _nodeInfo = <String, (String, String, String)>{
   'mythic': ('✨', 'Pokémon mítico', 'Um Pokémon mítico, raríssimo. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
   'bike': ('🚲', 'Pedalar', 'De bicicleta: passa o andar sem batalha (e sem prêmio).'),
+  'grotto': ('🕳️', 'Hidden Grotto', 'Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota).'),
   'clue': ('🔍', 'Pista do lendário', 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.'),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
   'rival': ('⚔️', 'Rival', 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).'),
@@ -2266,12 +2267,14 @@ const _keyInfo = {
   'good-rod': ('🎣', 'Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.'),
   'super-rod': ('🎣', 'A melhor vara: na pesca vêm os Pokémon de Água raros.'),
   'bicycle': ('🚲', 'Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.'),
+  'poke-radar': ('📶', 'Nas rotas de mato, abre um caminho com o mato balançando: encontros seguidos da mesma espécie formam uma corrente (mais shiny e IVs altos).'),
   'ss-ticket': ('🎫', 'Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.'),
 };
 
 /// Os caminhos da rodada 14: a pesca e as árvores. Igual ao site.
 const _fishInfo = ('🎣', 'Pescaria', 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.');
 const _headbuttInfo = ('🌳', 'Árvore sacudida', 'Caiu um Pokémon que vive na árvore.');
+const _radarInfo = ('📶', 'Poké Radar', 'O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.');
 const _honeyInfo = ('🍯', 'Árvore de mel', 'Um Pokémon raro está lambendo o mel (mais chance de shiny).');
 
 /// Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome e o que fazer. Igual ao site.
@@ -2389,7 +2392,9 @@ const _strengthInfo = ('💪', 'Pedra empurrada', 'Aberta com Strength: um trein
                             ? _headbuttInfo
                             : node['tree'] == 'honey'
                                 ? _honeyInfo
-                                : null;
+                                : node['radar'] == true
+                                    ? _radarInfo
+                                    : null;
 const _eventText = {
   'items': 'Você achou {1}× {0} no caminho!',
   'money': 'Um treinador perdeu 💰{0} e não voltou para buscar.',
@@ -2397,6 +2402,7 @@ const _eventText = {
   'tutor': 'Um velho professor te deu uma ficha de Move Tutor.',
   'declined': 'Você seguiu o seu caminho.',
   'bike': 'Você pedalou por este trecho sem encontrar ninguém.',
+  'grotto': 'No Hidden Grotto você achou {0}!',
   'helped': 'O treinador agradeceu e te deu {0}!',
   'secretFound': 'Na caverna secreta: {0} e 💰{1}!',
   'secretEmpty': 'A caverna estava vazia... e escura demais para procurar.',
@@ -2407,7 +2413,7 @@ const _eventText = {
   'noPotion': 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 };
 const _eventIcon = {
-  'clue': '🔍', 'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
+  'grotto': '🕳️', 'clue': '🔍', 'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
   'bought': '🧳', 'betWon': '🎰', 'betLost': '🎰', 'injuredJoined': '💚', 'noPotion': '🩹',
 };
 
@@ -5060,6 +5066,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final plant = meeting || town ? null : FactoryRun.plantBerry(run, data);
     final pick = FactoryRun.berryReady(run) ? FactoryRun.harvestBerry(run) : null;
     final bike = meeting ? null : FactoryRun.bikePath(run, data);
+    final radar = meeting ? null : FactoryRun.radarPath(run);
     final photos = (run['photos'] as List?) ?? const [];
     Widget act(String key, String label, Json next) => _menuButton(label, widget.busy ? null : () => _save(next), key: ValueKey(key));
     final acts = [
@@ -5070,6 +5077,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (plant != null) act('factory-berry-plant', '🌱 ${tr('PLANTAR FRUTA')}', plant),
       if (pick != null) act('factory-berry-pick', '🍓 ${tr('COLHER {0}× {1}').replaceAll('{0}', '${run['berry']['count']}').replaceAll('{1}', _itemName('${run['berry']['item']}'))}', pick),
       if (bike != null) act('factory-bike', '🚲 Bicycle', bike),
+      if (radar != null) act('factory-radar', '📶 Poké Radar', radar),
       if (!meeting && FactoryRun.applyRepel(run) != null) act('factory-repel', '🧴 ${tr('REPELENTE')} (${run['repels']})', FactoryRun.applyRepel(run)!),
       if (photos.isNotEmpty)
         _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
@@ -5914,6 +5922,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
         '🧭 ${tr('Você sai de {0} e entra em {1}, rumo a {2}.').replaceAll('{0}', cities.from ?? tr('casa')).replaceAll('{1}', tr(biome.$1)).replaceAll('{2}', cities.to)} '
             '${tr(_routeFlavor['${route['biome']}'] ?? _routeFlavor['grass']!)}',
       if (!town && dungeon == null && pos == 0 && !meeting && quest?['id'] != null) '📜 ${_questLine(quest!, _name)}',
+      if (!meeting && run['chain'] is Map)
+        '📶 ${tr('Corrente do Poké Radar')}: ${_name(run['chain']['id'])} ×${run['chain']['n']} · ✨ ${FactoryRun.radarShiny(run['chain'] as Map)}×',
       if (!town && dungeon == null && pos == 0 && !meeting && legend != null && target['kind'] == 'elite')
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
@@ -7771,7 +7781,7 @@ const _cardColors = {
   'area': (Color(0xFFA855F7), Color(0xFF6B21A8)), 'wildboss': (Color(0xFFD946EF), Color(0xFF86198F)), 'mart': (Color(0xFF3B82F6), Color(0xFF1D4ED8)),
   'center': (Color(0xFFEC4899), Color(0xFFBE185D)), 'event': (Color(0xFFEAB308), Color(0xFFA16207)), 'trade': (Color(0xFF06B6D4), Color(0xFF0E7490)),
   'safari': (Color(0xFF84CC16), Color(0xFF4D7C0F)), 'meteor': (Color(0xFFF59E0B), Color(0xFFB45309)), 'mythic': (Color(0xFFF0ABFC), Color(0xFFA21CAF)),
-  'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'clue': (Color(0xFFA78BFA), Color(0xFF6D28D9)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
+  'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'clue': (Color(0xFFA78BFA), Color(0xFF6D28D9)), 'grotto': (Color(0xFF78716C), Color(0xFF44403C)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
   'dungeon': (Color(0xFF78716C), Color(0xFF44403C)),
 };
 

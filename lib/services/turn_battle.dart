@@ -2151,7 +2151,7 @@ class TurnBattleSetup {
         noDmax: const {888, 889, 890}.contains(row['species']),
         ability: calc.ability,
       )..simulationSpecies = BattleSimulator.call('species', [row['name']])['name'] as String?
-        ..simulationAbility = BattleSimulator.call('ability', [m.$2?['ability'] ?? ((row['abilities'] as List).isEmpty ? '' : (row['abilities'] as List).first[0])])['name'] as String?
+        ..simulationAbility = BattleSimulator.call('ability', [m.$2?['ability'] != null ? TeamBattle.setAbility(m.$2, row) : ((row['abilities'] as List).isEmpty ? '' : (row['abilities'] as List).first[0])])['name'] as String?
         ..simulationItem = BattleSimulator.call('item', [m.$2?['item']])['name'] as String?
         ..levelCap = m.$2?['levelCap'] == 'none' ? 'none' : (m.$2?['levelCap'] as num?)?.toInt()
         ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null

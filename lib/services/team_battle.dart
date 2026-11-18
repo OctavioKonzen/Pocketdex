@@ -48,6 +48,13 @@ class TeamBattle {
 
 
   /// O Pokémon da calculadora com o set (Nature, EVs, IVs, item, habilidade).
+  /// A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto) vira a habilidade oculta da forma. Igual ao site.
+  static String setAbility(Map? set, Map row) {
+    final list = [for (final a in (row['abilities'] as List?) ?? const []) a as List];
+    if (set?['ability'] == 'hidden') return '${(list.where((a) => a.length > 1 && a[1] == true).firstOrNull ?? list.firstOrNull)?.first ?? ''}';
+    return '${set?['ability'] ?? ''}';
+  }
+
   static Future<CalcPokemon?> calcPokemon(DamageData data, Member m) async {
     final row = await LocalDatabase.instance.pokemonRow(m.$1);
     if (row == null) return null;
@@ -58,8 +65,9 @@ class TeamBattle {
     final stats = [for (final s in row['stats'] as List) (s as List).first as int];
     Map<String, int>? spread(Object? v, int fallback) => v is Map ? {for (final k in statKeys) k: (v[k] as num?)?.toInt() ?? fallback} : null;
     final abilities = [for (final a in (row['abilities'] as List?) ?? const []) (a as List).first as String];
-    final ability = data.abilityName('${set?['ability'] ?? ''}').isNotEmpty
-        ? data.abilityName('${set?['ability']}')
+    final own = setAbility(set, row);
+    final ability = data.abilityName(own).isNotEmpty
+        ? data.abilityName(own)
         : (abilities.isEmpty ? '' : data.abilityName(abilities.first));
     return CalcPokemon(
       data,

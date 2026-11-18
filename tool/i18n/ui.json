@@ -15142,5 +15142,35 @@
   "fr": "Mission légendaire accomplie : {0} ! +💰{1}",
   "es": "¡Misión legendaria cumplida: {0}! +💰{1}",
   "pt": "Missão lendária cumprida: {0}! +💰{1}"
+ },
+ "O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.": {
+  "en": "The grass is shaking: win or catch to grow the chain (same species, better shiny odds and higher IVs). Any other path breaks the chain.",
+  "fr": "Les herbes bougent : gagnez ou capturez pour allonger la chaîne (même espèce, plus de chances de shiny et de meilleurs IV). Un autre chemin brise la chaîne.",
+  "es": "La hierba se mueve: gana o captura para subir la cadena (la misma especie, más probabilidad de shiny e IVs más altos). Otro camino rompe la cadena.",
+  "pt": "O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente."
+ },
+ "Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota).": {
+  "en": "A hidden hole in the grass: a Pokémon with its hidden ability or a rare item (once per route).",
+  "fr": "Un trou caché dans les herbes : un Pokémon avec son talent caché ou un objet rare (une fois par route).",
+  "es": "Un hueco escondido en la hierba: un Pokémon con su habilidad oculta o un objeto raro (una vez por ruta).",
+  "pt": "Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota)."
+ },
+ "Nas rotas de mato, abre um caminho com o mato balançando: encontros seguidos da mesma espécie formam uma corrente (mais shiny e IVs altos).": {
+  "en": "On grassy routes, opens a path with shaking grass: back-to-back encounters with the same species form a chain (more shinies and high IVs).",
+  "fr": "Sur les routes herbeuses, ouvre un chemin où les herbes bougent : des rencontres d'affilée avec la même espèce forment une chaîne (plus de shiny et de bons IV).",
+  "es": "En las rutas de hierba, abre un camino con la hierba moviéndose: encuentros seguidos de la misma especie forman una cadena (más shiny e IVs altos).",
+  "pt": "Nas rotas de mato, abre um caminho com o mato balançando: encontros seguidos da mesma espécie formam uma corrente (mais shiny e IVs altos)."
+ },
+ "No Hidden Grotto você achou {0}!": {
+  "en": "In the Hidden Grotto you found {0}!",
+  "fr": "Dans la Cachette Cachée, vous avez trouvé {0} !",
+  "es": "¡En el Claro Oculto encontraste {0}!",
+  "pt": "No Hidden Grotto você achou {0}!"
+ },
+ "Corrente do Poké Radar": {
+  "en": "Poké Radar chain",
+  "fr": "Chaîne du Poké Radar",
+  "es": "Cadena del Poké Radar",
+  "pt": "Corrente do Poké Radar"
  }
 }

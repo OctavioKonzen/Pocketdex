@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, radarPath, radarShiny, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -1161,6 +1161,7 @@ const NODE_INFO = {
   mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
   bike: { icon: '🚲', label: 'Pedalar', help: 'De bicicleta: passa o andar sem batalha (e sem prêmio).' },
+  grotto: { icon: '🕳️', label: 'Hidden Grotto', help: 'Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota).' },
   clue: { icon: '🔍', label: 'Pista do lendário', help: 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.' },
   rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
   rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
@@ -1193,11 +1194,13 @@ const KEY_INFO = {
   'good-rod': { icon: '🎣', help: 'Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.' },
   'super-rod': { icon: '🎣', help: 'A melhor vara: na pesca vêm os Pokémon de Água raros.' },
   bicycle: { icon: '🚲', help: 'Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.' },
+  'poke-radar': { icon: '📶', help: 'Nas rotas de mato, abre um caminho com o mato balançando: encontros seguidos da mesma espécie formam uma corrente (mais shiny e IVs altos).' },
   'ss-ticket': { icon: '🎫', help: 'Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.' },
 }
 /** Os caminhos e as ações da rodada 14: a pesca, as árvores e a bicicleta. */
 const FISH_INFO = { icon: '🎣', label: 'Pescaria', help: 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.' }
 const HEADBUTT_INFO = { icon: '🌳', label: 'Árvore sacudida', help: 'Caiu um Pokémon que vive na árvore.' }
+const RADAR_INFO = { icon: '📶', label: 'Poké Radar', help: 'O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.' }
 const HONEY_INFO = { icon: '🍯', label: 'Árvore de mel', help: 'Um Pokémon raro está lambendo o mel (mais chance de shiny).' }
 /**
  * Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome, o que fazer e os símbolos.
@@ -1275,7 +1278,7 @@ const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com C
 const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
 const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
 /** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
-const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : null)
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : node.radar ? RADAR_INFO : null)
 const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
 const EVENT_TEXT = {
   items: 'Você achou {1}× {0} no caminho!',
@@ -1284,6 +1287,7 @@ const EVENT_TEXT = {
   tutor: 'Um velho professor te deu uma ficha de Move Tutor.',
   declined: 'Você seguiu o seu caminho.',
   bike: 'Você pedalou por este trecho sem encontrar ninguém.',
+  grotto: 'No Hidden Grotto você achou {0}!',
   helped: 'O treinador agradeceu e te deu {0}!',
   secretFound: 'Na caverna secreta: {0} e 💰{1}!',
   secretEmpty: 'A caverna estava vazia... e escura demais para procurar.',
@@ -1293,7 +1297,7 @@ const EVENT_TEXT = {
   injuredJoined: 'Você usou {0} e o Pokémon ferido quis ir com você!',
   noPotion: 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
 }
-const EVENT_ICON = { clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
+const EVENT_ICON = { grotto: '🕳️', clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
 /** O símbolo de cada melhoria (no círculo da árvore). */
 const UPGRADE_ICONS = {
   level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
@@ -2339,7 +2343,7 @@ const CARD_COLORS = {
   wild: ['#22c55e', '#15803d'], trainer: ['#ef4444', '#b91c1c'], ace: ['#f97316', '#c2410c'], rival: ['#f43f5e', '#9f1239'],
   boss: ['#a855f7', '#6b21a8'], dboss: ['#7c3aed', '#4c1d95'], area: ['#a855f7', '#6b21a8'], wildboss: ['#d946ef', '#86198f'],
   mart: ['#3b82f6', '#1d4ed8'], center: ['#ec4899', '#be185d'], event: ['#eab308', '#a16207'], trade: ['#06b6d4', '#0e7490'],
-  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'], clue: ['#a78bfa', '#6d28d9'],
+  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'], clue: ['#a78bfa', '#6d28d9'], grotto: ['#78716c', '#44403c'],
   rematch: ['#facc15', '#a16207'], leave: ['#64748b', '#334155'], dungeon: ['#78716c', '#44403c'],
 }
 
@@ -3638,6 +3642,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
       !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
       !town && !inside && pos === 0 && !meeting && quest?.id != null && `📜 ${questLine(quest, name)}`,
+      !meeting && run.chain && `📶 ${t('Corrente do Poké Radar')}: ${name(run.chain.id)} ×${run.chain.n} · ✨ ${radarShiny(run.chain)}×`,
       !town && !inside && pos === 0 && !meeting && legend != null && target.kind === 'elite' && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
       inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
       ...before,
@@ -3739,6 +3744,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             !meeting && !town && plantBerry(run, data) && ['factory-berry-plant', `🌱 ${t('PLANTAR FRUTA')}`, () => save(plantBerry(run, data))],
             berryReady(run) && harvestBerry(run) && ['factory-berry-pick', `🍓 ${t('COLHER {0}× {1}').replace('{0}', run.berry.count).replace('{1}', itemName(run.berry.item))}`, () => save(harvestBerry(run))],
             !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
+            !meeting && radarPath(run) && ['factory-radar', '📶 Poké Radar', () => save(radarPath(run))],
             !meeting && applyRepel(run) && ['factory-repel', `🧴 ${t('REPELENTE')} (${run.repels})`, () => save(applyRepel(run))],
             (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
           ].filter(Boolean)
