@@ -63,6 +63,9 @@ class BattleMon {
   /// A Poké Ball em que ele foi capturado (Battle Factory): ele sai dela no começo da batalha.
   String? ball;
 
+  /// O gênero ('M', 'F' ou '' sem gênero), do simulador: o ♂/♀ na caixa de vida.
+  String gender = '';
+
   /// Id, tipos, velocidade, vida máxima e calculadora: mudam na Mega,
   /// Terastal e Dinamax (e voltam ao original na próxima batalha).
   int id, maxHp, spe;
@@ -568,6 +571,7 @@ class TurnBattle {
         mon.status = p['status'] as String;
         mon.boosts = Map<String, int>.from(p['boosts'] as Map);
         mon.ability = p['ability'] as String;
+        mon.gender = '${p['gender'] ?? ''}';
         mon.terastal = '${p['tera']}'.isNotEmpty;
         mon.dmax = p['dmax'] as int;
         mon.trapped = p['index'] == s['active'] && s['trapped'] == true;

@@ -52,7 +52,7 @@ export function syncSimulator(battle, result) {
         mon.base = mon.mega.base
         mon.side = {...mon.mega.side}
       } else mon.id = p.formId ?? mon.orig?.id ?? mon.id
-      Object.assign(mon, {level: p.level ?? mon.level, hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, terastal: Boolean(p.tera), dmax: p.dmax})
+      Object.assign(mon, {level: p.level ?? mon.level, hp: p.hp, maxHp: p.maxHp, spe: p.spe, effectiveSpe: p.actionSpeed, types: p.types.map(t => t.toLowerCase()), status: p.status, boosts: p.boosts, ability: p.ability, gender: p.gender ?? '', terastal: Boolean(p.tera), dmax: p.dmax})
       if (mon.side) mon.side = {...mon.side, item: p.item, ability: p.ability, terastallized: Boolean(p.tera), teraType: p.tera.toLowerCase()}
       const requestMoves = s.slots?.find(slot => slot.index === p.index)?.request?.moves ?? (p.index === s.active ? s.request?.moves : null)
       const slots = requestMoves?.length ? requestMoves : p.moves

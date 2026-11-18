@@ -665,22 +665,25 @@ function MonDetails({ battle, side, mon }) {
  */
 function PortHp({ mon, hp, mine, status, dmax, hpTestId, exp = null }) {
   const pct = Math.max(0, Math.min(100, (hp / mon.maxHp) * 100))
-  const color = pct > 50 ? '#4ade80' : pct > 20 ? '#facc15' : '#ef4444'
+  const color = pct > 50 ? 'hp-green' : pct > 20 ? 'hp-yellow' : 'hp-red'
+  // Como no Black & White: o ♂/♀ do lado do nome, "Lv" pequeno, o HP numa plaquinha; na sua, os números e o EXP.
+  const gender = mon.gender === 'M' ? ['♂', 'port-male'] : mon.gender === 'F' ? ['♀', 'port-female'] : null
   return (
-    <div className="port-hp" data-testid={mine ? 'port-hp-me' : 'port-hp-foe'}>
+    <div className={`port-hp ${mine ? 'port-hp-mine' : 'port-hp-foe'}`} data-testid={mine ? 'port-hp-me' : 'port-hp-foe'}>
       <div className="port-hp-row">
-        <span className="truncate">{mon.name}</span>
+        <span className="port-name truncate">{mon.name}</span>
+        {gender && <span className={`port-gender ${gender[1]}`} data-testid="hp-gender">{gender[0]}</span>}
         {mon.terastal && <span className="port-tag" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">{`TERA ${mon.teraType}`.toUpperCase()}</span>}
         {dmax && <span className="port-tag bg-rose-600">DMAX</span>}
         {status && <span className="port-tag" style={{ background: STATUS_BADGE[status] }} data-testid="status-badge">{status.toUpperCase()}</span>}
-        <span className="port-lv">{`Lv.${mon.level}`}</span>
+        <span className="port-lv"><small>Lv</small>{mon.level}</span>
       </div>
       <div className="port-hp-bar" data-testid="hp-bar">
         <b>HP</b>
-        <i><u style={{ width: `${pct}%`, background: color }} /></i>
+        <i><u className={color} style={{ width: `${pct}%` }} /></i>
       </div>
-      {(mine || hpTestId) && <div className="port-hp-num" data-testid={hpTestId}>{`${hp}/${mon.maxHp}`}</div>}
-      {exp != null && <div className="port-exp"><u style={{ width: `${Math.round(exp * 100)}%` }} /></div>}
+      {(mine || hpTestId) && <div className="port-hp-num" data-testid={hpTestId}>{`${hp}/ ${mon.maxHp}`}</div>}
+      {mine && <div className="port-exp"><b>EXP</b><i><u style={{ width: `${Math.round((exp ?? 0) * 100)}%` }} /></i></div>}
     </div>
   )
 }

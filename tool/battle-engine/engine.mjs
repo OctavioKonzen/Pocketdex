@@ -412,7 +412,7 @@ function snapshot(game) {
       used: {mega: game.used[side.n].mega, dmax: Boolean(side.dynamaxUsed), z: Boolean(side.zMoveUsed), tera: game.used[side.n].tera},
       team: [...side.pokemon].sort((a, c) => originalIndex(a) - originalIndex(c)).map(p => ({
         index: originalIndex(p), level: p.level, hp: p.hp, maxHp: p.maxhp, status: p.status, boosts: {...p.boosts},
-        species: p.species.name, formId: formIdOf(game, p), types: p.getTypes(), ability: Dex.abilities.get(p.ability).name,
+        species: p.species.name, formId: formIdOf(game, p), types: p.getTypes(), ability: Dex.abilities.get(p.ability).name, gender: p.gender || '',
         item: Dex.items.get(p.item).name, stats: {...p.baseStoredStats}, spe: p.baseStoredStats.spe, actionSpeed: p.getActionSpeed(), tera: p.terastallized || '',
         dmax: p.volatiles.dynamax ? Math.max(0, p.volatiles.dynamax.duration ?? 3) : 0,
         moves: p.moveSlots.map(m => ({slug: m.id, name: m.move, pp: m.pp, maxPp: m.maxpp, disabled: m.disabled})),

@@ -3850,82 +3850,129 @@ class _PortHp extends StatelessWidget {
   final bool dmax, mine;
   final double? exp;
 
+  /// Como no Black & White: a barra com o brilho em cima (verde, amarela, vermelha).
+  static List<Color> _fill(double pct) => pct > 0.5
+      ? const [Color(0xFF8CF7A6), Color(0xFF22C55E)]
+      : pct > 0.2
+          ? const [Color(0xFFFDE68A), Color(0xFFEAB308)]
+          : const [Color(0xFFFCA5A5), Color(0xFFDC2626)];
+
   @override
   Widget build(BuildContext context) {
     final pct = mon.maxHp > 0 ? (hp / mon.maxHp).clamp(0.0, 1.0) : 0.0;
-    final color = pct > 0.5 ? const Color(0xFF4ADE80) : pct > 0.2 ? const Color(0xFFFACC15) : const Color(0xFFEF4444);
-    final font = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontSize: w * 0.023, fontWeight: FontWeight.w500, shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))]);
+    // O contorno preto das letras (como a fonte do jogo).
+    final outline = [
+      Shadow(color: const Color(0xFF111111), offset: Offset(w * 0.0015, w * 0.0015)),
+      Shadow(color: const Color(0xFF111111), offset: Offset(-w * 0.001, w * 0.001)),
+      Shadow(color: const Color(0xFF111111), offset: Offset(w * 0.001, -w * 0.001)),
+      Shadow(color: const Color(0xFF111111), offset: Offset(-w * 0.001, -w * 0.001)),
+    ];
+    final font = TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontSize: w * 0.023, fontWeight: FontWeight.w600, shadows: outline);
+    final label = font.copyWith(fontSize: w * 0.0115, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))]);
     Widget tag(String text, Color bg) => Container(
           margin: EdgeInsets.only(left: w * 0.006),
           padding: EdgeInsets.symmetric(horizontal: w * 0.005),
           decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(2)),
-          child: m.Text(text, style: font.copyWith(fontSize: w * 0.011, fontWeight: FontWeight.w700)),
+          child: m.Text(text, style: font.copyWith(fontSize: w * 0.011, fontWeight: FontWeight.w700, shadows: const [])),
         );
+    Widget bar(double value, List<Color> fill, Color track, double height) => Container(
+          height: height,
+          decoration: BoxDecoration(color: track, border: Border.all(color: const Color(0xFF15171B), width: w * 0.0015)),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedFractionallySizedBox(
+              duration: const Duration(milliseconds: 700),
+              widthFactor: value,
+              heightFactor: 1,
+              child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [fill[0], fill[0], fill[1], fill[1]], stops: const [0, 0.38, 0.38, 1]))),
+            ),
+          ),
+        );
+    final gender = mon.gender == 'M' ? ('♂', const Color(0xFF4FA3FF)) : mon.gender == 'F' ? ('♀', const Color(0xFFFF6B9D)) : null;
     // Tamanho fixo pela tela (como no port): o texto maior do celular não empurra a caixa.
     return MediaQuery.withNoTextScaling(
       child: ClipPath(
-      key: ValueKey(mine ? 'port-hp-me' : 'port-hp-foe'),
-      clipper: _CutCorner(w * 0.04),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(w * 0.0126, w * 0.004, w * 0.0126, w * 0.006),
-        decoration: BoxDecoration(
-          color: const Color(0xEB181A1E),
-          border: Border.all(color: const Color(0xFF8B93A1), width: 2),
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            // Nome como no jogo (não traduz).
-            Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, style: font))),
-            if (dmax) tag('DMAX', const Color(0xFFE11D48)),
-            if (status != null && status!.isNotEmpty) tag(status!.toUpperCase(), const Color(0xFF6B7280)),
-            const Spacer(),
-            m.Text('Lv.${mon.level}', style: font.copyWith(fontSize: w * 0.017)),
-          ]),
-          SizedBox(height: w * 0.003),
-          Row(children: [
-            m.Text('HP', style: font.copyWith(color: const Color(0xFFA3E635), fontSize: w * 0.013, fontWeight: FontWeight.w700)),
-            SizedBox(width: w * 0.006),
-            Expanded(
-              child: Container(
-                height: w * 0.0075,
-                decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black, width: 1)),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: AnimatedFractionallySizedBox(duration: const Duration(milliseconds: 700), widthFactor: pct, heightFactor: 1, child: ColoredBox(color: color)),
+        key: ValueKey(mine ? 'port-hp-me' : 'port-hp-foe'),
+        clipper: _CutCorner(w * 0.032, left: mine),
+        child: Container(
+          padding: mine ? EdgeInsets.fromLTRB(w * 0.036, w * 0.004, w * 0.012, w * 0.005) : EdgeInsets.fromLTRB(w * 0.012, w * 0.004, w * 0.036, w * 0.006),
+          decoration: const BoxDecoration(
+            // A caixa de vida do Black & White: cinza-escura com brilho em cima e a borda clara embaixo. Igual ao site.
+            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xF04E525C), Color(0xF02C2F36), Color(0xF01E2025)], stops: [0, 0.45, 1]),
+            border: Border(bottom: BorderSide(color: Color(0x8CC8CED8), width: 2)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              // Nome como no jogo (não traduz).
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, style: font))),
+              if (gender != null)
+                Padding(
+                  padding: EdgeInsets.only(left: w * 0.004),
+                  child: m.Text(gender.$1, key: const ValueKey('hp-gender'), style: font.copyWith(color: gender.$2, fontSize: w * 0.02, fontWeight: FontWeight.w900, shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))])),
                 ),
+              if (dmax) tag('DMAX', const Color(0xFFE11D48)),
+              if (status != null && status!.isNotEmpty) tag(status!.toUpperCase(), const Color(0xFF6B7280)),
+              const Spacer(),
+              m.Text.rich(TextSpan(children: [
+                TextSpan(text: 'Lv', style: label.copyWith(color: const Color(0xFFFCD34D))),
+                TextSpan(text: '${mon.level}', style: font.copyWith(fontSize: w * 0.021, fontWeight: FontWeight.w700)),
+              ])),
+            ]),
+            SizedBox(height: w * 0.0035),
+            Row(children: [
+              ClipPath(
+                clipper: _CutCorner(w * 0.005, left: true, full: true),
+                child: Container(color: const Color(0xFF1C1E23), padding: EdgeInsets.fromLTRB(w * 0.005, w * 0.0015, w * 0.006, w * 0.0015), child: m.Text('HP', style: label)),
               ),
-            ),
+              Expanded(child: bar(pct, _fill(pct), const Color(0xFF2A2F38), w * 0.0085)),
+            ]),
+            if (mine)
+              Align(
+                alignment: Alignment.centerRight,
+                child: m.Text('$hp/ ${mon.maxHp}', key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.023, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, letterSpacing: w * 0.0015)),
+              ),
+            if (mine) ...[
+              SizedBox(height: w * 0.002),
+              Row(children: [
+                m.Text('EXP', style: label.copyWith(color: const Color(0xFF38BDF8))),
+                SizedBox(width: w * 0.005),
+                Expanded(child: bar((exp ?? 0).clamp(0.0, 1.0), const [Color(0xFF7DD3FC), Color(0xFF0EA5E9)], const Color(0xFFE5E7EB), w * 0.006)),
+              ]),
+            ],
           ]),
-          if (mine) Align(alignment: Alignment.centerRight, child: m.Text('$hp/${mon.maxHp}', key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.017))),
-          if (exp != null) ...[
-            SizedBox(height: w * 0.003),
-            Container(
-              height: w * 0.004,
-              color: const Color(0xFF1E293B),
-              child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(widthFactor: exp!.clamp(0.0, 1.0), heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8)))),
-            ),
-          ],
-        ]),
+        ),
       ),
-    ),
     );
   }
 }
 
-/// O canto de baixo à direita cortado na diagonal (as caixas do port).
 class _CutCorner extends CustomClipper<Path> {
-  const _CutCorner(this.cut);
+  /// O canto cortado embaixo à direita (full: a ponta inteira inclinada); left: a ponta da esquerda inclinada.
+  const _CutCorner(this.cut, {this.left = false, this.full = false});
   final double cut;
+  final bool left, full;
   @override
-  Path getClip(Size size) => Path()
-    ..moveTo(0, 0)
-    ..lineTo(size.width, 0)
-    ..lineTo(size.width, size.height - cut)
-    ..lineTo(size.width - cut, size.height)
-    ..lineTo(0, size.height)
-    ..close();
+  Path getClip(Size size) {
+    // À esquerda: a ponta inteira inclinada (a sua caixa de vida e a plaquinha do HP).
+    if (left) {
+      return Path()
+        ..moveTo(cut, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
+    }
+    return Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, full ? 0 : size.height - cut)
+      ..lineTo(size.width - cut, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+  }
+
   @override
-  bool shouldReclip(_CutCorner old) => old.cut != cut;
+  bool shouldReclip(_CutCorner old) => old.cut != cut || old.left != left || old.full != full;
 }
 
 /// O treinador entrando pela direita e saindo para a direita ([gone]), como no site (trainer-enter-1 / trainer-leave-1).

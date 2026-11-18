@@ -451,18 +451,27 @@ const _portBox = BeveledRectangleBorder(borderRadius: BorderRadius.only(topLeft:
 
 /// O canto de baixo à direita cortado na diagonal (as caixas de vida do port).
 class _CutCorner extends CustomClipper<Path> {
-  const _CutCorner(this.cut);
+  /// left: a ponta da esquerda inclinada (a sua caixa de vida, como no Black & White).
+  const _CutCorner(this.cut, {this.left = false});
   final double cut;
+  final bool left;
   @override
-  Path getClip(Size size) => Path()
-    ..moveTo(0, 0)
-    ..lineTo(size.width, 0)
-    ..lineTo(size.width, size.height - cut)
-    ..lineTo(size.width - cut, size.height)
-    ..lineTo(0, size.height)
-    ..close();
+  Path getClip(Size size) => left
+      ? (Path()
+        ..moveTo(cut, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close())
+      : (Path()
+        ..moveTo(0, 0)
+        ..lineTo(size.width, 0)
+        ..lineTo(size.width, size.height - cut)
+        ..lineTo(size.width - cut, size.height)
+        ..lineTo(0, size.height)
+        ..close());
   @override
-  bool shouldReclip(_CutCorner old) => old.cut != cut;
+  bool shouldReclip(_CutCorner old) => old.cut != cut || old.left != left;
 }
 
 const _frameColors = {
@@ -3985,28 +3994,45 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (team.isEmpty) return const SizedBox.shrink();
     final m = team.firstWhere((x) => FactoryRun.hpOf(x) > 0, orElse: () => team.first);
     final pct = FactoryRun.hpOf(m).clamp(0.0, 1.0).toDouble();
-    final font = _portText.copyWith(fontSize: f, fontWeight: FontWeight.w500);
+    // Como a sua caixa de vida na batalha (Black & White): contorno preto nas letras, "Lv" pequeno, o HP numa plaquinha.
+    final outline = [
+      Shadow(color: const Color(0xFF111111), offset: Offset(w * 0.0015, w * 0.0015)),
+      Shadow(color: const Color(0xFF111111), offset: Offset(-w * 0.001, -w * 0.001)),
+    ];
+    final font = _portText.copyWith(fontSize: f, fontWeight: FontWeight.w600, shadows: outline);
+    final label = font.copyWith(fontSize: w * 0.0115, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))]);
+    final fill = pct > 0.5 ? const [Color(0xFF8CF7A6), Color(0xFF22C55E)] : pct > 0.2 ? const [Color(0xFFFDE68A), Color(0xFFEAB308)] : const [Color(0xFFFCA5A5), Color(0xFFDC2626)];
+    BoxDecoration shine(List<Color> c) => BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c[0], c[0], c[1], c[1]], stops: const [0, 0.38, 0.38, 1]));
     return ClipPath(
       key: const ValueKey('port-hp-me'),
-      clipper: _CutCorner(w * 0.03),
+      clipper: _CutCorner(w * 0.032, left: true),
       child: Container(
-        padding: EdgeInsets.fromLTRB(w * 0.016, w * 0.0053, w * 0.032, w * 0.008), // a barra termina antes do canto cortado (as mesmas medidas do site)
-        decoration: BoxDecoration(color: const Color(0xEB181A1E), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
+        padding: EdgeInsets.fromLTRB(w * 0.036, w * 0.004, w * 0.012, w * 0.005),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xF04E525C), Color(0xF02C2F36), Color(0xF01E2025)], stops: [0, 0.45, 1]),
+          border: Border(bottom: BorderSide(color: Color(0x8CC8CED8), width: 2)),
+        ),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text((m['nick'] as String?) ?? _name(m['id']), style: font))),
             const Spacer(),
-            Text('Lv.${m['level']}', style: font.copyWith(fontSize: w * 0.017)),
+            Text.rich(TextSpan(children: [
+              TextSpan(text: 'Lv', style: label.copyWith(color: const Color(0xFFFCD34D))),
+              TextSpan(text: '${m['level']}', style: font.copyWith(fontSize: w * 0.021, fontWeight: FontWeight.w700)),
+            ])),
           ]),
+          SizedBox(height: w * 0.0035),
           Row(children: [
-            Text('HP', style: font.copyWith(color: const Color(0xFFA3E635), fontSize: w * 0.013, fontWeight: FontWeight.w700)),
-            SizedBox(width: w * 0.006),
+            ClipPath(
+              clipper: _CutCorner(w * 0.005, left: true),
+              child: Container(color: const Color(0xFF1C1E23), padding: EdgeInsets.fromLTRB(w * 0.005, w * 0.0015, w * 0.006, w * 0.0015), child: Text('HP', style: label)),
+            ),
             Expanded(
               child: Container(
-                height: w * 0.0075,
-                decoration: BoxDecoration(color: const Color(0xFF2B3240), border: Border.all(color: Colors.black, width: 1)),
+                height: w * 0.0085,
+                decoration: BoxDecoration(color: const Color(0xFF2A2F38), border: Border.all(color: const Color(0xFF15171B), width: w * 0.0015)),
                 alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(widthFactor: pct, heightFactor: 1, child: ColoredBox(color: pct > 0.5 ? const Color(0xFF4ADE80) : pct > 0.2 ? const Color(0xFFFACC15) : const Color(0xFFEF4444))),
+                child: FractionallySizedBox(widthFactor: pct, heightFactor: 1, child: DecoratedBox(decoration: shine(fill))),
               ),
             ),
           ]),
@@ -4019,16 +4045,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(max == null ? '${(pct * 100).round()}%' : '${(pct * max).round()}/$max',
-                    key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.014, height: 1.3)),
+                child: Text(max == null ? '${(pct * 100).round()}%' : '${(pct * max).round()}/ $max',
+                    key: const ValueKey('port-hp-num'), style: font.copyWith(fontSize: w * 0.023, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, letterSpacing: w * 0.0015, height: 1.15)),
               ),
               Row(children: [
-                Text('XP', style: font.copyWith(color: const Color(0xFF38BDF8), fontSize: w * 0.011, fontWeight: FontWeight.w700)),
-                SizedBox(width: w * 0.006),
+                Text('EXP', style: label.copyWith(color: const Color(0xFF38BDF8))),
+                SizedBox(width: w * 0.005),
                 Expanded(
                   child: Container(
-                    height: w * 0.005,
-                    color: const Color(0xFF1E293B),
+                    height: w * 0.006,
+                    decoration: BoxDecoration(color: const Color(0xFFE5E7EB), border: Border.all(color: const Color(0xFF15171B), width: w * 0.0012)),
                     alignment: Alignment.centerLeft,
                     // O XP subindo na barra (como nos jogos): de onde estava até o valor novo (subindo de nível, desde o começo).
                     child: Builder(builder: (context) {
@@ -4041,13 +4067,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
                         tween: Tween(begin: from, end: ratio),
                         duration: Duration(milliseconds: from == ratio ? 1 : 900),
                         curve: Curves.easeOut,
-                        builder: (context, v, _) => FractionallySizedBox(widthFactor: v.clamp(0.0, 1.0), heightFactor: 1, child: const ColoredBox(color: Color(0xFF38BDF8))),
+                        builder: (context, v, _) => FractionallySizedBox(widthFactor: v.clamp(0.0, 1.0), heightFactor: 1, child: DecoratedBox(decoration: shine(const [Color(0xFF7DD3FC), Color(0xFF0EA5E9)]))),
                       );
                     }),
                   ),
                 ),
-                SizedBox(width: w * 0.006),
-                Text('$got/$need', key: const ValueKey('port-xp-num'), style: font.copyWith(fontSize: w * 0.011, color: const Color(0xFFCBD5E1))),
+                // Como no jogo: o EXP só na barra (o número fica guardado para leitores de tela).
+                Semantics(label: '$got/$need', child: const SizedBox.shrink(key: ValueKey('port-xp-num'))),
               ]),
             ]);
           }),
