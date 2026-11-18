@@ -13931,6 +13931,11 @@
   "es": "¡{0} pasó corriendo por aquí! Huye tras el primer turno (dormido o congelado, no huye).",
   "pt": "{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge)."
  },
+ "{0} pegou Pokérus! Ganha o dobro de EVs.": {
+  "en": "{0} caught Pokérus! It gains double EVs.",
+  "fr": "{0} a attrapé le Pokérus ! Il gagne le double de PE.",
+  "es": "¡{0} contrajo Pokérus! Gana el doble de EVs."
+ },
  "{0} perdeu {1}!": {
   "en": "{0} lost its {1}!",
   "fr": "{0} a perdu {1} !",

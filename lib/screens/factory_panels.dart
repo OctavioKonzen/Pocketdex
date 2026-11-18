@@ -4332,6 +4332,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14))),
           ]),
       text: [
+        if (p['pokerus'] is List)
+          Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
+              key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
         if (badge != null) ...[
           Text('🏅 ${tr('Você recebeu a insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
               key: const ValueKey('factory-badge'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),

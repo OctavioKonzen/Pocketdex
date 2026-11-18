@@ -3037,6 +3037,30 @@ export function storyLine(data, region, key, name = '') {
  * capturado (entra no time), a carta (chefe), a loja (ao chegar na cidade) e,
  * às vezes, a Enfermeira Joy (pending).
  */
+/** O Pokérus (como nos jogos): 1 em POKERUS_RATE andares alguém pega; passa para os vizinhos no time (1 em 3) e some em
+ * POKERUS_FLOORS andares. Quem teve ganha o dobro de EVs para sempre. Uma conta fixa (não mexe nos sorteios). Igual ao app. */
+export const POKERUS_RATE = 200
+export const POKERUS_FLOORS = 4
+function fnv32(text) {
+  let h = 2166136261
+  for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+  return h >>> 0
+}
+function pokerusStep(out, run) {
+  const h = (tag) => fnv32(`${run.seed}:${run.floor}:${tag}`)
+  const team = out.team
+  const active = team.map((m) => (m.pokerus?.left ?? 0) > 0)
+  const got = []
+  const next = team.map((m) => ({ ...m }))
+  const infect = (i) => { next[i] = { ...next[i], pokerus: { left: POKERUS_FLOORS } }; got.push(next[i].id) }
+  team.forEach((m, i) => {
+    if (m.pokerus || !team.some((x, k) => active[k] && Math.abs(k - i) === 1)) return
+    if (h(`spread${i}`) % 3 === 0) infect(i)
+  })
+  if (team.length && !team.some((m) => m.pokerus) && h('new') % POKERUS_RATE === 0) infect(h('who') % team.length)
+  out.team = next.map((m, i) => (active[i] ? { ...m, pokerus: { left: m.pokerus.left - 1 } } : m))
+  return got
+}
 export function winFloor(run, data, after = {}) {
   // A Escape Rope não entra na batalha: fica a da Bolsa.
   // Depois de cada vitória, a cura da árvore (só em quem está de pé).
@@ -3064,7 +3088,8 @@ export function winFloor(run, data, after = {}) {
     expShares(out, data, f, after.fought?.[j], factor).forEach((e, i) => {
       if (!e) return
       gains[i] += e
-      STATS.forEach((s, k) => { evs[i][s] += yields[k] * 3 })
+      // Com Pokérus, o dobro de EVs (como nos jogos).
+      STATS.forEach((s, k) => { evs[i][s] += yields[k] * 3 * (out.team[i]?.pokerus ? 2 : 1) })
     })
   })
   // O XP que cada um já ganhou na luta (a batalha dá na hora, ao derrubar cada adversário): vale esse.
@@ -3100,6 +3125,8 @@ export function winFloor(run, data, after = {}) {
     levels.push({ index, from: m.level, to: m.level, evolved: id, friend: true })
     return { ...m, id, friendship }
   })
+  // O Pokérus: raro; passa para os vizinhos no time e some em POKERUS_FLOORS andares (o dobro de EVs fica). Igual ao app.
+  const pokerus = pokerusStep(out, run)
   // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
   const picked = []
   for (const m of out.team) {
@@ -3288,6 +3315,7 @@ export function winFloor(run, data, after = {}) {
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
     ...(badge ? { badge } : {}),
+    ...(pokerus.length ? { pokerus } : {}),
     ...(key ? { key } : {}),
     ...(placeReward ? { placeReward } : {}),
     ...(fled ? { fled: roamer } : {}),

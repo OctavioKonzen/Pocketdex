@@ -2999,7 +2999,8 @@ class FactoryRun {
         if (shares[i] == 0) continue;
         gains[i] += shares[i];
         for (var k = 0; k < stats.length; k++) {
-          evs[i][stats[k]] = (evs[i][stats[k]] as int) + _int(yields[k]) * 3;
+          // Com Pokérus, o dobro de EVs (como nos jogos).
+          evs[i][stats[k]] = (evs[i][stats[k]] as int) + _int(yields[k]) * 3 * (team[i]['pokerus'] != null ? 2 : 1);
         }
       }
     }
@@ -3054,6 +3055,8 @@ class FactoryRun {
       levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
       team[i] = {...m, 'id': id, 'friendship': friendship};
     }
+    // O Pokérus: raro; passa para os vizinhos no time e some em pokerusFloors andares (o dobro de EVs fica). Igual ao site.
+    final pokerus = _pokerusStep(team, run);
     // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
     final picked = <Json>[];
     for (final m in team) {
@@ -3310,6 +3313,7 @@ class FactoryRun {
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
       if (badge != null) 'badge': badge,
+      if (pokerus.isNotEmpty) 'pokerus': pokerus,
       if (key != null) 'key': key,
       if (placeReward != null) 'placeReward': placeReward,
       if (fled) 'fled': roamer,
@@ -4641,6 +4645,39 @@ class FactoryRun {
                   : {'c': 'back'}
       ],
     };
+  }
+
+  /// O Pokérus (como nos jogos): 1 em pokerusRate andares alguém pega; passa para os vizinhos no time (1 em 3) e some em
+  /// pokerusFloors andares. Quem teve ganha o dobro de EVs para sempre. Uma conta fixa (não mexe nos sorteios). Igual ao site.
+  static const pokerusRate = 200, pokerusFloors = 4;
+  static int _fnv32(String text) {
+    var h = 2166136261;
+    for (final c in text.codeUnits) {
+      h = ((h ^ c) * 16777619) & 0xFFFFFFFF;
+    }
+    return h;
+  }
+
+  /// Passa o Pokérus no time (muda a lista) e devolve quem pegou agora.
+  static List<int> _pokerusStep(List<Json> team, Json run) {
+    int h(String tag) => _fnv32('${run['seed']}:${run['floor']}:$tag');
+    final active = [for (final m in team) _int((m['pokerus'] as Map?)?['left'] ?? 0) > 0];
+    final got = <int>[];
+    final next = [for (final m in team) Map<String, dynamic>.from(m)];
+    void infect(int i) {
+      next[i] = {...next[i], 'pokerus': {'left': pokerusFloors}};
+      got.add(_int(next[i]['id']));
+    }
+
+    for (var i = 0; i < team.length; i++) {
+      if (team[i]['pokerus'] != null || ![for (var k = 0; k < team.length; k++) active[k] && (k - i).abs() == 1].contains(true)) continue;
+      if (h('spread$i') % 3 == 0) infect(i);
+    }
+    if (team.isNotEmpty && !team.any((m) => m['pokerus'] != null) && h('new') % pokerusRate == 0) infect(h('who') % team.length);
+    for (var i = 0; i < team.length; i++) {
+      team[i] = active[i] ? {...next[i], 'pokerus': {'left': _int(next[i]['pokerus']['left']) - 1}} : next[i];
+    }
+    return got;
   }
 
   /// Quantos andares o Repelente dura.

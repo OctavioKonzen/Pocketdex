@@ -2985,6 +2985,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     )
     text = (
       <>
+        {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
         {p.badge?.tm && <p className="text-sm font-semibold" data-testid="factory-badge-tm" data-no-translate>💿 {t('{0} te deu o TM {1}!').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.tm))}</p>}
         {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}

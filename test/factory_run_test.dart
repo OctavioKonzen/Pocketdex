@@ -570,6 +570,28 @@ void main() {
     };
     final stopped = FactoryRun.cancelEvolution(evo, 0, 4);
     expect(norm([stopped['team'][0]['id'], stopped['pending']['levels']]), expected['stopped']);
+    // O Pokérus: passa para os vizinhos, some e dá o dobro de EVs (o mesmo no site).
+    final first = (base['team'] as List).first as Map;
+    final sick = [
+      for (var k = 0; k < 12; k++)
+        () {
+          final won = FactoryRun.winFloor({
+            ...base, 'seed': 100 + k, 'floor': 3 + k,
+            'team': [first, {...first, 'id': 7, 'pokerus': {'left': 2}}, {...first, 'id': 1}],
+            'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+          }, data);
+          return [[for (final m in won['team'] as List) m['pokerus']], [for (final m in won['team'] as List) m['evs']], won['pending']['pokerus']];
+        }()
+    ];
+    expect(norm(sick), expected['sick']);
+    final fresh = [
+      for (var k = 0; k < 400; k++)
+        () {
+          final x = FactoryRun.winFloor({...base, 'seed': 7, 'floor': 3 + k, 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}}, data)['pending']['pokerus'];
+          return x == null ? null : [k, x];
+        }()
+    ].whereType<List>().toList();
+    expect(norm(fresh), expected['fresh']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

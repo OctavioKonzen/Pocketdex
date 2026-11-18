@@ -1994,7 +1994,14 @@ function round14Trace(F) {
   const base = gym(5)
   const evo = { ...base, team: [{ ...base.team[0], id: 5 }], pending: { levels: [{ index: 0, from: 15, to: 16, evolved: 5 }] } }
   const stopped = F.cancelEvolution(evo, 0, 4)
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels] }
+  // O Pokérus: passa para os vizinhos, some e dá o dobro de EVs (o mesmo no app).
+  const sick = Array.from({ length: 12 }, (_, k) => {
+    const r0 = { ...base, seed: 100 + k, floor: 3 + k, team: [base.team[0], { ...base.team[0], id: 7, pokerus: { left: 2 } }, { ...base.team[0], id: 1 }], encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    const won = F.winFloor(r0, data)
+    return [won.team.map((m) => m.pokerus ?? null), won.team.map((m) => m.evs), won.pending.pokerus ?? null]
+  })
+  const fresh = Array.from({ length: 400 }, (_, k) => F.winFloor({ ...base, seed: 7, floor: 3 + k, encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data).pending.pokerus ?? null).map((x, k) => (x ? [k, x] : null)).filter(Boolean)
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {
