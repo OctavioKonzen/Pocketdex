@@ -3119,6 +3119,7 @@ class FactoryRun {
     if (pieces.isNotEmpty) out['pieces'] = _addPieces(piecesOf(run), pieces);
     var champion = false;
     String? hm, key, placeReward;
+    Json? badge;
     if (run['encounter']['blocker'] == true) out['blockLeg'] = legOf(run);
     // Venceu a revanche: o Campeão some (até o próximo).
     if (kind == 'rival') out['rivalRaces'] = ((run['rivalRaces'] as num?) ?? 0).toInt() + 1;
@@ -3182,6 +3183,15 @@ class FactoryRun {
         }
         // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
         key = _addKey(out, (featuresOf(data, run)['keys'] as Map?)?['gym']) ?? key;
+        // A insígnia (a cena dela) e o TM do líder, como nos jogos.
+        final type = leaderType(data, beaten);
+        final tm = gymTmOf(data, type, _int(out['badges']));
+        if (tm != null) {
+          final tms = Map<String, dynamic>.from((out['tms'] ?? run['tms'] ?? const {}) as Map);
+          tms[tm] = _int(tms[tm] ?? 0) + 1;
+          out['tms'] = tms;
+        }
+        badge = {'name': beaten['name'], 'type': type, if (tm != null) 'tm': tm};
       }
       if (beaten['kind'] == 'champion') {
         out['champions'] = ((run['champions'] as num?) ?? 0).toInt() + 1;
@@ -3297,6 +3307,7 @@ class FactoryRun {
         },
       if (mission != null) 'mission': mission,
       if (hm != null) 'hm': hm,
+      if (badge != null) 'badge': badge,
       if (key != null) 'key': key,
       if (placeReward != null) 'placeReward': placeReward,
       if (fled) 'fled': roamer,
@@ -3487,6 +3498,39 @@ class FactoryRun {
   /// As MOs (HMs), uma por insígnia até a 7ª. Cut abre um caminho escondido; Flash ilumina cavernas; Surf deixa ir para o
   /// mar; Rock Smash quebra uma rocha (um selvagem raro de pedra); Dive leva ao fundo do mar; Strength empurra uma pedra
   /// (um treinador forte, que sempre deixa um item); Waterfall sobe a cachoeira do Mar até a gruta atrás dela. Igual ao site.
+  /// O TM que o líder dá junto com a insígnia (como nos jogos): um golpe do tipo do ginásio (o seguinte a cada insígnia).
+  /// Igual ao site.
+  static const gymTms = <String, List<String>>{
+    'normal': ['facade', 'body-slam', 'hyper-voice'], 'fire': ['flamethrower', 'fire-blast', 'overheat'], 'water': ['water-pulse', 'surf', 'scald'],
+    'grass': ['giga-drain', 'energy-ball'], 'electric': ['shock-wave', 'thunderbolt', 'volt-switch'], 'ice': ['icy-wind', 'ice-beam', 'avalanche'],
+    'fighting': ['brick-break', 'aura-sphere'], 'poison': ['sludge-bomb', 'venoshock'], 'ground': ['dig', 'earthquake', 'bulldoze'],
+    'flying': ['aerial-ace', 'air-slash', 'acrobatics'], 'psychic': ['psychic', 'psyshock'], 'bug': ['u-turn', 'struggle-bug', 'x-scissor'],
+    'rock': ['rock-tomb', 'stone-edge', 'rock-slide'], 'ghost': ['shadow-ball', 'hex', 'shadow-claw'], 'dragon': ['dragon-claw', 'dragon-pulse', 'dragon-tail'],
+    'dark': ['dark-pulse', 'payback', 'snarl'], 'steel': ['iron-tail', 'flash-cannon', 'steel-wing'], 'fairy': ['dazzling-gleam', 'draining-kiss'],
+  };
+
+  /// O TM do líder vencido (o n-ésimo da lista do tipo, pelas insígnias), ou null.
+  static String? gymTmOf(FactoryData data, String type, int badges) {
+    final list = [for (final m in gymTms[type] ?? const <String>[]) if (data.tms.contains(m)) m];
+    return list.isEmpty ? null : list[(math.max(1, badges) - 1) % list.length];
+  }
+
+  /// Parou a evolução (como apertar B nos jogos): ele volta a ser o de antes; tenta de novo no próximo nível. Igual ao site.
+  static Json cancelEvolution(Json run, int index, int from) {
+    final team = teamOf(run);
+    final p = run['pending'] as Map?;
+    final levels = (p?['levels'] as List?)?.cast<Map>() ?? const <Map>[];
+    if (index < 0 || index >= team.length || !levels.any((l) => l['index'] == index && l['evolved'] != null)) return run;
+    return {
+      ...run,
+      'team': [for (final (i, m) in team.indexed) i == index ? {...m, 'id': from} : m],
+      'pending': {
+        ...Map<String, dynamic>.from(p!),
+        'levels': [for (final l in levels) l['index'] == index && l['evolved'] != null ? {...l, 'evolved': null, 'stopped': true} : l],
+      },
+    };
+  }
+
   static const hmBadges = {1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall'};
   /// Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). Igual ao site.
   static bool hasHm(Json run, String hm) =>

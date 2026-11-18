@@ -64,8 +64,27 @@ String piecesLine(Map<String, int> pieces, {bool all = false}) =>
 /// A Factory da conta (meta e corrida).
 Json currentFactory() => FactoryRun.of(UserData.instance.league);
 
+/// O tempo de jogo da corrida: soma o tempo desde o último save (até 15 min: parado mais que isso não conta). Igual ao site.
+DateTime? _playTick;
+Json _withPlayTime(Json factory) {
+  final now = DateTime.now();
+  final last = _playTick;
+  _playTick = now;
+  final run = factory['run'] as Map?;
+  if (run == null || last == null) return factory;
+  final gap = now.difference(last).inMilliseconds.clamp(0, 15 * 60 * 1000);
+  return {...factory, 'run': {...Map<String, dynamic>.from(run), 'playMs': ((run['playMs'] as num?) ?? 0).toInt() + gap}};
+}
+
+/// O tempo de jogo como nos jogos: "2h 05min" ou "12 min".
+String playTimeText(int ms) {
+  final min = ms ~/ 60000;
+  return min >= 60 ? '${min ~/ 60}h ${'${min % 60}'.padLeft(2, '0')}min' : '$min min';
+}
+
 /// Salva a Factory na conta.
 void saveFactory(Json factory) {
+  factory = _withPlayTime(factory);
   // As missões do dia andam com o que mudou na corrida. Igual ao site.
   final before = currentFactory();
   factory = FactoryDaily.track(before, factory);
@@ -2010,6 +2029,23 @@ class _FactoryHubState extends State<FactoryHub> {
                   style: TextStyle(color: c.muted, fontSize: 12)),
             ),
           const SizedBox(height: 8),
+          // Como o "Continuar" dos jogos: o treinador, a região, as insígnias, a Pokédex e o tempo de jogo. Igual ao site.
+          Container(
+            key: const ValueKey('factory-continue-card'),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: const Color(0xFF1E3A8A), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0), width: 2)),
+            child: DefaultTextStyle(
+              style: const TextStyle(fontFamily: 'PixelifySans', color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+              child: Wrap(spacing: 14, runSpacing: 4, children: [
+                if (Trainers.mine != null) Text('👤 ${Trainers.mine!.name}'),
+                if (data.bosses.isNotEmpty) Text('🗺️ ${data.bosses[(run['boss']['region'] as num).toInt()]['region']}'),
+                Text('🏅 ${run['badges'] ?? 0}'),
+                Text('📖 ${FactoryRun.dexOf(run).length}'),
+                Text('⏱️ ${playTimeText(((run['playMs'] as num?) ?? 0).toInt())}', key: const ValueKey('factory-play-time')),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             PillButton(key: const ValueKey('factory-continue-run'), label: '🗺️ ${tr('Continuar a corrida')}', onPressed: widget.busy ? null : widget.onContinue),
             PillButton(label: tr('Desistir (recebe as moedas)'), color: const Color(0xFF64748B), onPressed: () => _save(FactoryRun.endRun(factory, run))),
@@ -2670,6 +2706,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   void dispose() {
     BattleSounds.stopMusic(this);
     _lvTimer?.cancel();
+    _evoTimer?.cancel();
     PhoneOrientation.leaveLandscape();
     super.dispose();
   }
@@ -3146,6 +3183,20 @@ class _FactoryScreenState extends State<FactoryScreen> {
   bool _helpCard = false;
   int _dexPage = -1; // -1: a página do escolhido
   int? _dexPick;
+  final Map<int, Future<({String genus, String flavor, int height, int weight})?>> _dexInfo = {};
+
+  /// O texto da Pokédex (como nos jogos): a espécie ("Pokémon Rato"), a descrição, a altura e o peso.
+  Future<({String genus, String flavor, int height, int weight})?> _dexEntry(int id) => _dexInfo.putIfAbsent(id, () async {
+        final species = (await LocalDatabase.instance.speciesById())[id];
+        final row = await LocalDatabase.instance.pokemonRow(id);
+        if (species == null) return null;
+        return (
+          genus: I18n.pick(species['genus'] as String?, species['genera']) ?? '',
+          flavor: (I18n.pick(species['flavor'] as String?, species['flavors']) ?? '').replaceAll(RegExp(r'\s+'), ' '),
+          height: ((row?['height'] as num?) ?? 0).toInt(),
+          weight: ((row?['weight'] as num?) ?? 0).toInt(),
+        );
+      });
 
   /// A ajuda numa tela só: 4 tópicos por página (2 × 2), do tamanho do campo; ◀ ▶ troca a página. Igual ao site.
   /// Desistir da corrida (com a pergunta): a pontuação vira moedas.
@@ -3232,6 +3283,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
     );
   }
 
+  /// O apelido do capturado (como nos jogos): até 12 letras; vazio fica sem.
+  Future<String?> _askNickname(String name) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr('Dar um apelido a {0}?').replaceAll('{0}', name)),
+        content: TextField(key: const ValueKey('capture-nick-field'), controller: controller, autofocus: true, maxLength: 12),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('NÃO'))),
+          FilledButton(key: const ValueKey('capture-nick-ok'), onPressed: () => Navigator.pop(context, controller.text), child: Text(tr('OK'))),
+        ],
+      ),
+    );
+  }
+
   /// O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e
   /// as vitórias. Fica na AJUDA (🪪). Igual ao site.
   Widget _trainerCard(FactoryData? data, Json run) {
@@ -3285,7 +3352,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
               child: Row(mainAxisSize: MainAxisSize.min, children: [text(FactoryRun.dexOf(run).length, 'card-dex'), Text('  ${tr('ABRIR')} ▸', style: value.copyWith(color: const Color(0xFFFACC15)))]),
             )),
             row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
+            row('⏱️', 'Tempo de jogo', text(playTimeText(((run['playMs'] as num?) ?? 0).toInt()), 'card-time')),
             row('⚔️', 'Vencidos', text('${sum['defeated']} · 👑 ${sum['bosses']}')),
+            // Perguntar o apelido ao capturar (vem desligado: a captura segue direto).
+            row('✏️', 'Apelido ao capturar', InkWell(
+              key: const ValueKey('card-ask-nick'),
+              onTap: () => setState(() => saveFactory({...currentFactory(), 'askNick': currentFactory()['askNick'] != true})),
+              child: Text(currentFactory()['askNick'] == true ? '✅ ${tr('SIM')}' : '⬜ ${tr('NÃO')}', style: value.copyWith(color: const Color(0xFFFACC15))),
+            )),
           ]),
         ),
       ]),
@@ -3335,6 +3409,23 @@ class _FactoryScreenState extends State<FactoryScreen> {
         Text(seen ? _name(pick) : '???', key: const ValueKey('dex-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: ink.copyWith(fontSize: 14)),
         const SizedBox(height: 2),
         SizedBox(height: 18, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [for (final t in types) Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: TypeChip(t))])),
+        // O texto da Pokédex (só de quem você já capturou), como nos jogos.
+        if (caught)
+          FutureBuilder(
+            future: _dexEntry(pick),
+            builder: (context, snap) {
+              final e = snap.data;
+              if (e == null) return const SizedBox.shrink();
+              String num1(int v) => (v / 10).toStringAsFixed(1).replaceAll('.', ',');
+              return Column(key: const ValueKey('dex-entry'), children: [
+                if (e.genus.isNotEmpty) Text('${tr('Pokémon')} ${e.genus}', maxLines: 1, overflow: TextOverflow.ellipsis, style: ink.copyWith(fontSize: 10, color: const Color(0xFFCBD5E1))),
+                Text('📏 ${num1(e.height)} m · ⚖️ ${num1(e.weight)} kg', key: const ValueKey('dex-size'), style: ink.copyWith(fontSize: 10)),
+                if (e.flavor.isNotEmpty)
+                  Text(e.flavor, key: const ValueKey('dex-flavor'), maxLines: 3, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                      style: ink.copyWith(fontSize: 9, fontWeight: FontWeight.w500, color: const Color(0xFFE2E8F0))),
+              ]);
+            },
+          ),
         Text(caught ? '✔ ${tr('Capturado')}' : seen ? '👁 ${tr('Visto')}' : '❔ ${tr('Não visto')}',
             key: const ValueKey('dex-status'), style: ink.copyWith(fontSize: 11, color: caught ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1))),
       ]),
@@ -3345,10 +3436,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
       return Expanded(
         child: InkWell(
           key: ValueKey('dex-$id'),
-          onTap: () => setState(() {
-            _dexPick = id;
-            _dexPage = page;
-          }),
+          onTap: () {
+            setState(() {
+              _dexPick = id;
+              _dexPage = page;
+            });
+            // O grito, como ao abrir um Pokémon na Pokédex dos jogos (só de quem você já capturou).
+            if (c) BattleSounds.cry(id);
+          },
           child: Container(
             margin: const EdgeInsets.all(1.5),
             decoration: BoxDecoration(
@@ -3890,9 +3985,30 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     : _panel == 'pc' && FactoryRun.atPc(run)
                         ? _pcPanel(run, close)
                         : null;
+    // A evolução (como nos jogos), uma de cada vez, antes do resultado do andar (saiu do resultado: acabou).
+    if (step != 'result' && _evoList != null) {
+      _evoList = null;
+      _evoTimer?.cancel();
+    }
+    if (step == 'result' && _learn == null && p!['seen'] != true) {
+      final key = '${run['floor']}-${p['exp']}-${run['leg']}';
+      if (_evoKey != key) {
+        final evs = <(int, int, int)>[
+          for (final l in (p['levels'] as List? ?? const []).cast<Map>())
+            if (l['evolved'] != null && _evoFrom((l['evolved'] as num).toInt()) != null)
+              ((l['index'] as num).toInt(), _evoFrom((l['evolved'] as num).toInt())!, (l['evolved'] as num).toInt())
+        ];
+        if (evs.isNotEmpty) {
+          _evoKey = key;
+          _evoList = evs;
+          _evoAt = 0;
+          _evoStart();
+        }
+      }
+    }
     // Esquecer um golpe para aprender o novo: a tela dos 5 golpes por cima de tudo (como nos jogos).
     // Subiu de nível (como nos jogos): "Fulano subiu para o nível 13!" com os atributos novos, antes de seguir.
-    if (step == 'result' && _learn == null && _quickResult(p!)) {
+    if (step == 'result' && _learn == null && _evoList == null && _quickResult(p!)) {
       final team = FactoryRun.teamOf(run);
       final ups = [
         for (final l in (p['levels'] as List? ?? const []).cast<Map>())
@@ -3907,14 +4023,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
       }
     }
     // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR).
-    if (step == 'result' && _learn == null && _lvList == null && !_autoResult && _quickResult(p!)) {
+    if (step == 'result' && _learn == null && _lvList == null && _evoList == null && !_autoResult && _quickResult(p!)) {
       _autoResult = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _afterResult(run, p, quick: true).whenComplete(() => _autoResult = false);
       });
     }
     if (step == 'result' && _learn != null && _learnStep == 'forget') _framePanel = _forgetPanel(run);
-    if (step == 'result' && _lvList != null) {
+    if (step == 'result' && _evoList != null) {
+      frame = _evolutionFrame(run);
+    } else if (step == 'result' && _lvList != null) {
       frame = _levelFrame(run, p!);
     } else if (step == 'result' && _learn != null && _learn!.isNotEmpty) {
       frame = _learnFrame(run, p!);
@@ -4188,6 +4306,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final evoFrom = evoTo == null ? null : _data?.evolutions.entries.where((e) => e.value.any((x) => x[0] == evoTo)).firstOrNull?.key;
     final beat = p['beat'] as Map?;
     final mission = p['mission'] as Map?;
+    final badge = p['badge'] as Map?;
+    // A fanfarra da insígnia, uma vez.
+    if (badge != null && _badgeKey != '${run['floor']}-${badge['name']}') {
+      _badgeKey = '${run['floor']}-${badge['name']}';
+      BattleSounds.play('badge', volume: 0.7);
+    }
     // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...). Igual ao site.
     final town = FactoryRun.inTown('${run['scene'] ?? 'grass'}');
     final (healerSprite, healerName) = town ? ('sd-nurse', 'Enfermeira Joy') : FactoryRun.healerOf(run);
@@ -4201,10 +4325,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
             else if (event != null)
               _far(Text(eventIcon, style: TextStyle(fontSize: w * 0.12)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
-            if (evoTo != null && evoFrom != null)
-              Positioned.fill(child: _EvolutionFx(from: evoFrom, to: evoTo)),
+            // A insígnia (como nos jogos): grande, brilhando, no alto do campo.
+            if (badge != null)
+              Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14))),
           ]),
       text: [
+        if (badge != null) ...[
+          Text('🏅 ${tr('Você recebeu a insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
+              key: const ValueKey('factory-badge'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),
+          if (badge['tm'] != null)
+            Text('💿 ${tr('{0} te deu o TM {1}!').replaceAll('{0}', '${badge['name']}').replaceAll('{1}', prettySlug('${badge['tm']}'))}',
+                key: const ValueKey('factory-badge-tm'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
         if (evoTo != null && evoFrom != null)
           Text('✨ ${tr('{0} evoluiu para {1}!').replaceAll('{0}', _name(evoFrom)).replaceAll('{1}', _name(evoTo))}',
               key: const ValueKey('factory-evolved'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD97706))),
@@ -4326,6 +4458,89 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Quantas ações há (a grade da rota conta cada botão dela).
   int _actionCount(List<Widget> extras) => extras.fold(0, (n, e) => n + (e is KeyedSubtree && e.key == const ValueKey('route-actions') ? _routeActionCount : 1));
   int _routeActionCount = 0;
+
+  /// A evolução (como nos jogos): "O quê? Fulano está evoluindo!", o brilho trocando as formas e PARAR (o B dos jogos);
+  /// terminando, a musiquinha e "Parabéns!". Uma de cada vez, antes do resultado do andar. Igual ao site.
+  List<(int, int, int)>? _evoList; // (posição no time, de, para)
+  String? _badgeKey; // a fanfarra da insígnia já tocou
+  int _evoAt = 0;
+  String? _evoKey;
+  String _evoPhase = 'run'; // run | done | stopped
+  Timer? _evoTimer;
+
+  /// De quem ele evoluiu (a forma de antes).
+  int? _evoFrom(int to) => _data?.evolutions.entries.where((e) => e.value.any((x) => x[0] == to)).firstOrNull?.key;
+
+  void _evoStart() {
+    _evoTimer?.cancel();
+    _evoPhase = 'run';
+    _evoTimer = Timer(const Duration(milliseconds: 2600), () {
+      if (!mounted || _evoList == null) return;
+      setState(() => _evoPhase = 'done');
+      BattleSounds.play('evolve', volume: 0.7);
+    });
+  }
+
+  void _evoStop(Json run) {
+    final e = _evoList?[_evoAt];
+    if (e == null || _evoPhase != 'run') return;
+    _evoTimer?.cancel();
+    setState(() => _evoPhase = 'stopped');
+    _save(FactoryRun.cancelEvolution(run, e.$1, e.$2));
+  }
+
+  void _evoNext() {
+    _evoTimer?.cancel();
+    setState(() {
+      _evoAt++;
+      if (_evoList == null || _evoAt >= _evoList!.length) {
+        _evoList = null;
+      } else {
+        _evoStart();
+      }
+    });
+  }
+
+  Widget _evolutionFrame(Json run) {
+    final e = _evoList![_evoAt];
+    final team = FactoryRun.teamOf(run);
+    final mon = e.$1 < team.length ? team[e.$1] : null;
+    final name = (mon?['nick'] as String?) ?? _name(e.$2);
+    final phase = _evoPhase;
+    return _frame(
+      run: run,
+      field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-evolution'), (w, h) => [
+            if (phase == 'run')
+              Positioned.fill(child: _EvolutionFx(key: ValueKey('evo-$_evoAt'), from: e.$2, to: e.$3))
+            else
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(gradient: RadialGradient(colors: [Color(0xBF1E293B), Color(0xF2020617)])),
+                  child: Center(
+                    child: SizedBox.square(
+                        key: ValueKey('evo-$phase'),
+                        dimension: w * 0.4,
+                        child: PokemonSprite(phase == 'done' ? e.$3 : e.$2, shiny: mon?['shiny'] == true, fill: 0.9, battle: true)),
+                  ),
+                ),
+              ),
+          ]),
+      text: [
+        Text(
+            phase == 'run'
+                ? tr('O quê? {0} está evoluindo!').replaceAll('{0}', name)
+                : phase == 'done'
+                    ? tr('Parabéns! {0} evoluiu para {1}!').replaceAll('{0}', name).replaceAll('{1}', _name(e.$3))
+                    : tr('Hã? {0} parou de evoluir.').replaceAll('{0}', name),
+            key: const ValueKey('evo-text'),
+            style: const TextStyle(fontWeight: FontWeight.w900)),
+        if (phase == 'run') Text(tr('Toque em PARAR para ele não evoluir agora.'), style: TextStyle(fontSize: 12, color: _dlgSub)),
+      ],
+      menu: phase == 'run'
+          ? _menuButton(tr('PARAR'), widget.busy ? null : () => _evoStop(run), key: const ValueKey('evo-stop'))
+          : _menuButton(tr('CONTINUAR'), _evoNext, key: const ValueKey('evo-continue')),
+    );
+  }
 
   /// Subiu de nível (como nos jogos): quem subiu, um de cada vez, com os atributos antes e depois. Passa sozinho em
   /// alguns segundos (ou com um toque). Igual ao site.
@@ -5229,9 +5444,12 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final shiny = foe['shiny'] == true;
     // Cada ovo no time ocupa uma vaga.
     final full = team.length >= FactoryRun.teamRoom(run);
-    void keep([int? replace]) {
-      final next = FactoryRun.capture(run, replace);
+    // Perguntar o apelido na captura (a opção do cartão do treinador; vem desligada). Igual ao site.
+    final askNick = currentFactory()['askNick'] == true;
+    void keep([int? replace, String? nick]) {
+      var next = FactoryRun.capture(run, replace);
       if (identical(next, run)) return;
+      if (nick != null && nick.trim().isNotEmpty && replace == null) next = FactoryRun.setNick(next, (where: 'team', index: FactoryRun.teamOf(next).length - 1), nick);
       final factory = currentFactory();
       final meta = FactoryRun.unlockShiny(factory, _data!, foe);
       if (!identical(meta, factory)) _unlocked = (foe['id'] as num).toInt();
@@ -5240,7 +5458,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
     // Com vaga no time: entra sozinho (sem CONTINUAR); a captura vai numa linha do resumo da tela seguinte. Só para
     // escolher (time cheio), ver o shiny (e tirar a foto) ou o ovo chocando e o fóssil revivido. Igual ao site.
-    if (!full && foe['egg'] != true && foe['fossil'] != true && !shiny && !_autoCapture) {
+    if (!full && !askNick && foe['egg'] != true && foe['fossil'] != true && !shiny && !_autoCapture) {
       _autoCapture = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _autoCapture = false;
@@ -5297,13 +5515,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
               '${switch (FactoryRun.genderOf(_data!, mon)) { 'F' => '♀ ', 'M' => '♂ ', _ => '' }}${tr('Nature')}: ${mon['nature']}${FactoryRun.isRegionalForm((mon['id'] as num).toInt()) ? ' · 🌍 ${tr('forma regional')}' : ''}',
               color: const Color(0xFF0369A1)),
         if (full) _small(tr('Time cheio: escolha quem sai ou mande para o PC.')),
+        if (!full && askNick) _small(tr('Dar um apelido a {0}?').replaceAll('{0}', _name(foe['id']))),
       ],
       menu: full
           ? _menuGrid([
               if (toPc) _menuButton('💻 ${tr('PARA O PC')}', () => keep(FactoryRun.toPc), key: const ValueKey('factory-to-pc')),
               _menuButton(tr('SOLTAR'), () => _save(FactoryRun.skipCapture(run)), key: const ValueKey('factory-release')),
             ])
-          : _menuGrid([_menuButton(tr('CONTINUAR'), () => keep(), key: const ValueKey('factory-continue')), if (FactoryRun.photoNow(run) != null) _photoButton(run)]),
+          : _menuGrid([
+              if (askNick)
+                _menuButton('✏️ ${tr('APELIDO')}', () async {
+                  final nick = await _askNickname(_name(foe['id']));
+                  if (nick != null && mounted) keep(null, nick);
+                }, key: const ValueKey('capture-nick')),
+              _menuButton(tr('CONTINUAR'), () => keep(), key: const ValueKey('factory-continue')),
+              if (FactoryRun.photoNow(run) != null) _photoButton(run),
+            ]),
       tools: full ? tools : null,
     );
   }
@@ -6009,8 +6236,39 @@ const _villainLines = [
 
 /// A evolução, como nos jogos: o Pokémon fica branco e pisca alternando com a forma nova, cada vez mais rápido, até ela
 /// aparecer com brilho. Igual ao site (EvolutionFx).
+/// A insígnia recebida (como nos jogos): um losango na cor do tipo do ginásio, crescendo e brilhando. Igual ao site.
+class _BadgeShine extends StatelessWidget {
+  const _BadgeShine({required this.color, required this.size});
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        key: const ValueKey('badge-shine'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.elasticOut,
+        builder: (context, v, _) => Transform.scale(
+          scale: v,
+          child: Transform.rotate(
+            angle: pi / 4 + (1 - v) * pi,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [Color.lerp(color, Colors.white, 0.55)!, color, Color.lerp(color, Colors.black, 0.3)!], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                border: Border.all(color: Colors.white, width: 3),
+                borderRadius: BorderRadius.circular(size * 0.12),
+                boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.8 * v.clamp(0, 1)), blurRadius: size * 0.4, spreadRadius: size * 0.04)],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
 class _EvolutionFx extends StatefulWidget {
-  const _EvolutionFx({required this.from, required this.to});
+  const _EvolutionFx({super.key, required this.from, required this.to});
   final int from, to;
 
   @override

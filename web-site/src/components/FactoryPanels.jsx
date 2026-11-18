@@ -15,7 +15,7 @@ import BwParty from './BwParty'
 import { SUMMARY_STATS } from './BwSummary'
 import { TRAINER_ADULT_PX, TrainerSprite } from './Trainer'
 import { Button, SearchInput, TypeBadge } from './ui'
-import { getFactoryData, getMoves, shinyPath, spriteUrl } from '../lib/data'
+import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../lib/data'
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, setNick, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -32,9 +32,9 @@ import {
   heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
   expAt,
 } from '../lib/factoryRun'
-import { playSound, startMusic, stopMusic } from '../lib/battleSound'
+import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
-import { language, localText, t } from '../lib/i18n'
+import { language, localText, pick as pickText, t } from '../lib/i18n'
 import { prettyName, typeColor } from '../lib/pokemon'
 import { usePokemonIndex } from '../lib/pokemonIndex'
 import { prettySlug } from '../lib/teamSets'
@@ -54,8 +54,23 @@ export const PIECE_INFO = {
 /** Os itens em linha ("🔮 2 · 💎 0..."), só os que têm (ou todos, com all). */
 export const piecesLine = (pieces, all = false) => Object.entries(pieces).filter(([, n]) => all || n > 0).map(([item, n]) => `${PIECE_INFO[item][0]} ${n}`).join(' · ')
 
+/** O tempo de jogo da corrida: soma o tempo desde o último save (até 15 min: parado mais que isso não conta). Igual ao app. */
+let playTick = null
+function withPlayTime(factory) {
+  const now = Date.now()
+  const last = playTick
+  playTick = now
+  if (!factory?.run || last == null) return factory
+  return { ...factory, run: { ...factory.run, playMs: (factory.run.playMs ?? 0) + Math.min(15 * 60 * 1000, Math.max(0, now - last)) } }
+}
+/** O tempo de jogo como nos jogos: "2h 05min" ou "12 min". */
+export const playTimeText = (ms) => {
+  const min = Math.floor((ms ?? 0) / 60000)
+  return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min} min`
+}
 /** Salva a Factory (meta e corrida) na conta. */
 export const saveFactory = (factory) => {
+  factory = withPlayTime(factory)
   // As missões do dia andam com o que mudou na corrida.
   factory = trackDaily(factoryOf(useStore.getState().league), factory)
   // Os vistos na corrida vão para a Pokédex (visto × capturado). Igual ao app.
@@ -968,6 +983,7 @@ export function FactoryHub({ onContinue, busy }) {
           <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
           {run.cards.length > 0 && <p className="text-xs text-muted">{t('Cartas')}: {run.cards.map((c) => t(CARDS[c].label)).join(' · ')}</p>}
           {(run.relics ?? []).length > 0 && <p className="text-xs text-muted" data-testid="factory-relics">🏺 {t('Relíquias')}: {run.relics.map((c) => `${RELICS[c].icon} ${t(RELICS[c].label)}`).join(' · ')}</p>}
+          <ContinueCard run={run} data={data} />
           <div className="flex flex-wrap gap-2">
             <Button data-testid="factory-continue-run" disabled={busy} onClick={onContinue}>🗺️ {t('Continuar a corrida')}</Button>
             <Button color="#64748b" onClick={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))}>{t('Desistir (recebe as moedas)')}</Button>
@@ -2029,9 +2045,23 @@ const HELP = [
   ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
   ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
 ]
+/** Como o "Continuar" dos jogos: o treinador, a região, as insígnias, a Pokédex e o tempo de jogo. Igual ao app. */
+function ContinueCard({ run, data }) {
+  const me = useMyTrainer()
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-slate-200 bg-blue-900 px-3 py-2 font-['Pixelify_Sans',monospace] text-sm text-white" data-testid="factory-continue-card">
+      {me && <span>👤 {me.name}</span>}
+      {data?.bosses?.[run.boss.region] && <span>🗺️ {data.bosses[run.boss.region].region}</span>}
+      <span>🏅 {run.badges ?? 0}</span>
+      <span>📖 {dexOf(run).length}</span>
+      <span data-testid="factory-play-time">⏱️ {playTimeText(run.playMs)}</span>
+    </div>
+  )
+}
+
 /** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
  * vitórias. Fica na AJUDA (🪪). Igual ao app. */
-function TrainerCard({ data, run, onDex = null }) {
+function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null }) {
   const me = useMyTrainer()
   const [ref, width] = useWidth()
   const game = data?.bosses?.[run.boss.region]
@@ -2054,7 +2084,10 @@ function TrainerCard({ data, run, onDex = null }) {
         {row('💰', 'Dinheiro', run.money ?? 0, 'card-money')}
         {row('📖', 'Pokédex', <>{dexOf(run).length}{onDex && <button type="button" className="cursor-pointer text-yellow-400" onClick={onDex} data-testid="card-open-dex">{t('ABRIR')} ▸</button>}</>, 'card-dex')}
         {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
+        {row('⏱️', 'Tempo de jogo', playTimeText(run.playMs), 'card-time')}
         {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
+        {/* Perguntar o apelido ao capturar (vem desligado: a captura segue direto). Igual ao app. */}
+        {onAskNick && row('✏️', 'Apelido ao capturar', <button type="button" className="cursor-pointer text-yellow-400" onClick={onAskNick} data-testid="card-ask-nick">{askNick ? `✅ ${t('SIM')}` : `⬜ ${t('NÃO')}`}</button>)}
       </div>
     </div>
   )
@@ -2083,6 +2116,15 @@ function DexPanel({ factory, data, run, name, onClose }) {
   const types = caught ? data.species[pick]?.[4] ?? [] : []
   const first = shown[0] ?? 1
   const black = { filter: 'brightness(0)' }
+  // O texto da Pokédex (só de quem você já capturou), como nos jogos: a espécie, a descrição, a altura e o peso.
+  const [entry, setEntry] = useState(null)
+  useEffect(() => {
+    let live = true
+    setEntry(null)
+    if (caught) getSpecies(pick).then((sp) => live && sp && setEntry({ id: pick, genus: pickText(sp.genus, sp.genera), flavor: pickText(sp.flavor, sp.flavors), height: sp.forms?.[0]?.height ?? 0, weight: sp.forms?.[0]?.weight ?? 0 })).catch(() => {})
+    return () => { live = false }
+  }, [pick, caught])
+  const num1 = (v) => (v / 10).toFixed(1).replace('.', ',')
   return (
     <div className="flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size', background: '#b3262b' }} data-testid="dex-panel">
       <OverlayClose onClose={onClose} title={`📖 ${t('Pokédex')} · ✔ ${book.caught.size} · 👁 ${book.seen.size} / ${all.length}`} />
@@ -2094,6 +2136,13 @@ function DexPanel({ factory, data, run, name, onClose }) {
           </div>
           <p className="w-full truncate text-center text-[2.2cqw]" data-testid="dex-name">{seen ? name(pick) : '???'}</p>
           <div className="flex h-[2.6cqw] items-center justify-center gap-1">{types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+          {caught && entry?.id === pick && (
+            <div className="w-full text-center" data-testid="dex-entry">
+              {entry.genus && <p className="truncate text-[1.3cqw] text-slate-300">{t('Pokémon')} {entry.genus}</p>}
+              <p className="text-[1.3cqw]" data-testid="dex-size">📏 {num1(entry.height)} m · ⚖️ {num1(entry.weight)} kg</p>
+              {entry.flavor && <p className="line-clamp-3 text-[1.15cqw] leading-snug text-slate-200" data-testid="dex-flavor">{entry.flavor}</p>}
+            </div>
+          )}
           <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-8 grid-rows-4 gap-[0.3cqw]">
@@ -2101,7 +2150,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
             const c = book.caught.has(id)
             const on = id === pick
             return (
-              <button key={id} type="button" onClick={() => { setPick(id); setPage(page) }} data-testid={`dex-${id}`}
+              <button key={id} type="button" onClick={() => { setPick(id); setPage(page); if (c) playCry(id) }} data-testid={`dex-${id}`}
                 className={`relative min-h-0 cursor-pointer overflow-hidden rounded-[0.5cqw] ${on ? 'border-2 border-yellow-400 bg-[#3b4252]' : 'border border-[#4b5563] bg-[#14161ccc]'}`}>
                 <span className={`absolute left-[0.3cqw] top-0 text-[1.1cqw] ${c ? 'text-white' : 'text-slate-400'}`}>{id}</span>
                 {c && <span className="absolute right-[0.3cqw] top-0 text-[1.1cqw] text-red-500">●</span>}
@@ -2125,7 +2174,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
   )
 }
 
-function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null }) {
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
   const [card, setCard] = useState(false)
@@ -2134,7 +2183,7 @@ function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data
   return (
     <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
       <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
-      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
         {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
           <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
             <p className="text-[2.2cqw]">{icon} {t(title)}</p>
@@ -2590,6 +2639,21 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     return () => { live = false; clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv?.key, lv?.at])
+  // A evolução (como nos jogos): "O quê? Fulano está evoluindo!", o brilho trocando as formas e PARAR (o B dos jogos);
+  // terminando, a musiquinha e "Parabéns!". Uma de cada vez, antes do resultado. { list: [[posição, de, para]], at, phase }.
+  const [evo, setEvo] = useState(null)
+  const evoShown = useRef(null)
+  useEffect(() => {
+    if (!evo || evo.phase !== 'run') return
+    const timer = setTimeout(() => {
+      setEvo((e) => (e && e.at === evo.at && e.phase === 'run' ? { ...e, phase: 'done' } : e))
+      playSound('evolve', 0.7)
+    }, 2600)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evo?.at, evo?.phase])
+  // A fanfarra da insígnia (uma vez).
+  const badgeShown = useRef(null)
   // O PC no Centro Pokémon da cidade (aberto).
   const [pcOpen, setPcOpen] = useState(false)
   const [unlocked, setUnlocked] = useState(null)
@@ -2646,7 +2710,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel data={data} run={run} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+      <HelpPanel data={data} run={run} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -2773,14 +2837,24 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   }
   const step = stepOf(p)
   // Subiu de nível: o quadro com os atributos novos antes de seguir (como nos jogos).
-  const lvUps = step === 'result' && !learn && quickResult(p) ? (p.levels ?? []).filter((l) => !l.friend && run.team[l.index] && l.to > l.from) : []
+  const lvUps = step === 'result' && !learn && !evo && quickResult(p) ? (p.levels ?? []).filter((l) => !l.friend && run.team[l.index] && l.to > l.from) : []
   const lvKey = step === 'result' ? `${run.floor}-${JSON.stringify(p.levels ?? [])}` : null
   if (lvUps.length && lvShown.current !== lvKey) {
     lvShown.current = lvKey
     setLv({ key: lvKey, list: lvUps, at: 0, stats: null })
   }
+  // A evolução, uma de cada vez, antes do resultado do andar (saiu do resultado: acabou).
+  if (evo && step !== 'result') setEvo(null)
+  const evoKey = step === 'result' && !learn && !p.seen ? `${run.floor}-${p.exp}-${run.leg}` : null
+  if (evoKey && evoShown.current !== evoKey) {
+    const list = (p.levels ?? []).filter((l) => l.evolved && preEvolution(data, l.evolved)).map((l) => [l.index, preEvolution(data, l.evolved), l.evolved])
+    if (list.length) {
+      evoShown.current = evoKey
+      setEvo({ list, at: 0, phase: 'run' })
+    }
+  }
   // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR); com nível, depois do quadro.
-  if (step === 'result' && !learn && !lv && !autoResult.current && quickResult(p) && (!lvUps.length || lvDone.current === lvKey)) {
+  if (step === 'result' && !learn && !lv && !evo && !autoResult.current && quickResult(p) && (!lvUps.length || lvDone.current === lvKey)) {
     autoResult.current = true
     setTimeout(() => afterResult(true).finally(() => { autoResult.current = false }), 0)
   }
@@ -2813,7 +2887,32 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       )
   }
 
-  if (step === 'result' && lv) {
+  if (step === 'result' && evo) {
+    const [i, from, to] = evo.list[evo.at]
+    const mon = run.team[i]
+    const nm = mon?.nick ?? name(from)
+    const pe = byId?.get(evo.phase === 'done' ? to : from)
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-evolution">
+        {evo.phase === 'run' ? <EvolutionFx key={evo.at} from={from} to={to} byId={byId} /> : (
+          <div className="absolute inset-0 z-30 flex items-center justify-center" style={{ background: 'radial-gradient(#1e293bbf, #020617f2)' }}>
+            <div className="relative aspect-square w-[40%]" data-testid={`evo-${evo.phase}`}>{pe && <Sprite path={mon?.shiny ? shinyPath(pe.sprite) : pe.sprite} box={pe.box} fill={0.9} align="bottom" battle alt={pe.name} />}</div>
+          </div>
+        )}
+      </Field>
+    )
+    text = (
+      <>
+        <p className="font-black" data-testid="evo-text" data-no-translate>{evo.phase === 'run' ? t('O quê? {0} está evoluindo!').replace('{0}', nm) : evo.phase === 'done' ? t('Parabéns! {0} evoluiu para {1}!').replace('{0}', nm).replace('{1}', name(to)) : t('Hã? {0} parou de evoluir.').replace('{0}', nm)}</p>
+        {evo.phase === 'run' && <p className="dlg-sub text-sm">{t('Toque em PARAR para ele não evoluir agora.')}</p>}
+      </>
+    )
+    menu = evo.phase === 'run' ? (
+      <MenuButton disabled={busy} onClick={() => { setEvo({ ...evo, phase: 'stopped' }); save(cancelEvolution(run, i, from)) }} testid="evo-stop">{t('PARAR')}</MenuButton>
+    ) : (
+      <MenuButton onClick={() => setEvo(evo.at + 1 < evo.list.length ? { ...evo, at: evo.at + 1, phase: 'run' } : null)} testid="evo-continue">{t('CONTINUAR')}</MenuButton>
+    )
+  } else if (step === 'result' && lv) {
     const l = lv.list[lv.at]
     const mon = run.team[l.index]
     const st = lv.stats
@@ -2864,19 +2963,26 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     const event = p.event
     const here = run.scene ?? 'grass'
     const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
-    // A primeira evolução do andar, com a animação dos jogos.
+    // A evolução do andar (a cena dela veio antes).
     const evo = p.levels?.find((l) => l.evolved)
     const evoFrom = evo ? preEvolution(data, evo.evolved) : null
+    if (p.badge && badgeShown.current !== `${run.floor}-${p.badge.name}`) {
+      badgeShown.current = `${run.floor}-${p.badge.name}`
+      playSound('badge', 0.7)
+    }
     field = (
       <Field biome={here} fieldRef={fieldRef} testid="factory-result">
         {shown && <FarStand scene={here}>{shown}</FarStand>}
         {!shown && event && <FarStand scene={here}><span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span></FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
-        {evo && evoFrom && <EvolutionFx from={evoFrom} to={evo.evolved} byId={byId} />}
+        {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
+        {p.badge && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
       </Field>
     )
     text = (
       <>
+        {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
+        {p.badge?.tm && <p className="text-sm font-semibold" data-testid="factory-badge-tm" data-no-translate>💿 {t('{0} te deu o TM {1}!').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.tm))}</p>}
         {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}
         {p.center ? (
           <p data-testid="factory-center">{town ? `🏥 ${t('Centro Pokémon: o seu time foi curado!')}` : <>⛺ {t('{0} cuidou do seu time: todos curados!').replace('{0}', healerName)}</>}</p>
@@ -2977,9 +3083,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // Cada ovo no time ocupa uma vaga.
     const full = run.team.length >= teamRoom(run)
     const dexReward = dexRewardFor(run, mon.id)
-    const keep = (replace) => {
-      const next = capture(run, replace)
+    // Perguntar o apelido na captura (a opção do cartão do treinador; vem desligada). Igual ao app.
+    const askNick = Boolean(factory.askNick)
+    const keep = (replace, nick = null) => {
+      let next = capture(run, replace)
       if (next === run) return
+      if (nick?.trim() && replace == null) next = setNick(next, { where: 'team', index: next.team.length - 1 }, nick)
       const meta = unlockShiny(factory, data, mon)
       if (meta !== factory) setUnlocked(mon.id)
       const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
@@ -3010,11 +3119,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           return <p className="text-sm text-sky-700 dark:text-sky-300" data-testid="capture-preview">{({ F: '♀ ', M: '♂ ' })[genderOf(data, c)] ?? ''}{t('Nature')}: {c.nature}{isRegionalForm(c.id) ? ` · 🌍 ${t('forma regional')}` : ''}</p>
         })()}
         {full && <p className="text-sm">{t('Time cheio: escolha quem sai ou mande para o PC.')}</p>}
+        {!full && askNick && <p className="text-sm" data-testid="capture-ask-nick">{t('Dar um apelido a {0}?').replace('{0}', name(mon.id))}</p>}
       </>
     )
     // Com vaga no time: entra sozinho (sem CONTINUAR); a captura vai numa linha do resumo da tela seguinte. Só para
     // escolher (time cheio), ver o shiny (e tirar a foto) ou o ovo chocando e o fóssil revivido. Igual ao app.
-    if (!full && !mon.egg && !mon.fossil && !mon.shiny && !autoCapture.current) {
+    if (!full && !askNick && !mon.egg && !mon.fossil && !mon.shiny && !autoCapture.current) {
       autoCapture.current = true
       const isNew = !dexOf(run).includes(mon.id)
       const line = [
@@ -3040,6 +3150,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </>
     ) : (
       <>
+        {askNick && <MenuButton onClick={() => { const nick = window.prompt(t('Dar um apelido a {0}?').replace('{0}', name(mon.id)), ''); if (nick != null) keep(null, nick.slice(0, 12)) }} testid="capture-nick">✏️ {t('APELIDO')}</MenuButton>}
         <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
         {photoNow(run) && <MenuButton disabled={!takePhoto(run, photoNow(run))} onClick={() => save(takePhoto(run, photoNow(run)))} testid="factory-photo">📸 {t(takePhoto(run, photoNow(run)) ? 'FOTO' : 'FOTO GUARDADA')}</MenuButton>}
       </>

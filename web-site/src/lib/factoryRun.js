@@ -3144,7 +3144,7 @@ export function winFloor(run, data, after = {}) {
   const pieces = piecesFor(data, run)
   const dropped = Object.keys(pieces).length > 0
   if (dropped) out.pieces = addPieces(piecesOf(run), pieces)
-  let champion = false, hm = null, key = null, placeReward = null
+  let champion = false, hm = null, key = null, placeReward = null, badge = null
   if (run.encounter.blocker) out.blockLeg = legOf(run)
   // Venceu a revanche: o Campeão some (até o próximo).
   if (kind === 'rival') out.rivalRaces = (run.rivalRaces ?? 0) + 1
@@ -3193,6 +3193,11 @@ export function winFloor(run, data, after = {}) {
       else hm = null
       // O item-chave que o ginásio dá (a Squirt Bottle depois da Whitney, em Goldenrod).
       key = addKey(out, featuresOf(data, run).keys?.gym) ?? key
+      // A insígnia (a cena dela) e o TM do líder, como nos jogos.
+      const type = leaderType(data, beaten)
+      const tm = gymTmOf(data, type, out.badges)
+      if (tm) out.tms = { ...(out.tms ?? run.tms ?? {}), [tm]: ((out.tms ?? run.tms ?? {})[tm] ?? 0) + 1 }
+      badge = { name: beaten.name, type, ...(tm ? { tm } : {}) }
     }
     if (beaten.kind === 'champion') {
       out.champions = (run.champions ?? 0) + 1
@@ -3280,6 +3285,7 @@ export function winFloor(run, data, after = {}) {
     ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region, ...(kind === 'boss' && bossCity(data, run) ? { city: bossCity(data, run) } : {}) } } : {}),
     ...(mission ? { mission } : {}),
     ...(hm ? { hm } : {}),
+    ...(badge ? { badge } : {}),
     ...(key ? { key } : {}),
     ...(placeReward ? { placeReward } : {}),
     ...(fled ? { fled: roamer } : {}),
@@ -3528,6 +3534,26 @@ function addDex(out, id) {
  * mar; Rock Smash quebra uma rocha (um selvagem raro de pedra); Dive leva ao fundo do mar; Strength empurra uma pedra
  * (um treinador forte, que sempre deixa um item); Waterfall sobe a cachoeira do Mar até a gruta atrás dela.
  */
+/** O TM que o líder dá junto com a insígnia (como nos jogos): um golpe do tipo do ginásio (o seguinte a cada insígnia). Igual ao app. */
+export const GYM_TMS = {
+  normal: ['facade', 'body-slam', 'hyper-voice'], fire: ['flamethrower', 'fire-blast', 'overheat'], water: ['water-pulse', 'surf', 'scald'], grass: ['giga-drain', 'energy-ball'],
+  electric: ['shock-wave', 'thunderbolt', 'volt-switch'], ice: ['icy-wind', 'ice-beam', 'avalanche'], fighting: ['brick-break', 'aura-sphere'], poison: ['sludge-bomb', 'venoshock'],
+  ground: ['dig', 'earthquake', 'bulldoze'], flying: ['aerial-ace', 'air-slash', 'acrobatics'], psychic: ['psychic', 'psyshock'], bug: ['u-turn', 'struggle-bug', 'x-scissor'],
+  rock: ['rock-tomb', 'stone-edge', 'rock-slide'], ghost: ['shadow-ball', 'hex', 'shadow-claw'], dragon: ['dragon-claw', 'dragon-pulse', 'dragon-tail'], dark: ['dark-pulse', 'payback', 'snarl'],
+  steel: ['iron-tail', 'flash-cannon', 'steel-wing'], fairy: ['dazzling-gleam', 'draining-kiss'],
+}
+/** O TM do líder vencido (o n-ésimo da lista do tipo, pelas insígnias), ou null. */
+export function gymTmOf(data, type, badges) {
+  const list = (GYM_TMS[type] ?? []).filter((m) => (data.tms ?? []).includes(m))
+  return list.length ? list[(Math.max(1, badges) - 1) % list.length] : null
+}
+/** Parou a evolução (como apertar B nos jogos): ele volta a ser o de antes; tenta de novo no próximo nível. Igual ao app. */
+export function cancelEvolution(run, index, from) {
+  const mon = run.team[index]
+  const p = run.pending
+  if (!mon || !p?.levels?.some((l) => l.index === index && l.evolved)) return run
+  return { ...run, team: run.team.map((m, i) => (i === index ? { ...m, id: from } : m)), pending: { ...p, levels: p.levels.map((l) => (l.index === index && l.evolved ? { ...l, evolved: null, stopped: true } : l)) } }
+}
 export const HM_BADGES = { 1: 'cut', 2: 'flash', 3: 'surf', 4: 'rock-smash', 5: 'dive', 6: 'strength', 7: 'waterfall' }
 /** Tem a MO: ganhou com a insígnia ou um Pokémon do time sabe o golpe (não precisa passar do ginásio). */
 export const hasHm = (run, hm) => (run.hms ?? []).includes(hm) || (run.team ?? []).some((m) => (m?.moves ?? []).includes(hm))

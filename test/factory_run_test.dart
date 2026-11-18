@@ -526,6 +526,29 @@ void main() {
         }()
     ];
     expect(norm(gyms), expected['gyms']);
+    // Venceu o líder: a insígnia e o TM dele; e parar a evolução (as mesmas no site).
+    final redLeaders = (data.bosses[red]['leaders'] as List).cast<Map>();
+    expect(redLeaders.indexWhere((l) => l['kind'] == 'gym'), expected['gymStep']);
+    final gymLeaders = [for (final l in redLeaders) if (l['kind'] == 'gym') l].take(3).toList();
+    final badges = [
+      for (final (n, l) in gymLeaders.indexed)
+        () {
+          final won = FactoryRun.winFloor({
+            ...gym(5), 'badges': n,
+            'encounter': {'kind': 'boss', 'boss': {...l, 'region': 'Kanto'}, 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]},
+          }, data);
+          return [won['pending']['badge'], won['tms'], won['badges']];
+        }()
+    ];
+    expect(norm(badges), expected['badges']);
+    final base = gym(5);
+    final evo = {
+      ...base,
+      'team': [{...(base['team'] as List).first as Map, 'id': 5}],
+      'pending': {'levels': [{'index': 0, 'from': 15, 'to': 16, 'evolved': 5}]},
+    };
+    final stopped = FactoryRun.cancelEvolution(evo, 0, 4);
+    expect(norm([stopped['team'][0]['id'], stopped['pending']['levels']]), expected['stopped']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

@@ -1984,7 +1984,17 @@ function round14Trace(F) {
     for (const i of [-1, 0, 1, 2, 3, 1, 0, 2, 5, 4, 7, 6]) played = F.puzzleAct(played, data, i)
     return [name, r.pending.puzzle, F.puzzleView(r), played.pending.puzzle, F.puzzleView(played)]
   })
-  return { puzzles, wild, berry, gyms }
+  // Venceu o líder: a insígnia e o TM dele; e parar a evolução (as mesmas no app).
+  const gymStep = data.bosses[red].leaders.findIndex((l) => l.kind === 'gym')
+  const leaders = data.bosses[red].leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym').slice(0, 3)
+  const badges = leaders.map(([l], n) => {
+    const won = F.winFloor({ ...gym(5), badges: n, encounter: { kind: 'boss', boss: { ...l, region: 'Kanto' }, foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data)
+    return [won.pending.badge, won.tms, won.badges]
+  })
+  const base = gym(5)
+  const evo = { ...base, team: [{ ...base.team[0], id: 5 }], pending: { levels: [{ index: 0, from: 15, to: 16, evolved: 5 }] } }
+  const stopped = F.cancelEvolution(evo, 0, 4)
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels] }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

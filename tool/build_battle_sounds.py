@@ -216,6 +216,34 @@ def sfx_victory():
     return out
 
 
+def sfx_evolve():
+    """A evolução terminou (original): um arpejo subindo, brilhante, e uma nota longa no fim."""
+    beat = 0.11
+    lead = seq([pulse(freq(m), beat * d, 0.25) * env(int(RATE * beat * d), 0.003, 0.03) * 0.33
+                for m, d in [(67, 1), (71, 1), (74, 1), (79, 2), (78, 1), (79, 1), (83, 2), (86, 5)]])
+    bass = seq([triangle(freq(m), beat * d) * env(int(RATE * beat * d), 0.003, 0.04) * 0.45 for m, d in [(43, 3), (47, 3), (50, 3), (55, 5)]])
+    n = max(len(lead), len(bass))
+    out = np.zeros(n)
+    out[: len(lead)] += lead
+    out[: len(bass)] += bass
+    return out
+
+
+def sfx_badge():
+    """Recebeu a insígnia (original): fanfarra curta e solene, terminando num acorde aberto."""
+    beat = 0.13
+    lead = seq([pulse(freq(m), beat * d, 0.25) * env(int(RATE * beat * d), 0.003, 0.03) * 0.34
+                for m, d in [(67, 2), (72, 1), (74, 1), (76, 2), (74, 1), (76, 1), (79, 6)]])
+    harm = seq([pulse(freq(m), beat * d, 0.125) * env(int(RATE * beat * d), 0.003, 0.03) * 0.18
+                for m, d in [(64, 2), (67, 2), (71, 2), (72, 2), (76, 6)]])
+    bass = seq([triangle(freq(m), beat * d) * env(int(RATE * beat * d), 0.003, 0.04) * 0.5 for m, d in [(48, 4), (53, 4), (48, 6)]])
+    n = max(len(lead), len(harm), len(bass))
+    out = np.zeros(n)
+    for part in (lead, harm, bass):
+        out[: len(part)] += part
+    return out
+
+
 # ------------------------------------------------------------------ música
 
 BPM = 152
@@ -3936,6 +3964,8 @@ def main():
         'victory': sfx_victory,
         'lowhp': sfx_lowhp,
         'center': sfx_center,
+        'evolve': sfx_evolve,
+        'badge': sfx_badge,
     }
     # Só alguns: python3 tool/build_battle_sounds.py shiny | music | map_kalos | mega ...
     only = sys.argv[1:]

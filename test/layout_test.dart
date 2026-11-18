@@ -325,6 +325,9 @@ final screens = <String, Widget Function()>{
   'Battle Factory (desafio Janine, deitada)': () => _factory({'puzzle': {"kind": "pairs", "type": "rock", "gym": "Janine", "done": false, "won": false, "cols": 4, "rows": 3, "cards": [278, 602, 690, 675, 650, 690, 166, 650, 675, 166, 278, 602], "found": [], "open": [0, 1], "left": 4}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
   'Battle Factory (desafio Fantina, deitada)': () => _factory({'puzzle': {"kind": "quiz", "type": "rock", "gym": "Fantina", "done": false, "won": false, "qs": [{"q": "math", "a": 4, "b": 7, "op": "×", "nums": true, "options": [28, 25, 26, 31], "answer": 0}, {"q": "math", "a": 3, "b": 4, "op": "×", "nums": true, "options": [12, 13, 10, 11], "answer": 0}, {"q": "math", "a": 12, "b": 5, "op": "-", "nums": true, "options": [7, 6, 10, 4], "answer": 0}, {"q": "math", "a": 37, "b": 26, "op": "-", "nums": true, "options": [8, 11, 9, 14], "answer": 1}, {"q": "math", "a": 44, "b": 16, "op": "-", "nums": true, "options": [31, 28, 27, 25], "answer": 1}], "at": 0, "right": 0, "need": 4}}, null, {'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
   'Battle Factory (cartão do treinador, deitada)': () => _factory(null, {'floor': 3, 'biome': 'forest', 'options': [{'kind': 'wild', 'biome': 'forest'}, {'kind': 'trainer'}]}, {'leg': 1, 'badges': 2, 'defeated': 31, 'bosses': 4}),
+  // A evolução (como nos jogos) e a insígnia com o TM do líder.
+  'Battle Factory (evolução)': () => _factory({'exp': 300, 'money': 120, 'levels': [{'index': 0, 'from': 15, 'to': 16, 'evolved': 5}], 'joy': false, 'capture': null, 'cards': null, 'shop': null}),
+  'Battle Factory (insígnia)': () => _factory({'exp': 300, 'money': 900, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'beat': {'kind': 'gym', 'name': 'Brock'}, 'badge': {'name': 'Brock', 'type': 'rock', 'tm': 'rock-tomb'}, 'hm': 'cut'}),
   // O desafio do ginásio na cidade (o botão junto do líder).
   'Battle Factory (cidade, desafio)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion'], 'got': ['old-rod']}, 'keyItems': ['old-rod']}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
@@ -639,6 +642,19 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     await tester.tap(find.byKey(const ValueKey('dex-gen-4')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const ValueKey('dex-387')), findsOneWidget);
+  },
+  'Battle Factory (evolução)': (tester) async {
+    expect(find.byKey(const ValueKey('evo-text')), findsOneWidget);
+    expect(find.byKey(const ValueKey('evo-stop')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2800));
+    expect(find.byKey(const ValueKey('evo-continue')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('evo-continue')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('factory-evolved')), findsOneWidget);
+  },
+  'Battle Factory (insígnia)': (tester) async {
+    expect(find.byKey(const ValueKey('factory-badge')), findsOneWidget);
+    expect(find.byKey(const ValueKey('factory-badge-tm')), findsOneWidget);
   },
   'Battle Factory (álbum)': (tester) async {
     await _openTown(tester, 'factory-album');

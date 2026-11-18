@@ -591,6 +591,11 @@
   "fr": "AIDER",
   "es": "AYUDAR"
  },
+ "APELIDO": {
+  "en": "NICKNAME",
+  "fr": "SURNOM",
+  "es": "MOTE"
+ },
  "APOSTAR": {
   "en": "BET",
   "fr": "PARIER",
@@ -1189,6 +1194,11 @@
   "en": "Nickname (optional)",
   "fr": "Surnom (facultatif)",
   "es": "Mote (opcional)"
+ },
+ "Apelido ao capturar": {
+  "en": "Nickname on capture",
+  "fr": "Surnom à la capture",
+  "es": "Mote al capturar"
  },
  "App e site": {
   "en": "App and website",
@@ -3434,6 +3444,11 @@
   "en": "Go around",
   "fr": "Faire le tour",
   "es": "Dar la vuelta"
+ },
+ "Dar um apelido a {0}?": {
+  "en": "Give a nickname to {0}?",
+  "fr": "Donner un surnom à {0} ?",
+  "es": "¿Ponerle un mote a {0}?"
  },
  "Dauntless Shield ao entrar": {
   "en": "Dauntless Shield on entry",
@@ -5807,6 +5822,11 @@
   "en": "Hyper Potions",
   "fr": "Hyper Potions",
   "es": "Hyper Potions"
+ },
+ "Hã? {0} parou de evoluir.": {
+  "en": "Huh? {0} stopped evolving!",
+  "fr": "Hein ? {0} a arrêté d'évoluer !",
+  "es": "¿Eh? ¡{0} dejó de evolucionar!"
  },
  "ISCA": {
   "en": "BAIT",
@@ -8213,6 +8233,11 @@
   "fr": "Le quiz du robot de Lem",
   "es": "El quiz del robot de Lem"
  },
+ "O quê? {0} está evoluindo!": {
+  "en": "What? {0} is evolving!",
+  "fr": "Quoi ? {0} évolue !",
+  "es": "¿Qué? ¡{0} está evolucionando!"
+ },
  "O relógio de flores da Gardenia": {
   "en": "Gardenia's flower clock",
   "fr": "L'horloge fleurie de Flo",
@@ -8710,6 +8735,11 @@
   "es": "Huevo misterioso: eclosiona en {0} victorias",
   "pt": "Ovo misterioso: choca em {0} vitórias"
  },
+ "PARAR": {
+  "en": "STOP",
+  "fr": "ARRÊTER",
+  "es": "DETENER"
+ },
  "PASSAR MEL": {
   "en": "SPREAD HONEY",
   "fr": "METTRE DU MIEL",
@@ -8804,6 +8834,11 @@
   "en": "Who is the purchase for (balls and Bag items go to the Bag):",
   "fr": "Pour qui est l’achat (Balls et objets du Sac vont dans le Sac) :",
   "es": "Para quién es la compra (las Balls y objetos de la Mochila van a la Mochila):"
+ },
+ "Parabéns! {0} evoluiu para {1}!": {
+  "en": "Congratulations! Your {0} evolved into {1}!",
+  "fr": "Félicitations ! {0} a évolué en {1} !",
+  "es": "¡Enhorabuena! ¡{0} evolucionó a {1}!"
  },
  "Parada para descanso": {
   "en": "Rest stop",
@@ -9121,6 +9156,11 @@
   "en": "Kanto Pokédex",
   "fr": "Pokédex de Kanto",
   "es": "Pokédex de Kanto"
+ },
+ "Pokémon": {
+  "en": "Pokémon",
+  "fr": "Pokémon",
+  "es": "Pokémon"
  },
  "Pokémon com esta Habilidade:": {
   "en": "Pokémon with this Ability:",
@@ -11026,6 +11066,11 @@
   "es": "Despejado",
   "pt": "Tempo bom"
  },
+ "Tempo de jogo": {
+  "en": "Play time",
+  "fr": "Temps de jeu",
+  "es": "Tiempo de juego"
+ },
  "Tempo esgotado!": {
   "en": "Time's up!",
   "fr": "Temps écoulé !",
@@ -11392,6 +11437,11 @@
   "en": "All types",
   "fr": "Tous les types",
   "es": "Todos los tipos"
+ },
+ "Toque em PARAR para ele não evoluir agora.": {
+  "en": "Tap STOP to keep it from evolving now.",
+  "fr": "Touchez ARRÊTER pour qu'il n'évolue pas maintenant.",
+  "es": "Toca DETENER para que no evolucione ahora."
  },
  "Toque num Pokémon para marcar que você o pegou neste jogo.": {
   "en": "Tap a Pokémon to mark that you caught it in this game.",
@@ -12644,6 +12694,11 @@
   "en": "You get 6 rental Pokémon. After each win you may swap one for one of the opponent's. Lose and the streak ends.",
   "fr": "Vous recevez 6 Pokémon de location. Après chaque victoire, vous pouvez en échanger un contre un de l'adversaire. Une défaite et la série s'arrête.",
   "es": "Recibes 6 Pokémon de alquiler. Tras cada victoria puedes cambiar uno por uno del rival. Si pierdes, la racha termina."
+ },
+ "Você recebeu a insígnia de {0}!": {
+  "en": "You received {0}'s badge!",
+  "fr": "Vous avez reçu le badge de {0} !",
+  "es": "¡Recibiste la medalla de {0}!"
  },
  "Você recebeu um convite para batalhar!": {
   "en": "You got a battle invite!",
@@ -13940,6 +13995,11 @@
   "en": "{0} grew to level {1}!",
   "fr": "{0} monte au niveau {1} !",
   "es": "¡{0} subió al nivel {1}!"
+ },
+ "{0} te deu o TM {1}!": {
+  "en": "{0} gave you TM {1}!",
+  "fr": "{0} vous a donné la CT {1} !",
+  "es": "¡{0} te dio la MT {1}!"
  },
  "{0} terastalizou no tipo {1}!": {
   "en": "{0} has Terastallized into the {1} type!",
