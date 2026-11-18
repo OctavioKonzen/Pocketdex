@@ -8,12 +8,14 @@ Cada jogo tem:
 Sem francês e espanhol, as falas aparecem em inglês nessas línguas. Usado por tool/build_factory_data.py.
 """
 from .alola_galar_paldea import GAMES as _alola_galar_paldea
+from .extras import GAMES as _extras
 from .hoenn import GAMES as _hoenn
 from .johto import GAMES as _johto
 from .kanto import GAMES as _kanto
+from .sevii_orange import GAMES as _sevii_orange
 from .sinnoh import GAMES as _sinnoh
 from .unova_kalos import GAMES as _unova_kalos
 
 GAMES = {}
-for part in (_kanto, _johto, _hoenn, _sinnoh, _unova_kalos, _alola_galar_paldea):
+for part in (_kanto, _johto, _hoenn, _sinnoh, _unova_kalos, _alola_galar_paldea, _sevii_orange, _extras):
     GAMES.update(part)

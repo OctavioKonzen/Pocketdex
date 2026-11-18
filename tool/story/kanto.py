@@ -229,6 +229,12 @@ FIRERED = {
     },
 }
 
+# Yellow e FireRed/LeafGreen: as falas de Red/Blue, com as próprias por cima (só dos chefes e cidades de cada um).
+YELLOW['cities'] = {**RED_BLUE['cities'], **YELLOW['cities']}
+YELLOW['bosses'] = {**{k: v for k, v in RED_BLUE['bosses'].items() if k != 'Blue@Celadon City'}, **YELLOW['bosses']}
+FIRERED['cities'] = {**{k: v for k, v in RED_BLUE['cities'].items() if k != 'Indigo Plateau'}, **FIRERED['cities']}
+FIRERED['bosses'] = {**{k: v for k, v in RED_BLUE['bosses'].items() if k not in ('Blue@Fuchsia City', 'Giovanni@Saffron City', 'Giovanni@Indigo Plateau')}, **FIRERED['bosses']}
+
 GAMES = {
     'Kanto|Red/Blue': RED_BLUE,
     'Kanto|Yellow': YELLOW,

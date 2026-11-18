@@ -86,6 +86,7 @@ ULTRA = {
         **at('Soliera', ('Brooklet Hill', 'Lush Jungle', 'Hokulani Observatory', 'Seafolk Village'), 'Precisamos ver se você é forte o bastante para enfrentar Necrozma.', 'We must see if you are strong enough to face Necrozma.', 'Você tem uma luz forte.', 'You have a strong light.'),
         **at('Dulse', ('Brooklet Hill', 'Lush Jungle', 'Hokulani Observatory', 'Seafolk Village'), 'A Ultra Recon Squad precisa da luz de Alola. Mostre a sua.', 'The Ultra Recon Squad needs Alola’s light. Show us yours.', 'Talvez você possa nos ajudar.', 'Perhaps you can help us.'),
         'Guzma@Wela Volcano Park': ALOLA_COMMON['Guzma@Brooklet Hill'],
+        'Gladion@Wela Volcano Park': SUN_MOON['bosses']['Gladion@Wela Volcano Park'],
         **at('Dexio', ('Wela Volcano Park', 'Malie City'), 'Eu sou da equipe do Professor Sycamore. Quero ver os Pokémon de Alola em ação.', 'I’m on Professor Sycamore’s team. I want to see Alola’s Pokémon in action.', 'Excelente. Vou registrar.', 'Excellent. I’ll record this.'),
         'Gladion@Malie City': ALOLA_COMMON['Gladion@Hokulani Observatory'],
         'Plumeria@Malie City': ALOLA_COMMON['Plumeria@Hokulani Observatory'],

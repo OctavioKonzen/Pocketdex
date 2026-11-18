@@ -35,9 +35,17 @@ describe('a história em cenas (igual ao app)', () => {
     expect(sceneRegion(rb)).toBe('Kanto|Red/Blue')
     expect(sceneLines(data, sceneRegion(rb), 'before', 'Brock@Pewter City')[0][1]).toContain('defesa sólida')
     expect(sceneLines(data, sceneRegion(rb), 'before', 'Brock@Pewter City', 'fr')[0][1]).toContain('rock-hard defense')
-    // O Yellow tem a fala do Blue com o Eevee; a do Brock vem da região.
+    // O Yellow tem a fala do Blue com o Eevee; a do Brock é a de Red/Blue; o "último Pokémon" vem da região.
     expect(sceneLines(data, sceneRegion(yellow), 'before', 'Blue@Pewter City')[0][1]).toContain('Eevee')
-    expect(sceneLines(data, sceneRegion(yellow), 'before', 'Brock@Pewter City')).toEqual(sceneLines(data, 'Kanto', 'before', 'Brock@Pewter City'))
+    expect(sceneLines(data, sceneRegion(yellow), 'before', 'Brock@Pewter City')).toEqual(sceneLines(data, sceneRegion(rb), 'before', 'Brock@Pewter City'))
+    expect(sceneLines(data, sceneRegion(yellow), 'last', 'Brock@Pewter City')).toEqual(sceneLines(data, 'Kanto', 'last', 'Brock@Pewter City'))
+    // Todo chefe de todo jogo tem a fala dele antes e depois da luta.
+    for (const g of data.bosses) {
+      g.leaders.forEach((l) => {
+        for (const kind of ['before', 'after']) expect(sceneLines(data, sceneRegion(g), kind, `${l.name}@${l.city}`).length, `${g.game} ${l.name}@${l.city} ${kind}`).toBeGreaterThan(0)
+      })
+      expect(storyLine(data, sceneRegion(g), 'intro').length, g.game).toBeGreaterThan(40)
+    }
     expect(storyLine(data, sceneRegion(yellow), 'intro')).toContain('Pikachu')
     expect(storyLine(data, sceneRegion(yellow), 'gym', 'Brock')).toBe(storyLine(data, 'Kanto', 'gym', 'Brock'))
   })

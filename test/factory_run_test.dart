@@ -2203,6 +2203,22 @@ void main() {
     expect(FactoryRun.sceneLines(data, 'Kanto', 'last', 'Brock@Pewter City', 'es').first.$2, contains('último'));
     expect([for (final l in FactoryRun.sceneLines(data, 'Kanto', 'after', 'Blue@Indigo Plateau')) l.$1], ['Blue', 'Oak']);
     expect(FactoryRun.sceneLines(data, 'Johto', 'city', 'Nowhere'), isEmpty);
+    // A história de cada jogo (docs/historia): as falas do jogo primeiro, as da região quando ele não tem; sem a língua, o inglês.
+    final rb = data.bosses.firstWhere((b) => b['game'] == 'Red/Blue') as Map;
+    final yellow = data.bosses.firstWhere((b) => b['game'] == 'Yellow') as Map;
+    expect(FactoryRun.sceneRegion(rb), 'Kanto|Red/Blue');
+    expect(FactoryRun.sceneLines(data, FactoryRun.sceneRegion(rb), 'before', 'Brock@Pewter City').first.$2, contains('defesa sólida'));
+    expect(FactoryRun.sceneLines(data, FactoryRun.sceneRegion(rb), 'before', 'Brock@Pewter City', 'fr').first.$2, contains('rock-hard defense'));
+    expect(FactoryRun.sceneLines(data, FactoryRun.sceneRegion(yellow), 'before', 'Blue@Pewter City').first.$2, contains('Eevee'));
+    expect(FactoryRun.sceneLines(data, FactoryRun.sceneRegion(yellow), 'last', 'Brock@Pewter City'), FactoryRun.sceneLines(data, 'Kanto', 'last', 'Brock@Pewter City'));
+    expect(FactoryRun.storyLine(data, FactoryRun.sceneRegion(yellow), 'intro'), contains('Pikachu'));
+    for (final g in data.bosses) {
+      for (final l in g['leaders'] as List) {
+        for (final kind in const ['before', 'after']) {
+          expect(FactoryRun.sceneLines(data, FactoryRun.sceneRegion(g as Map), kind, '${l['name']}@${l['city']}'), isNotEmpty, reason: '${g['game']} ${l['name']}@${l['city']} $kind');
+        }
+      }
+    }
     expect(FactoryRun.bossCity(data, {'boss': {'region': 0, 'step': 1}}), 'Pewter City');
   });
 }
