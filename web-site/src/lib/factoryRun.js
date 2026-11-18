@@ -3407,6 +3407,8 @@ export function capturedMon(run, into = null) {
   // into: a corrida em que o sorteio avança (na captura de verdade).
   const rand = dice(into ?? { ...run })
   let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : 0, Boolean(foe.shiny))
+  // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao app.
+  if (foe.parent?.ivs) mon = { ...mon, ivs: inheritIvs(mon.ivs, foe.parent.ivs) }
   // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
   const lead = leadOf(run)
   if (!foe.egg && lead && SYNCHRONIZE.includes(lead.id) && rand() < 0.5) mon = { ...mon, nature: lead.nature }
@@ -3680,6 +3682,21 @@ export function rematchBoss(data, run) {
  * depois de DAYCARE_EGG andares, vem junto um ovo (a forma básica dele, com IVs bons), que vai no time (🥚, ocupando
  * uma vaga, sem lutar) e choca depois de EGG_BATTLES vitórias. Igual ao app.
  */
+/** O que o ovo da Creche leva de quem ficou lá: os IVs e os golpes (para o filhote herdar). Igual ao app. */
+export const parentOf = (mon) => ({ id: mon.id, ivs: Object.fromEntries(STATS.map((s) => [s, mon.ivs?.[s] ?? 0])), moves: [...(mon.moves ?? [])] })
+/** Os 3 melhores IVs do pai (empate: na ordem dos atributos) passam para o filhote, ficando o maior. */
+export function inheritIvs(ivs, parent) {
+  const best = [...STATS].sort((a, b) => (parent[b] ?? 0) - (parent[a] ?? 0) || STATS.indexOf(a) - STATS.indexOf(b)).slice(0, 3)
+  return Object.fromEntries(STATS.map((s) => [s, best.includes(s) ? Math.max(ivs?.[s] ?? 0, parent[s] ?? 0) : ivs?.[s] ?? 0]))
+}
+/** Os golpes do filhote (como nos jogos): os do pai que ele aprende (de ovo ou por nível) primeiro e, no resto, os do
+ * nível dele. learnset: os golpes da espécie ([golpe, método, nível]); own: os do nível. Até 4. Igual ao app. */
+export function eggMoves(parentMoves, learnset, own) {
+  const can = new Set(learnset.filter((m) => m[1] === 'egg' || m[1] === 'level-up').map((m) => m[0]))
+  const out = []
+  for (const m of [...(parentMoves ?? []).filter((x) => can.has(x)), ...own]) if (!out.includes(m) && out.length < 4) out.push(m)
+  return out
+}
 export const DAYCARE_EGG = 4
 export const EGG_BATTLES = 10
 /** Vagas para Pokémon no time: cada ovo ocupa uma. */
@@ -3702,7 +3719,8 @@ export function takeDaycare(run, data) {
   const steps = Math.max(0, run.floor - care.floor)
   const [grown] = levelTo(care.mon, care.mon.level + steps, data, rand, regionOf(data, run))
   out.team = [...run.team, grown]
-  if (steps >= DAYCARE_EGG) out.eggs = [...(run.eggs ?? []), { id: baseForm(data, care.mon.id), left: EGG_BATTLES }]
+  // O ovo leva o que o filhote herda (como nos jogos): os IVs e os golpes de quem ficou na Creche.
+  if (steps >= DAYCARE_EGG) out.eggs = [...(run.eggs ?? []), { id: baseForm(data, care.mon.id), left: EGG_BATTLES, parent: parentOf(care.mon) }]
   return out
 }
 
@@ -3712,7 +3730,7 @@ function hatch(out, captured) {
   const eggs = out.eggs.map((e) => ({ ...e, left: Math.max(0, e.left - 1) }))
   const ready = captured ? -1 : eggs.findIndex((e) => e.left <= 0)
   const egg = ready >= 0 ? eggs.splice(ready, 1)[0] : null
-  const born = egg ? { id: egg.id, level: EGG_LEVEL, egg: true, ...(egg.mystery ? { mystery: true } : {}) } : null
+  const born = egg ? { id: egg.id, level: EGG_LEVEL, egg: true, ...(egg.mystery ? { mystery: true } : {}), ...(egg.parent ? { parent: egg.parent } : {}) } : null
   out.eggs = eggs
   return born
 }

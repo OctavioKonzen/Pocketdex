@@ -604,6 +604,17 @@ void main() {
         }()
     ].whereType<List>().toList();
     expect(norm(fresh), expected['fresh']);
+    // O ovo da Creche: o que ele leva e o que o filhote herda (o mesmo no site).
+    final parentMon = {...first, 'id': 6, 'level': 36, 'ivs': {'hp': 31, 'atk': 5, 'def': 31, 'spa': 31, 'spd': 2, 'spe': 31}, 'moves': ['dragon-dance', 'flamethrower']};
+    final cared = FactoryRun.takeDaycare({...base, 'team': [first], 'daycare': {'mon': parentMon, 'floor': (base['floor'] as int) - 6}}, data)!;
+    final egg = (cared['eggs'] as List).first as Map;
+    final born = FactoryRun.capturedMon({...base, 'pending': {'capture': {'id': egg['id'], 'level': 5, 'egg': true, 'parent': egg['parent']}}})!;
+    final inherit = [
+      egg,
+      born['ivs'],
+      FactoryRun.eggMoves(['dragon-dance', 'flamethrower', 'tackle'], [['dragon-dance', 'egg', 0], ['flamethrower', 'level-up', 38], ['scratch', 'level-up', 1]], ['scratch', 'growl']),
+    ];
+    expect(norm(inherit), expected['inherit']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {
@@ -1455,13 +1466,13 @@ void main() {
     final back = FactoryRun.takeDaycare({...left, 'floor': (left['floor'] as int) + FactoryRun.daycareEgg}, data)!;
     expect(FactoryRun.teamOf(back)[1]['level'], 10 + FactoryRun.daycareEgg);
     // O ovo vai junto e choca depois de eggBattles vitórias (a captura da luta passa na frente).
-    expect(back['eggs'], [{'id': 19, 'left': FactoryRun.eggBattles}]);
+    expect([for (final e in back['eggs'] as List) [e['id'], e['left'], (e['parent'] as Map)['id']]], [[19, FactoryRun.eggBattles, 19]]);
     expect(back['pending'], left['pending']);
     var walk = back;
     for (var k = 0; k < FactoryRun.eggBattles; k++) {
       walk = FactoryRun.winFloor({...walk, 'pending': null, 'encounter': {'kind': 'trainer', 'foes': [{'id': 16, 'level': 3}]}}, data,
           captured: false);
-      expect(walk['pending']['capture'], k < FactoryRun.eggBattles - 1 ? isNull : {'id': 19, 'level': 5, 'egg': true});
+      expect(walk['pending']['capture'], k < FactoryRun.eggBattles - 1 ? isNull : allOf(containsPair('id', 19), containsPair('level', 5), containsPair('egg', true)));
     }
     expect(walk['eggs'], isEmpty);
     // O ovo ocupa uma vaga: com 5 Pokémon e um ovo, o time está cheio (o capturado só entra trocando alguém).

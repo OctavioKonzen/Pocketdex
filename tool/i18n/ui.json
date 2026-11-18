@@ -5837,6 +5837,11 @@
   "es": "Altura:",
   "pt": "Altura:"
  },
+ "Herdou de {0}: os melhores IVs e os golpes que ele aprende.": {
+  "en": "Inherited from {0}: the best IVs and the moves it can learn.",
+  "fr": "Hérité de {0} : les meilleurs IV et les capacités qu'il peut apprendre.",
+  "es": "Heredado de {0}: los mejores IVs y los movimientos que puede aprender."
+ },
  "Histórico de batalhas": {
   "en": "Battle history",
   "fr": "Historique des combats",

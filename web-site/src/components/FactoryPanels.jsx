@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -3203,6 +3203,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       if (meta !== factory) setUnlocked(mon.id)
       const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
       saveFactory({ ...meta, run: out })
+      // O ovo da Creche: os golpes do pai que o filhote aprende vêm junto (como nos jogos). Igual ao app.
+      const bornAt = next.team.length - 1
+      if (mon.parent && replace == null && next.team.length > run.team.length) {
+        Promise.all([learnsetOf(mon.id), movesFor(mon.id, mon.level)]).then(([learnset, own]) => {
+          const f = factoryOf(useStore.getState().league)
+          if (!f.run || f.run.team[bornAt]?.id !== next.team[bornAt].id) return
+          saveFactory({ ...f, run: { ...f.run, team: f.run.team.map((m, k) => (k === bornAt ? { ...m, moves: eggMoves(mon.parent.moves, learnset, own) } : m)) } })
+        }).catch(() => {})
+      }
     }
     field = (
       <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-capture">
@@ -3222,6 +3231,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             {dexReward && <> · 🎁 {dexReward.count}× {itemName(dexReward.item)} +💰{dexReward.money}</>}
           </p>
         )}
+        {mon.parent && <p className="text-sm text-violet-500" data-testid="egg-inherit" data-no-translate>🧬 {t('Herdou de {0}: os melhores IVs e os golpes que ele aprende.').replace('{0}', name(mon.parent.id))}</p>}
         {mon.shiny && <p className="text-sm text-amber-600">{t('É shiny! (+25% em todos os atributos)')}</p>}
         {/* Quem entra: o gênero e a Nature (para decidir se fica com ele). Igual ao app. */}
         {capturedMon(run) && (() => {

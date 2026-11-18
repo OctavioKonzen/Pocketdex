@@ -3422,6 +3422,8 @@ class FactoryRun {
     if (foe == null) return null;
     final rand = _dice(into ?? _copy(run));
     var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : 0, foe['shiny'] == true);
+    // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao site.
+    if ((foe['parent'] as Map?)?['ivs'] is Map) mon = {...mon, 'ivs': inheritIvs(mon['ivs'] as Map?, (foe['parent'] as Map)['ivs'] as Map)};
     // Synchronize em quem vai na frente: metade das vezes, o capturado vem com a Nature dele.
     final lead = _leadOf(run);
     if (foe['egg'] != true && lead != null && synchronize.contains(_int(lead['id'])) && rand() < 0.5) mon = {...mon, 'nature': lead['nature']};
@@ -4983,11 +4985,36 @@ class FactoryRun {
     final mon = Map<String, dynamic>.from(care['mon'] as Map);
     final (grown, _) = levelTo(mon, _int(mon['level']) + steps, data, rand, regionOf(data, run));
     out['team'] = [...teamOf(run), grown];
-    if (steps >= daycareEgg) out['eggs'] = [...((run['eggs'] as List?) ?? const []), {'id': baseForm(data, _int(mon['id'])), 'left': eggBattles}];
+    // O ovo leva o que o filhote herda (como nos jogos): os IVs e os golpes de quem ficou na Creche.
+    if (steps >= daycareEgg) out['eggs'] = [...((run['eggs'] as List?) ?? const []), {'id': baseForm(data, _int(mon['id'])), 'left': eggBattles, 'parent': parentOf(mon)}];
     return out;
   }
 
   /// Os ovos que vão com você (cada um: {id, left: vitórias que faltam}).
+  /// O que o ovo da Creche leva de quem ficou lá: os IVs e os golpes (para o filhote herdar). Igual ao site.
+  static Json parentOf(Map mon) => {
+        'id': mon['id'],
+        'ivs': {for (final s in stats) s: _int((mon['ivs'] as Map?)?[s] ?? 0)},
+        'moves': [for (final m in (mon['moves'] as List?) ?? const []) '$m'],
+      };
+
+  /// Os 3 melhores IVs do pai (empate: na ordem dos atributos) passam para o filhote, ficando o maior.
+  static Json inheritIvs(Map? ivs, Map parent) {
+    final best = ([...stats]..sort((a, b) => _int(parent[b] ?? 0) - _int(parent[a] ?? 0) != 0 ? _int(parent[b] ?? 0) - _int(parent[a] ?? 0) : stats.indexOf(a) - stats.indexOf(b))).take(3).toList();
+    return {for (final s in stats) s: best.contains(s) ? math.max(_int(ivs?[s] ?? 0), _int(parent[s] ?? 0)) : _int(ivs?[s] ?? 0)};
+  }
+
+  /// Os golpes do filhote (como nos jogos): os do pai que ele aprende (de ovo ou por nível) primeiro e, no resto, os do
+  /// nível dele. learnset: os golpes da espécie ([golpe, método, nível]); own: os do nível. Até 4. Igual ao site.
+  static List<String> eggMoves(List? parentMoves, List learnset, List<String> own) {
+    final can = {for (final m in learnset.cast<List>()) if (m[1] == 'egg' || m[1] == 'level-up') '${m[0]}'};
+    final out = <String>[];
+    for (final m in [...[for (final x in parentMoves ?? const []) '$x'].where(can.contains), ...own]) {
+      if (!out.contains(m) && out.length < 4) out.add(m);
+    }
+    return out;
+  }
+
   static List<Json> eggsOf(Json run) => [for (final e in (run['eggs'] as List?) ?? const []) Map<String, dynamic>.from(e as Map)];
 
   /// Mais uma vitória para os ovos; o primeiro pronto choca (se a captura da luta não ocupou a vez, ele espera a próxima).
@@ -4998,7 +5025,7 @@ class FactoryRun {
     final ready = captured ? -1 : eggs.indexWhere((e) => _int(e['left']) <= 0);
     if (ready >= 0) {
       final egg = eggs.removeAt(ready);
-      born = {'id': egg['id'], 'level': eggLevel, 'egg': true, if (egg['mystery'] == true) 'mystery': true};
+      born = {'id': egg['id'], 'level': eggLevel, 'egg': true, if (egg['mystery'] == true) 'mystery': true, if (egg['parent'] != null) 'parent': egg['parent']};
     }
     out['eggs'] = eggs;
     return born;

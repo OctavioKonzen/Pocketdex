@@ -1149,12 +1149,12 @@ describe('mapa da corrida', () => {
     const back = takeDaycare({ ...left, floor: left.floor + DAYCARE_EGG }, data)
     expect(back.team[1].level).toBe(10 + DAYCARE_EGG)
     // O ovo vai junto e choca depois de EGG_BATTLES vitórias.
-    expect(back.eggs).toEqual([{ id: 19, left: EGG_BATTLES }])
+    expect(back.eggs).toMatchObject([{ id: 19, left: EGG_BATTLES, parent: { id: 19 } }])
     expect(back.pending).toBe(left.pending)
     let walk = back
     for (let k = 0; k < EGG_BATTLES; k++) {
       walk = winFloor({ ...walk, pending: null, encounter: { kind: 'trainer', foes: [{ id: 16, level: 3 }] } }, data)
-      expect(walk.pending.capture).toEqual(k < EGG_BATTLES - 1 ? null : { id: 19, level: 5, egg: true })
+      expect(walk.pending.capture).toEqual(k < EGG_BATTLES - 1 ? null : expect.objectContaining({ id: 19, level: 5, egg: true }))
     }
     expect(walk.eggs).toEqual([])
     // O ovo ocupa uma vaga: com 5 Pokémon e um ovo, o time está cheio (o capturado só entra trocando alguém).
@@ -2001,7 +2001,13 @@ function round14Trace(F) {
     return [won.team.map((m) => m.pokerus ?? null), won.team.map((m) => m.evs), won.pending.pokerus ?? null]
   })
   const fresh = Array.from({ length: 400 }, (_, k) => F.winFloor({ ...base, seed: 7, floor: 3 + k, encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data).pending.pokerus ?? null).map((x, k) => (x ? [k, x] : null)).filter(Boolean)
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh }
+  // O ovo da Creche: o que ele leva e o que o filhote herda (o mesmo no app).
+  const parentMon = { ...base.team[0], id: 6, level: 36, ivs: { hp: 31, atk: 5, def: 31, spa: 31, spd: 2, spe: 31 }, moves: ['dragon-dance', 'flamethrower'] }
+  const cared = F.takeDaycare({ ...base, team: [base.team[0]], daycare: { mon: parentMon, floor: base.floor - 6 } }, data)
+  const egg = cared.eggs[0]
+  const born = F.capturedMon({ ...base, pending: { capture: { id: egg.id, level: 5, egg: true, parent: egg.parent } } })
+  const inherit = [egg, born.ivs, F.eggMoves(['dragon-dance', 'flamethrower', 'tackle'], [['dragon-dance', 'egg', 0], ['flamethrower', 'level-up', 38], ['scratch', 'level-up', 1]], ['scratch', 'growl'])]
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

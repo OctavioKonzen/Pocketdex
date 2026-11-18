@@ -5620,6 +5620,22 @@ class _FactoryScreenState extends State<FactoryScreen> {
       var next = FactoryRun.capture(run, replace);
       if (identical(next, run)) return;
       if (nick != null && nick.trim().isNotEmpty && replace == null) next = FactoryRun.setNick(next, (where: 'team', index: FactoryRun.teamOf(next).length - 1), nick);
+      // O ovo da Creche: os golpes do pai que o filhote aprende vêm junto (como nos jogos). Igual ao site.
+      final parent = foe['parent'] as Map?;
+      final bornAt = FactoryRun.teamOf(next).length - 1;
+      if (parent != null && replace == null && bornAt >= 0 && FactoryRun.teamOf(next).length > FactoryRun.teamOf(run).length) {
+        final placed = next;
+        () async {
+          final id = (foe['id'] as num).toInt();
+          final row = await LocalDatabase.instance.pokemonRow(id);
+          if (row == null || !mounted) return;
+          final moves = FactoryRun.eggMoves(parent['moves'] as List?, row['moves'] as List, await _movesFor(id, (foe['level'] as num).toInt()));
+          final now = currentFactory()['run'] as Map?;
+          final team = now == null ? const [] : FactoryRun.teamOf(Map<String, dynamic>.from(now));
+          if (!mounted || bornAt >= team.length || team[bornAt]['id'] != placed['team'][bornAt]['id']) return;
+          setState(() => saveFactory({...currentFactory(), 'run': {...Map<String, dynamic>.from(now!), 'team': [for (final (k, m) in team.indexed) k == bornAt ? {...m, 'moves': moves} : m]}}));
+        }();
+      }
       final factory = currentFactory();
       final meta = FactoryRun.unlockShiny(factory, _data!, foe);
       if (!identical(meta, factory)) _unlocked = (foe['id'] as num).toInt();
@@ -5678,6 +5694,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 key: const ValueKey('factory-dex-new'),
                 style: const TextStyle(fontSize: 13));
           }),
+        if (foe['parent'] is Map)
+          _small('🧬 ${tr('Herdou de {0}: os melhores IVs e os golpes que ele aprende.').replaceAll('{0}', _name((foe['parent'] as Map)['id']))}', color: const Color(0xFF7C3AED)),
         if (shiny) _small(tr('É shiny! (+25% em todos os atributos)'), color: const Color(0xFFD97706)),
         // Quem entra: o gênero e a Nature (para decidir se fica com ele). Igual ao site.
         if (FactoryRun.capturedMon(run) case final mon?)
