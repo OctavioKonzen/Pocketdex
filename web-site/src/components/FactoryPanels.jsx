@@ -2353,6 +2353,8 @@ const PAGE_LINES = 2
 const CHAR_MS = 28
 const AUTO_MS = 2400
 const SPEED = { slow: 1.6, normal: 1, fast: 0.55 }
+/** Nos testes no navegador automatizado, o texto já vem escrito e as escolhas aparecem logo (como nos testes do app). */
+const INSTANT_TEXT = typeof navigator !== 'undefined' && Boolean(navigator.webdriver)
 function PagedText({ className, children, onDone = null }) {
   const win = useRef(null)
   const body = useRef(null)
@@ -2368,7 +2370,7 @@ function PagedText({ className, children, onDone = null }) {
     const pages = line ? Math.max(1, Math.ceil((b.scrollHeight - 1) / (line * PAGE_LINES))) : 1
     if (sig !== view.sig || line !== view.line || pages !== view.pages) {
       setView((v) => ({ page: sig !== v.sig ? 0 : Math.min(v.page, pages - 1), pages, line, sig, chars: sig.length }))
-      if (sig !== view.sig) setShown(0)
+      if (sig !== view.sig) setShown(INSTANT_TEXT ? PAGE_LINES : 0)
     }
   })
   // Letra por letra: as 2 linhas da página vão aparecendo da esquerda para a direita, uma depois da outra.
@@ -2389,7 +2391,7 @@ function PagedText({ className, children, onDone = null }) {
   const more = view.page < view.pages - 1
   const next = () => {
     setView((v) => ({ ...v, page: Math.min(v.pages - 1, v.page + 1) }))
-    setShown(0)
+    setShown(INSTANT_TEXT ? PAGE_LINES : 0)
   }
   // Com tudo escrito, passa sozinho.
   useEffect(() => {
@@ -2399,7 +2401,7 @@ function PagedText({ className, children, onDone = null }) {
   }, [shown, more, view.page, factor]) // eslint-disable-line react-hooks/exhaustive-deps
   const typing = shown < PAGE_LINES
   // Toda a fala já apareceu: as escolhas (os botões e as cartas) aparecem.
-  const done = !view.line || (!typing && !more)
+  const done = INSTANT_TEXT || !view.line || (!typing && !more)
   useEffect(() => { onDone?.(done) }, [done, onDone])
   const a = Math.min(1, shown) * 100, c = Math.max(0, shown - 1) * 100
   return (
