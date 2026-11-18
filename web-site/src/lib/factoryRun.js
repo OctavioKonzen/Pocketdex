@@ -4450,6 +4450,54 @@ export function setGimmick(run, index, gimmick) {
 export const teamDown = (run) => run.team.every((m) => !((m.hp ?? 1) > 0))
 
 /** Sai da loja (ou não tinha): os caminhos do próximo andar no mapa. */
+/**
+ * Os Concursos Pokémon (como nos jogos): uma vez por cidade, um Pokémon do time numa categoria (Estilo, Beleza, Fofura,
+ * Esperteza ou Força) apresenta 3 golpes; o golpe do tipo da categoria vale mais, repetir vale menos e às vezes a plateia
+ * vibra. Contra 3 rivais: o 1º lugar ganha a fita da categoria (fica no Pokémon) e o prêmio. Igual ao app.
+ */
+export const CONTEST_CATS = { cool: ['😎', 'Estilo'], beauty: ['🌸', 'Beleza'], cute: ['🎀', 'Fofura'], smart: ['🧠', 'Esperteza'], tough: ['💪', 'Força'] }
+export const CONTEST_OF_TYPE = {
+  fire: 'cool', electric: 'cool', dragon: 'cool', flying: 'cool', water: 'beauty', ice: 'beauty', psychic: 'beauty', normal: 'cute', fairy: 'cute', grass: 'cute',
+  ghost: 'smart', dark: 'smart', poison: 'smart', bug: 'smart', rock: 'tough', ground: 'tough', fighting: 'tough', steel: 'tough',
+}
+export const CONTEST_ROUNDS = 3
+export const CONTEST_PRIZE = 300
+/** Dá para entrar no concurso agora (na cidade, uma vez por visita). */
+export const contestOpen = (run) => Boolean(run.town) && !run.encounter && !run.pending && !run.town.contest && run.team.length > 0
+export function startContest(run, index, cat) {
+  if (!contestOpen(run) || !run.team[index] || !CONTEST_CATS[cat]) return null
+  const out = { ...run, town: { ...run.town, contest: true } }
+  const rand = dice(out)
+  const rivals = [0, 1, 2].map(() => ({ name: pickOne(TRADE_NAMES, rand), rounds: [0, 1, 2].map(() => 2 + randInt(rand, 5)) }))
+  out.pending = { contest: { cat, index, round: 0, hearts: [], used: [], rivals, done: false } }
+  return out
+}
+/** Uma rodada: o golpe (e o tipo dele) que ele apresenta. */
+export function contestAct(run, move, type) {
+  const c0 = run.pending?.contest
+  if (!c0 || c0.done || !move) return run
+  const out = { ...run }
+  const rand = dice(out)
+  const match = CONTEST_OF_TYPE[type] === c0.cat
+  const repeat = c0.used.includes(move)
+  const cheer = rand() < 0.3
+  const hearts = Math.max(0, 2 + (match ? 3 : 0) - (repeat ? 2 : 0) + (cheer ? 1 : 0))
+  const c = { ...c0, round: c0.round + 1, hearts: [...c0.hearts, hearts], used: [...c0.used, move], last: { move, hearts, match, repeat, cheer } }
+  if (c.round >= CONTEST_ROUNDS) {
+    const total = c.hearts.reduce((a, b) => a + b, 0)
+    c.place = 1 + c.rivals.filter((r) => r.rounds.reduce((a, b) => a + b, 0) > total).length
+    c.done = true
+    const prize = c.place === 1 ? CONTEST_PRIZE : c.place === 2 ? CONTEST_PRIZE / 2 : 0
+    c.prize = Math.round(prize * priceScale(run.floor))
+    out.money = run.money + c.prize
+    if (c.place === 1) out.team = run.team.map((m, i) => (i === c.index ? { ...m, ribbons: [...new Set([...(m.ribbons ?? []), c.cat])] } : m))
+  }
+  out.pending = { ...run.pending, contest: c }
+  return out
+}
+/** Sai do concurso (acabou). */
+export const finishContest = (run) => (run.pending?.contest?.done ? { ...run, pending: null } : run)
+
 /** Quantos andares o Repelente dura. */
 export const REPEL_FLOORS = 5
 /** O Repelente está valendo (os caminhos de selvagens somem). */

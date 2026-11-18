@@ -625,6 +625,18 @@ void main() {
         ]
     ];
     expect(norm(season), expected['season']);
+    // O Concurso Pokémon: as rodadas, o lugar, o prêmio e a fita (o mesmo no site).
+    final contest = [
+      for (final (k, cat) in const ['cool', 'cute', 'tough'].indexed)
+        () {
+          var r = FactoryRun.startContest({...base, 'seed': 50 + k, 'town': {'leg': 1}, 'encounter': null, 'pending': null}, 0, cat)!;
+          for (final (move, type) in const [('ember', 'fire'), ('ember', 'fire'), ('tackle', 'normal')]) {
+            r = FactoryRun.contestAct(r, move, type);
+          }
+          return [r['pending']['contest'], (r['money'] as num) - (base['money'] as num), (r['team'] as List).first['ribbons'], FactoryRun.finishContest(r)['pending']];
+        }()
+    ];
+    expect(norm(contest), expected['contest']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

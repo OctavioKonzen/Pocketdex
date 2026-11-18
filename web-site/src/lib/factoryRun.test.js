@@ -2013,7 +2013,13 @@ function round14Trace(F) {
     const e = F.encounterFor(data, 20, seededRandom(k + 1), null, false, { kind: 'wild', biome: 'grass', event })
     return e.foes.map((f) => [f.id, f.shiny ? 1 : 0])
   }))
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season }
+  // O Concurso Pokémon: as rodadas, o lugar, o prêmio e a fita (o mesmo no app).
+  const contest = ['cool', 'cute', 'tough'].map((cat, k) => {
+    let r = F.startContest({ ...base, seed: 50 + k, town: { leg: 1 }, encounter: null, pending: null }, 0, cat)
+    for (const [move, type] of [['ember', 'fire'], ['ember', 'fire'], ['tackle', 'normal']]) r = F.contestAct(r, move, type)
+    return [r.pending.contest, r.money - base.money, r.team[0].ribbons ?? null, F.finishContest(r).pending]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

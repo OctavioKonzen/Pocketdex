@@ -61,6 +61,11 @@ const pieceInfo = {
 String piecesLine(Map<String, int> pieces, {bool all = false}) =>
     [for (final e in pieces.entries) if (all || e.value > 0) '${pieceInfo[e.key]!.$1} ${e.value}'].join(' · ');
 
+extension on String {
+  /// null em vez de texto vazio.
+  String? get nullIfEmpty => isEmpty ? null : this;
+}
+
 /// A Factory da conta (meta e corrida).
 Json currentFactory() => FactoryRun.of(UserData.instance.league);
 
@@ -2658,6 +2663,7 @@ String? _stepOf(Map? p) {
   if (p['cards'] != null) return 'cards';
   if (p['safari'] != null) return 'safari';
   if (p['puzzle'] != null) return 'puzzle';
+  if (p['contest'] != null) return 'contest';
   if (p['trade'] != null) return 'trade';
   if (p['shop'] != null) return 'shop';
   return null;
@@ -3794,7 +3800,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
               name: (m['nick'] as String?) ?? _name(m['id']),
               level: (m['level'] as num).toInt(),
               hp: FactoryRun.hpOf(m).toDouble(),
-              sub: m['item'] != null ? _itemName('${m['item']}') : null),
+              // O item e as fitas dos concursos (🎀 da categoria). Igual ao site.
+              sub: [
+                if (m['item'] != null) _itemName('${m['item']}'),
+                if (((m['ribbons'] as List?) ?? const []).isNotEmpty) [for (final r in m['ribbons'] as List) FactoryRun.contestCats['$r']?.$1 ?? '🎀'].join(),
+              ].join(' · ').nullIfEmpty),
       ];
 
 
@@ -4095,6 +4105,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     ? _daycarePanel(run, data, close)
                     : step == 'puzzle'
                     ? _puzzlePanel(run, data)
+                    : p == null && (_panel ?? '').startsWith('contest') && FactoryRun.contestOpen(run)
+                    ? _contestPanel(run, close)
                     : p == null && _panel == 'album'
                     ? _albumPanel(run, close)
                     : p == null && _panel == 'towntrade' && _townTradeOpen(run)
@@ -4170,6 +4182,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _safariFrame(run, p!, lead, data);
     } else if (step == 'puzzle') {
       frame = _puzzleFrame(run, data);
+    } else if (step == 'contest') {
+      frame = _contestFrame(run, p!);
     } else if (step == 'trade') {
       frame = _tradeFrame(run, p!, lead, data);
     } else if (step == 'cards') {
@@ -4643,6 +4657,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   List<(int, int, int)>? _evoList; // (posição no time, de, para)
   String? _badgeKey; // a fanfarra da insígnia já tocou
   String? _creditsDone; // os créditos do Campeão já passaram (a chave do andar)
+  final Map<String, List<String>> _contestMoves = {}; // os golpes do nível (quem nunca mudou de golpes), para o concurso
   (String, String)? _tipNow; // a dica mostrada agora (id, a tela)
   Widget? _tipLine;
   int _evoAt = 0;
@@ -5361,6 +5376,122 @@ class _FactoryScreenState extends State<FactoryScreen> {
     );
   }
 
+  /// O Concurso Pokémon: primeiro quem se apresenta (a tela do time), depois a categoria. Igual ao site.
+  Widget _contestPanel(Json run, VoidCallback close) {
+    final team = FactoryRun.teamOf(run);
+    final at = int.tryParse(_panel!.split(':').elementAtOrNull(1) ?? '');
+    if (at == null || at >= team.length) {
+      return PortParty(
+        testKey: 'contest-team',
+        title: '🎀 ${tr('Concurso Pokémon: quem vai se apresentar?')}',
+        team: _party(run),
+        onPick: (i) => setState(() => _panel = 'contest:$i'),
+        onCancel: close,
+      );
+    }
+    return Container(
+      key: const ValueKey('contest-cats'),
+      color: const Color(0xFF1F6F78),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _overlayHeader('🎀 ${tr('Concurso de {0}').replaceAll('{0}', _name(team[at]['id']))}', () => setState(() => _panel = 'contest')),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(tr('Escolha a categoria. Golpes do tipo dela agradam mais; repetir o mesmo golpe agrada menos.'), style: _portText.copyWith(fontSize: 12)),
+        ),
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: 3,
+            childAspectRatio: 2.6,
+            padding: const EdgeInsets.all(8),
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (final e in FactoryRun.contestCats.entries)
+                _menuButton('${e.value.$1} ${tr(e.value.$2)}', widget.busy ? null : () {
+                  _panel = null;
+                  _save(FactoryRun.startContest(run, at, e.key));
+                }, sub: [for (final t in FactoryRun.contestOfType.entries) if (t.value == e.key) tr(_typePt[t.key] ?? '')].join(', '), key: ValueKey('contest-cat-${e.key}')),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// O Concurso Pokémon: 3 rodadas, um golpe por rodada; os corações de cada um e o resultado. Igual ao site.
+  Widget _contestFrame(Json run, Json p) {
+    final c = p['contest'] as Map;
+    final team = FactoryRun.teamOf(run);
+    final index = (c['index'] as num).toInt();
+    final mon = index < team.length ? team[index] : team.first;
+    final name = (mon['nick'] as String?) ?? _name(mon['id']);
+    final cat = FactoryRun.contestCats['${c['cat']}']!;
+    final round = (c['round'] as num).toInt();
+    final hearts = [for (final h in c['hearts'] as List) (h as num).toInt()];
+    final done = c['done'] == true;
+    final last = c['last'] as Map?;
+    if (_moveData.isEmpty) LocalDatabase.instance.movesByName().then((m) => mounted ? setState(() => _moveData = m) : null);
+    // Os golpes dele (os do nível, se nunca mudou).
+    var moves = [for (final m in (mon['moves'] as List?) ?? const []) '$m'];
+    if (moves.isEmpty) {
+      final key = '${mon['id']}-${mon['level']}';
+      moves = _contestMoves[key] ?? const [];
+      if (!_contestMoves.containsKey(key)) {
+        _contestMoves[key] = const [];
+        _movesFor((mon['id'] as num).toInt(), (mon['level'] as num).toInt()).then((m) => mounted ? setState(() => _contestMoves[key] = m) : null);
+      }
+    }
+    int sum(List l) => l.fold<int>(0, (a, b) => a + (b as num).toInt());
+    final rivals = (c['rivals'] as List).cast<Map>();
+    return _frame(
+      run: run,
+      field: _field('town-metro', key: const ValueKey('factory-contest'), (w, h) => [
+            Positioned(
+              left: w * 0.03,
+              top: h * 0.05,
+              child: Container(
+                key: const ValueKey('contest-board'),
+                padding: const EdgeInsets.all(6),
+                decoration: _dlgBox(),
+                child: DefaultTextStyle(
+                  style: _portText.copyWith(fontSize: 12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${cat.$1} ${tr('Concurso de {0}').replaceAll('{0}', tr(cat.$2))} · ${tr('Rodada {0} de {1}').replaceAll('{0}', '${min(round + 1, FactoryRun.contestRounds)}').replaceAll('{1}', '${FactoryRun.contestRounds}')}'),
+                    Text('$name: ${'❤️' * sum(hearts)} (${sum(hearts)})', key: const ValueKey('contest-me')),
+                    for (final r in rivals)
+                      Text('${r['name']}: ${sum((r['rounds'] as List).take(round).toList())}', style: const TextStyle(color: Color(0xFFCBD5E1))),
+                  ]),
+                ),
+              ),
+            ),
+            _fieldMon(mon, w, h, back: true),
+          ]),
+      text: [
+        if (last != null)
+          Text(
+              '${tr('{0} apresentou {1}!').replaceAll('{0}', name).replaceAll('{1}', prettySlug('${last['move']}'))} +${last['hearts']}❤️'
+              '${last['match'] == true ? ' · ${tr('Combina com a categoria!')}' : ''}${last['repeat'] == true ? ' · ${tr('De novo? A plateia cansou.')}' : ''}${last['cheer'] == true ? ' · ${tr('A plateia vibrou!')}' : ''}',
+              key: const ValueKey('contest-last')),
+        if (done)
+          Text(
+              '🏆 ${tr('Você ficou em {0}º lugar!').replaceAll('{0}', '${c['place']}')}${(c['prize'] as num? ?? 0) > 0 ? ' +💰${c['prize']}' : ''}${c['place'] == 1 ? ' · 🎀 ${tr('{0} ganhou a fita de {1}!').replaceAll('{0}', name).replaceAll('{1}', tr(cat.$2))}' : ''}',
+              key: const ValueKey('contest-result'),
+              style: const TextStyle(fontWeight: FontWeight.w900))
+        else if (last == null)
+          Text(tr('Concurso de {0}! Escolha um golpe para {1} apresentar.').replaceAll('{0}', tr(cat.$2)).replaceAll('{1}', name)),
+      ],
+      menu: done
+          ? _menuButton(tr('CONTINUAR'), () => _save(FactoryRun.finishContest(run)), key: const ValueKey('contest-done'))
+          : _menuGrid([
+              for (final (k, m) in moves.take(4).indexed)
+                _menuButton('${FactoryRun.contestCats[FactoryRun.contestOfType['${_moveData[m]?['type'] ?? ''}']]?.$1 ?? '·'} ${prettySlug(m)}',
+                    widget.busy ? null : () => _save(FactoryRun.contestAct(run, m, '${_moveData[m]?['type'] ?? ''}')),
+                    key: ValueKey('contest-move-$k')),
+            ]),
+    );
+  }
+
   /// O Game Corner: fichas, caça-níqueis e os prêmios de lá. Igual ao site.
   Widget _cornerPanel(Json run, FactoryData data, VoidCallback close) {
     final corner = FactoryRun.cornerOf(data, run)!;
@@ -6015,6 +6146,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
             if (FactoryRun.cornerOf(data, run) case final Map corner)
               _menuButton('🎰 ${corner['name']}', widget.busy ? null : () => setState(() => _panel = _panel == 'corner' ? null : 'corner'),
                   active: _panel == 'corner', key: const ValueKey('town-corner')),
+            // O Concurso Pokémon (como nos jogos): uma vez por cidade.
+            if (FactoryRun.contestOpen(run))
+              _menuButton('🎀 ${tr('CONCURSO')}', widget.busy ? null : () => setState(() => _panel = (_panel ?? '').startsWith('contest') ? null : 'contest'),
+                  active: (_panel ?? '').startsWith('contest'), key: const ValueKey('town-contest')),
             if (FactoryRun.tutorsOf(data, run).contains('deleter'))
               _menuButton('🧓 Move Deleter', widget.busy ? null : () => setState(() => _panel = (_panel ?? '').startsWith('deleter') ? null : 'deleter'),
                   active: (_panel ?? '').startsWith('deleter'), key: const ValueKey('town-deleter')),

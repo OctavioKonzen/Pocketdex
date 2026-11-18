@@ -536,6 +536,11 @@
   "fr": "La piste de snowboard de Grusha",
   "es": "La pista de snowboard de Grusha"
  },
+ "A plateia vibrou!": {
+  "en": "The crowd went wild!",
+  "fr": "Le public est en délire !",
+  "es": "¡El público se emocionó!"
+ },
  "A ponte invisível do Morty": {
   "en": "Morty's invisible bridge",
   "fr": "Le pont invisible de Mortimer",
@@ -1908,6 +1913,11 @@
   "fr": "Bébés",
   "es": "Bebés"
  },
+ "Beleza": {
+  "en": "Beauty",
+  "fr": "Beauté",
+  "es": "Belleza"
+ },
  "Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.": {
   "en": "Welcome to {0}! The Poké Mart and the Pokémon Center are here; the leader waits on the city's last floor.",
   "fr": "Bienvenue à {0} ! La Boutique Poké et le Centre Pokémon sont ici ; le champion attend au dernier étage de la ville.",
@@ -2027,6 +2037,11 @@
   "en": "BUY",
   "fr": "ACHETER",
   "es": "COMPRAR"
+ },
+ "CONCURSO": {
+  "en": "CONTEST",
+  "fr": "CONCOURS",
+  "es": "CONCURSO"
  },
  "CONSULTAR": {
   "en": "LOOK UP",
@@ -2700,6 +2715,11 @@
   "fr": "Combat",
   "es": "Combate"
  },
+ "Combina com a categoria!": {
+  "en": "It suits the category!",
+  "fr": "Ça colle à la catégorie !",
+  "es": "¡Encaja con la categoría!"
+ },
  "Começa com +{0} Dusk Ball": {
   "en": "Start with +{0} Dusk Ball",
   "fr": "Commence avec +{0} Dusk Ball",
@@ -3039,6 +3059,21 @@
   "en": "Done",
   "fr": "Terminer",
   "es": "Listo"
+ },
+ "Concurso Pokémon: quem vai se apresentar?": {
+  "en": "Pokémon Contest: who will perform?",
+  "fr": "Concours Pokémon : qui va se présenter ?",
+  "es": "Concurso Pokémon: ¿quién va a actuar?"
+ },
+ "Concurso de {0}": {
+  "en": "{0} Contest",
+  "fr": "Concours de {0}",
+  "es": "Concurso de {0}"
+ },
+ "Concurso de {0}! Escolha um golpe para {1} apresentar.": {
+  "en": "{0} Contest! Pick a move for {1} to perform.",
+  "fr": "Concours de {0} ! Choisissez une capacité à présenter pour {1}.",
+  "es": "¡Concurso de {0}! Elige un movimiento para que {1} lo presente."
  },
  "Condição especial": {
   "en": "Special condition",
@@ -3489,6 +3524,11 @@
   "en": "By bike: skip the floor without battling (and without a prize).",
   "fr": "À vélo : passe l'étage sans combat (et sans prix).",
   "es": "En bici: pasa el piso sin combate (y sin premio)."
+ },
+ "De novo? A plateia cansou.": {
+  "en": "Again? The crowd got bored.",
+  "fr": "Encore ? Le public s'ennuie.",
+  "es": "¿Otra vez? El público se aburrió."
  },
  "De novo?! Vou treinar em dobro, pode esperar.": {
   "en": "Again?! I'll train twice as hard, just wait.",
@@ -4541,6 +4581,11 @@
   "fr": "Choisissez des Pokémon différents pour les remplacements.",
   "es": "Elige Pokémon distintos para los reemplazos."
  },
+ "Escolha a categoria. Golpes do tipo dela agradam mais; repetir o mesmo golpe agrada menos.": {
+  "en": "Pick the category. Moves of its types appeal more; repeating a move appeals less.",
+  "fr": "Choisissez la catégorie. Les capacités de ses types plaisent plus ; répéter une capacité plaît moins.",
+  "es": "Elige la categoría. Los movimientos de sus tipos gustan más; repetir uno gusta menos."
+ },
  "Escolha a mesma conta Google que está conectada.": {
   "en": "Choose the same Google account that is signed in.",
   "fr": "Choisissez le même compte Google que celui connecté.",
@@ -4801,6 +4846,11 @@
   "fr": "Spéciale",
   "es": "Especial"
  },
+ "Esperteza": {
+  "en": "Smart",
+  "fr": "Intelligence",
+  "es": "Ingenio"
+ },
  "Esporos": {
   "en": "Spores",
   "fr": "Spores",
@@ -4965,6 +5015,11 @@
   "en": "This address isn't authorized in Firebase (Authentication → Authorized domains).",
   "fr": "Cette adresse n'est pas autorisée dans Firebase (Authentication → Domaines autorisés).",
   "es": "Esta dirección no está autorizada en Firebase (Authentication → Dominios autorizados)."
+ },
+ "Estilo": {
+  "en": "Cool",
+  "fr": "Sang-froid",
+  "es": "Carisma"
  },
  "Estilo da batalha": {
   "en": "Battle style",
@@ -5366,6 +5421,11 @@
   "en": "Focus Sash",
   "fr": "Focus Sash",
   "es": "Focus Sash"
+ },
+ "Fofura": {
+  "en": "Cute",
+  "fr": "Grâce",
+  "es": "Dulzura"
  },
  "Foge depois de {0} turnos; o HP que você tirar fica para a próxima vez. Dá para capturar.": {
   "en": "Flees after {0} turns; the HP you take off stays for next time. Can be caught.",
@@ -10286,6 +10346,11 @@
   "fr": "Manche",
   "es": "Ronda"
  },
+ "Rodada {0} de {1}": {
+  "en": "Round {0} of {1}",
+  "fr": "Manche {0} sur {1}",
+  "es": "Ronda {0} de {1}"
+ },
  "Rosa": {
   "en": "Pink",
   "fr": "Rose",
@@ -12760,6 +12825,11 @@
   "fr": "Vous glissez jusqu'à heurter un rocher. Atteignez le champion.",
   "es": "Te deslizas hasta chocar con una roca. Llega al líder."
  },
+ "Você ficou em {0}º lugar!": {
+  "en": "You placed #{0}!",
+  "fr": "Vous êtes {0}e !",
+  "es": "¡Quedaste en {0}º lugar!"
+ },
  "Você ficou forte de verdade... mas eu não desisto.": {
   "en": "You've gotten really strong... but I won't give up.",
   "fr": "Vous êtes vraiment devenu fort... mais je n'abandonne pas.",
@@ -13524,6 +13594,11 @@
   "fr": "{0} a appris {1} !",
   "es": "¡{0} aprendió {1}!"
  },
+ "{0} apresentou {1}!": {
+  "en": "{0} performed {1}!",
+  "fr": "{0} présente {1} !",
+  "es": "¡{0} presentó {1}!"
+ },
  "{0} bloqueia o caminho": {
   "en": "{0} blocks the way",
   "fr": "{0} bloque le chemin",
@@ -13744,6 +13819,11 @@
   "en": "{0} fled! It will show up again along the way.",
   "fr": "{0} s'est enfui ! Il réapparaîtra en chemin.",
   "es": "¡{0} huyó! Volverá a aparecer por el camino."
+ },
+ "{0} ganhou a fita de {1}!": {
+  "en": "{0} won the {1} Ribbon!",
+  "fr": "{0} a gagné le Ruban {1} !",
+  "es": "¡{0} ganó la Cinta {1}!"
  },
  "{0} ganhou {1} de XP!": {
   "en": "{0} gained {1} XP!",

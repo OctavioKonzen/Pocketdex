@@ -23,7 +23,7 @@ import {
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
-  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
   resolveChoice, regionLegend, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
   weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
   boostOf, memberOf, learnMove, movesLearnedBetween,
@@ -246,7 +246,9 @@ function BagPanel({ run, byId, save, onClose }) {
 }
 
 /** O time da corrida para a tela do time (BwParty). */
-const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, sub: m.item ? itemName(m.item) : undefined }))
+// O item e as fitas dos concursos (🎀 da categoria). Igual ao app.
+const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1,
+  sub: [m.item ? itemName(m.item) : '', (m.ribbons ?? []).map((r) => CONTEST_CATS[r]?.[0] ?? '🎀').join('')].filter(Boolean).join(' · ') || undefined }))
 
 const CATEGORY_LABEL = { physical: 'Físico', special: 'Especial', status: 'Status' }
 
@@ -1707,6 +1709,7 @@ function stepOf(p) {
   if (p.cards) return 'cards'
   if (p.safari) return 'safari'
   if (p.puzzle) return 'puzzle'
+  if (p.contest) return 'contest'
   if (p.trade) return 'trade'
   if (p.shop) return 'shop'
   return null
@@ -2744,6 +2747,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const [creditsDone, setCreditsDone] = useState(null)
   // O PC no Centro Pokémon da cidade (aberto).
   const [pcOpen, setPcOpen] = useState(false)
+  // O concurso: os dados dos golpes (o tipo) e os golpes do nível de quem nunca mudou de golpes.
+  const [moveInfo, setMoveInfo] = useState(null)
+  const [contestMoves, setContestMoves] = useState({})
   const [unlocked, setUnlocked] = useState(null)
   const [target, setTarget] = useState(0)
   // O item tocado na loja (a descrição e o COMPRAR aparecem embaixo, como na Bolsa).
@@ -2792,8 +2798,25 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit).
   const leadInfo = lead && byId?.get(lead.id)
   const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
-  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex') && (
-    panel === 'dex' ? (
+  const contestAt = String(panel ?? '').startsWith('contest:') ? Number(String(panel).slice(8)) : null
+  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex' || (String(panel ?? '').startsWith('contest') && contestOpen(run))) && (
+    String(panel ?? '').startsWith('contest') ? (
+      // O Concurso Pokémon: primeiro quem se apresenta (a tela do time), depois a categoria. Igual ao app.
+      contestAt == null || !run.team[contestAt] ? (
+        <BwParty title={`🎀 ${t('Concurso Pokémon: quem vai se apresentar?')}`} team={partyOf(run, byId)} testid="contest-team" onPick={(i) => setPanel(`contest:${i}`)} onCancel={() => setPanel(null)} />
+      ) : (
+        <div className="port-panel flex h-full flex-col gap-2 p-2" style={{ containerType: 'inline-size' }} data-testid="contest-cats">
+          <OverlayClose onClose={() => setPanel('contest')} title={`🎀 ${t('Concurso de {0}').replace('{0}', name(run.team[contestAt].id))}`} />
+          <p className="text-[1.8cqw]">{t('Escolha a categoria. Golpes do tipo dela agradam mais; repetir o mesmo golpe agrada menos.')}</p>
+          <div className="grid flex-1 grid-cols-3 gap-2">
+            {Object.entries(CONTEST_CATS).map(([cat, [icon, label]]) => (
+              <MenuButton key={cat} testid={`contest-cat-${cat}`} disabled={busy} onClick={() => { setPanel(null); save(startContest(run, contestAt, cat)) }}
+                sub={Object.entries(CONTEST_OF_TYPE).filter(([, c]) => c === cat).map(([type]) => t(TYPE_PT[type])).join(', ')}>{icon} {t(label)}</MenuButton>
+            ))}
+          </div>
+        </div>
+      )
+    ) : panel === 'dex' ? (
       <DexPanel factory={factory} data={data} run={run} name={name} onClose={() => setPanel(null)} />
     ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
@@ -3375,6 +3398,47 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <MenuButton onClick={() => save(skipTrade(run))} testid="trade-skip">{t('NÃO TROCAR')}</MenuButton>
       </>
     )
+  } else if (step === 'contest') {
+    // O Concurso Pokémon: 3 rodadas, um golpe por rodada; os corações de cada um e o resultado. Igual ao app.
+    const c = p.contest
+    const mon = run.team[c.index] ?? run.team[0]
+    const nm = mon.nick ?? name(mon.id)
+    const [icon, label] = CONTEST_CATS[c.cat]
+    const sum = (l) => l.reduce((a, b) => a + b, 0)
+    if (!moveInfo) getMoves().then(setMoveInfo).catch(() => {})
+    const key = `${mon.id}-${mon.level}`
+    const moves = mon.moves?.length ? mon.moves : contestMoves[key] ?? []
+    if (!mon.moves?.length && !(key in contestMoves)) {
+      setContestMoves((m) => ({ ...m, [key]: [] }))
+      movesFor(mon.id, mon.level).then((list) => setContestMoves((m) => ({ ...m, [key]: list }))).catch(() => {})
+    }
+    const typeOfMove = (m) => moveInfo?.[m]?.type ?? ''
+    field = (
+      <Field biome="town-metro" fieldRef={fieldRef} testid="factory-contest">
+        <div className="absolute left-[3%] top-[5%] z-20 rounded-md border-2 border-[#8b93a1] bg-[#14161ceb] px-2 py-1 text-xs font-bold text-white" data-testid="contest-board">
+          <p>{icon} {t('Concurso de {0}').replace('{0}', t(label))} · {t('Rodada {0} de {1}').replace('{0}', Math.min(c.round + 1, CONTEST_ROUNDS)).replace('{1}', CONTEST_ROUNDS)}</p>
+          <p data-testid="contest-me" data-no-translate>{nm}: {'❤️'.repeat(sum(c.hearts))} ({sum(c.hearts)})</p>
+          {c.rivals.map((r, k) => <p key={k} className="text-slate-300" data-no-translate>{r.name}: {sum(r.rounds.slice(0, c.round))}</p>)}
+        </div>
+        <FieldMon mon={mon} byId={byId} back scene="town-metro" />
+      </Field>
+    )
+    const last = c.last
+    text = (
+      <>
+        {last && <p data-testid="contest-last" data-no-translate>{t('{0} apresentou {1}!').replace('{0}', nm).replace('{1}', prettySlug(last.move))} +{last.hearts}❤️{last.match ? ` · ${t('Combina com a categoria!')}` : ''}{last.repeat ? ` · ${t('De novo? A plateia cansou.')}` : ''}{last.cheer ? ` · ${t('A plateia vibrou!')}` : ''}</p>}
+        {c.done ? (
+          <p className="font-black" data-testid="contest-result" data-no-translate>🏆 {t('Você ficou em {0}º lugar!').replace('{0}', c.place)}{c.prize > 0 ? ` +💰${c.prize}` : ''}{c.place === 1 ? ` · 🎀 ${t('{0} ganhou a fita de {1}!').replace('{0}', nm).replace('{1}', t(label))}` : ''}</p>
+        ) : !last && <p data-no-translate>{t('Concurso de {0}! Escolha um golpe para {1} apresentar.').replace('{0}', t(label)).replace('{1}', nm)}</p>}
+      </>
+    )
+    menu = c.done ? (
+      <MenuButton onClick={() => save(finishContest(run))} testid="contest-done">{t('CONTINUAR')}</MenuButton>
+    ) : (
+      <>
+        {moves.slice(0, 4).map((m, k) => <MenuButton key={m} testid={`contest-move-${k}`} disabled={busy} onClick={() => save(contestAct(run, m, typeOfMove(m)))}>{CONTEST_CATS[CONTEST_OF_TYPE[typeOfMove(m)]]?.[0] ?? '·'} {prettySlug(m)}</MenuButton>)}
+      </>
+    )
   } else if (step === 'puzzle') {
     const v = puzzleView(run)
     const title = puzzleTitle(v.gym) ?? PUZZLE_INFO[v.type].title
@@ -3681,6 +3745,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           <div className="contents">
             <MenuButton testid="town-mart" disabled={busy} onClick={() => save(townShop(run))}>🛒 Poké Mart</MenuButton>
             <MenuButton testid="town-center" disabled={busy} onClick={() => save(townCenter(run))}>🏥 {t('CENTRO')}</MenuButton>
+            {contestOpen(run) && <MenuButton testid="town-contest" disabled={busy} onClick={() => setPanel(String(panel ?? '').startsWith('contest') ? null : 'contest')} active={String(panel ?? '').startsWith('contest')}>🎀 {t('CONCURSO')}</MenuButton>}
             {daycareOpen(data, run) && <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>}
           </div>
         )}

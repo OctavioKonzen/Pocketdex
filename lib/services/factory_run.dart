@@ -4715,6 +4715,74 @@ class FactoryRun {
     return got;
   }
 
+  /// Os Concursos Pokémon (como nos jogos): uma vez por cidade, um Pokémon do time numa categoria (Estilo, Beleza, Fofura,
+  /// Esperteza ou Força) apresenta 3 golpes; o golpe do tipo da categoria vale mais, repetir vale menos e às vezes a
+  /// plateia vibra. Contra 3 rivais: o 1º lugar ganha a fita da categoria (fica no Pokémon) e o prêmio. Igual ao site.
+  static const contestCats = {'cool': ('😎', 'Estilo'), 'beauty': ('🌸', 'Beleza'), 'cute': ('🎀', 'Fofura'), 'smart': ('🧠', 'Esperteza'), 'tough': ('💪', 'Força')};
+  static const contestOfType = {
+    'fire': 'cool', 'electric': 'cool', 'dragon': 'cool', 'flying': 'cool', 'water': 'beauty', 'ice': 'beauty', 'psychic': 'beauty', 'normal': 'cute', 'fairy': 'cute', 'grass': 'cute',
+    'ghost': 'smart', 'dark': 'smart', 'poison': 'smart', 'bug': 'smart', 'rock': 'tough', 'ground': 'tough', 'fighting': 'tough', 'steel': 'tough',
+  };
+  static const contestRounds = 3, contestPrize = 300;
+
+  /// Dá para entrar no concurso agora (na cidade, uma vez por visita).
+  static bool contestOpen(Json run) =>
+      run['town'] is Map && run['encounter'] == null && run['pending'] == null && (run['town'] as Map)['contest'] != true && teamOf(run).isNotEmpty;
+
+  static Json? startContest(Json run, int index, String cat) {
+    if (!contestOpen(run) || index < 0 || index >= teamOf(run).length || !contestCats.containsKey(cat)) return null;
+    final out = {...run, 'town': {...Map<String, dynamic>.from(run['town'] as Map), 'contest': true}};
+    final rand = _dice(out);
+    final rivals = [
+      for (var k = 0; k < 3; k++) {'name': _pick(tradeNames, rand), 'rounds': [for (var r = 0; r < 3; r++) 2 + _randInt(rand, 5)]}
+    ];
+    out['pending'] = {'contest': {'cat': cat, 'index': index, 'round': 0, 'hearts': <int>[], 'used': <String>[], 'rivals': rivals, 'done': false}};
+    return out;
+  }
+
+  /// Uma rodada: o golpe (e o tipo dele) que ele apresenta.
+  static Json contestAct(Json run, String move, String type) {
+    final c0 = (run['pending'] as Map?)?['contest'] as Map?;
+    if (c0 == null || c0['done'] == true || move.isEmpty) return run;
+    final out = {...run};
+    final rand = _dice(out);
+    final match = contestOfType[type] == c0['cat'];
+    final used = [for (final m in c0['used'] as List) '$m'];
+    final repeat = used.contains(move);
+    final cheer = rand() < 0.3;
+    final hearts = math.max(0, 2 + (match ? 3 : 0) - (repeat ? 2 : 0) + (cheer ? 1 : 0));
+    final list = [for (final h in c0['hearts'] as List) _int(h), hearts];
+    final c = <String, dynamic>{
+      ...Map<String, dynamic>.from(c0),
+      'round': _int(c0['round']) + 1,
+      'hearts': list,
+      'used': [...used, move],
+      'last': {'move': move, 'hearts': hearts, 'match': match, 'repeat': repeat, 'cheer': cheer},
+    };
+    if (_int(c['round']) >= contestRounds) {
+      final total = list.fold(0, (a, b) => a + b);
+      final rivals = (c['rivals'] as List).cast<Map>();
+      final place = 1 + rivals.where((r) => (r['rounds'] as List).fold<int>(0, (a, b) => a + _int(b)) > total).length;
+      c['place'] = place;
+      c['done'] = true;
+      final prize = place == 1 ? contestPrize : place == 2 ? contestPrize / 2 : 0;
+      c['prize'] = (prize * priceScale(_int(run['floor']))).round();
+      out['money'] = _int(run['money']) + _int(c['prize']);
+      if (place == 1) {
+        final index = _int(c['index']);
+        out['team'] = [
+          for (final (i, m) in teamOf(run).indexed)
+            i == index ? {...m, 'ribbons': {...[for (final r in (m['ribbons'] as List?) ?? const []) '$r'], c['cat']}.toList()} : m
+        ];
+      }
+    }
+    out['pending'] = {...Map<String, dynamic>.from(run['pending'] as Map), 'contest': c};
+    return out;
+  }
+
+  /// Sai do concurso (acabou).
+  static Json finishContest(Json run) => ((run['pending'] as Map?)?['contest'] as Map?)?['done'] == true ? {...run, 'pending': null} : run;
+
   /// Quantos andares o Repelente dura.
   static const repelFloors = 5;
 
