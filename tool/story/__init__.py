@@ -10,7 +10,8 @@ Sem francês e espanhol, as falas aparecem em inglês nessas línguas. Usado por
 from .hoenn import GAMES as _hoenn
 from .johto import GAMES as _johto
 from .kanto import GAMES as _kanto
+from .sinnoh import GAMES as _sinnoh
 
 GAMES = {}
-for part in (_kanto, _johto, _hoenn):
+for part in (_kanto, _johto, _hoenn, _sinnoh):
     GAMES.update(part)
