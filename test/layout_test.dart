@@ -711,6 +711,11 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
     expect(tester.getRect(find.text('↩ ${tr('Voltar')}')).bottom, lessThanOrEqualTo(tester.view.physicalSize.height / tester.view.devicePixelRatio));
   },
   'Battle Factory (concurso, categorias, deitada)': (tester) async {
+    // Deitado, o Concurso fica dentro de AÇÕES.
+    if (find.byKey(const ValueKey('factory-actions')).evaluate().isNotEmpty) {
+      tester.widget<InkWell>(find.descendant(of: find.byKey(const ValueKey('factory-actions')), matching: find.byType(InkWell)).first).onTap!();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
     tester.widget<InkWell>(find.descendant(of: find.byKey(const ValueKey('town-contest')), matching: find.byType(InkWell)).first).onTap!();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byKey(const ValueKey('contest-team-0')));
