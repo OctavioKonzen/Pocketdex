@@ -3802,9 +3802,10 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
           {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}{WEATHER_PULL[forecast] ? ` (${t(WEATHER_PULL[forecast])})` : ''}</span>}
         </p>
-        {burst != null && (
+        {/* O surto do dia: só onde ele vive (senão a fala promete um Pokémon que não aparece aqui). Igual ao app. */}
+        {burst != null && data.species[burst]?.[6]?.includes(route.biome) && (
           <p className="dlg-sub text-xs" data-testid="factory-outbreak">
-            📣 {t('Surto do dia: {0} aparece muito onde vive (mais chance de shiny).').replace('{0}', name(burst))}{data.species[burst]?.[6]?.includes(route.biome) ? ` ${t('Aqui também!')}` : ''}
+            📣 {t('Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!').replace('{0}', name(burst))}
           </p>
         )}
         {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}

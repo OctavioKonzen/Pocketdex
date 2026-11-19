@@ -329,6 +329,9 @@ final screens = <String, Widget Function()>{
   'Battle Factory (pista do lendário)': () => _factory({'event': {'kind': 'clue', 'legend': 150, 'clues': 2, 'lair': 'Cerulean Cave'}}, null, {'quest': {'region': 'Kanto', 'id': 150, 'clues': 2}}),
   'Battle Factory (covil do lendário)': () => _factory(null, {'floor': 5, 'biome': 'cave', 'options': [{'kind': 'trainer'}, {'kind': 'wild', 'biome': 'cave'}, {'kind': 'wildboss', 'legend': 150, 'quest': true, 'biome': 'cave'}]}, {'floor': 5, 'quest': {'region': 'Kanto', 'id': 150, 'clues': 3}}),
   'Battle Factory (missão cumprida)': () => _factory({'exp': 300, 'money': 900, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'quest': {'id': 150, 'prize': 500}}, null, {'legends': [150]}),
+  // A Bolsa e as categorias do Concurso com o celular deitado: tamanho fixo, tudo dentro da tela.
+  'Battle Factory (bolsa, deitada)': () => _factory(null, {'floor': 14, 'biome': 'water', 'options': [{'kind': 'wild', 'biome': 'water'}, {'kind': 'ace'}]}),
+  'Battle Factory (concurso, categorias, deitada)': () => _factory(null, {'floor': 11, 'biome': 'city', 'town': true, 'options': [{'kind': 'boss'}]}, {'leg': 1, 'boss': {'region': 0, 'step': 1}, 'town': {'leg': 1, 'shop': ['potion']}}),
   'Battle Factory (Safari, fim)': () => _factory({'safari': {'balls': 0, 'left': 2, 'caught': 2, 'mon': null, 'mood': null, 'last': 'broke', 'lastId': 123}}),
   'Login': () => const LoginScreen(),
   'Pokémon (Charizard)': () => const PokemonDetailScreen(initialPokemonId: 6),
@@ -699,6 +702,23 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
   // O time como a tela de trocar: os 6; tocando num, os dados e os itens dele.
   'Battle Factory (time)': (tester) async {
     await _openTeam(tester);
+  },
+  'Battle Factory (bolsa, deitada)': (tester) async {
+    await tester.tap(find.byKey(const ValueKey('factory-menu-bag')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    // O botão de voltar da Bolsa fica dentro da tela (sem arrastar).
+    expect(tester.getRect(find.text('↩ ${tr('Voltar')}')).bottom, lessThanOrEqualTo(tester.view.physicalSize.height / tester.view.devicePixelRatio));
+  },
+  'Battle Factory (concurso, categorias, deitada)': (tester) async {
+    tester.widget<InkWell>(find.descendant(of: find.byKey(const ValueKey('town-contest')), matching: find.byType(InkWell)).first).onTap!();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const ValueKey('contest-team-0')));
+    await tester.pump(const Duration(milliseconds: 400));
+    // As 5 categorias aparecem (antes ficavam sem altura e sumiam).
+    for (final cat in const ['cool', 'beauty', 'cute', 'smart', 'tough']) {
+      expect(tester.getSize(find.byKey(ValueKey('contest-cat-$cat'))).height, greaterThan(20));
+    }
   },
   'Battle Factory (bolsa)': (tester) async {
     await tester.tap(find.byKey(const ValueKey('factory-menu-bag')));

@@ -15304,5 +15304,11 @@
   "fr": "Voir comment il va",
   "es": "Ver cómo está",
   "pt": "Ver como ele está"
+ },
+ "Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!": {
+  "en": "Outbreak of the day: {0} shows up a lot around here (better shiny odds)!",
+  "fr": "Apparition massive du jour : {0} apparaît beaucoup ici (plus de chances de shiny) !",
+  "es": "¡Brote del día: {0} aparece mucho por aquí (más probabilidad de shiny)!",
+  "pt": "Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!"
  }
 }

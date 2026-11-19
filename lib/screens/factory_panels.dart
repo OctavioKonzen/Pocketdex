@@ -805,6 +805,8 @@ class _BagAndItemsState extends State<_BagAndItems> {
     return BwBag(
       onClose: widget.onClose,
       testKey: 'factory-bag',
+      // Tamanho fixo (só a lista rola): nada passa da tela nem precisa arrastar para fechar.
+      fill: true,
       onSelect: (_) => setState(() => _using = null),
       pockets: [
         BagPocket(id: 'items', label: 'Itens', img: 'leftovers', items: items['items']!),
@@ -3874,7 +3876,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               return FittedBox(
                 fit: BoxFit.contain,
                 alignment: Alignment.topCenter,
-                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy', 'dex'}.contains(_panel) ? panel : SingleChildScrollView(child: panel)),
+                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy', 'dex', 'bag'}.contains(_panel) || (_panel ?? '').startsWith('contest') ? panel : SingleChildScrollView(child: panel)),
               );
             }),
           ),
@@ -6445,10 +6447,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
             '${forecast.isNotEmpty ? ' · ${tr('Clima: {0}').replaceAll('{0}', tr(_weatherLabel[forecast] ?? forecast))}${_weatherPull[forecast] != null ? ' (${tr(_weatherPull[forecast]!)})' : ''}' : ''}',
             key: const ValueKey('factory-clock'),
             style: TextStyle(fontSize: 11, color: _dlgSub)),
-        if (burst != null)
+        // O surto do dia: só onde ele vive (senão a fala promete um Pokémon que não aparece aqui). Igual ao site.
+        if (burst != null && ((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(route['biome']))
           Text(
-              '📣 ${tr('Surto do dia: {0} aparece muito onde vive (mais chance de shiny).').replaceAll('{0}', _name(burst))}'
-              '${((data.species[burst]?.elementAtOrNull(6) as List?) ?? const []).contains(route['biome']) ? ' ${tr('Aqui também!')}' : ''}',
+              '📣 ${tr('Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!').replaceAll('{0}', _name(burst))}',
               key: const ValueKey('factory-outbreak'),
               style: TextStyle(fontSize: 11, color: _dlgSub)),
         if (down) _small(tr('O time todo está desmaiado: use um Revive ou desista.'), color: const Color(0xFFDC2626)),
@@ -7463,6 +7465,20 @@ class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMi
 
   double get _factor => AppSettings.instance.textFactor;
 
+  /// Todas as falas com o mesmo tamanho de letra e a mesma altura de linha (como nos jogos): assim cada página tem
+  /// exatamente as linhas que cabem, sem nenhuma cortada no meio. A cor e o negrito de cada uma ficam. Igual ao site.
+  Widget _uniform(Widget w) {
+    TextStyle? fix(TextStyle? s) => (s ?? const TextStyle()).copyWith(fontSize: widget.style.fontSize, height: widget.style.height);
+    if (w is Text) {
+      return w.textSpan != null
+          ? Text.rich(w.textSpan!, key: w.key, style: fix(w.style), textAlign: w.textAlign)
+          : Text(w.data ?? '', key: w.key, style: fix(w.style), textAlign: w.textAlign);
+    }
+    if (w is Padding && w.child != null) return Padding(key: w.key, padding: EdgeInsets.zero, child: _uniform(w.child!));
+    if (w is Column) return Column(key: w.key, crossAxisAlignment: w.crossAxisAlignment, children: [for (final c in w.children) _uniform(c)]);
+    return w;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -7569,7 +7585,7 @@ class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMi
               child: SingleChildScrollView(
                 controller: _scroll,
                 physics: const NeverScrollableScrollPhysics(),
-                child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widget.children)),
+                child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (final c in widget.children) _uniform(c)])),
               ),
             ),
           ),
