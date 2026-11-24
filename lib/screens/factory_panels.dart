@@ -225,7 +225,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, int? capturedIndex, List<List<int>> fought, List<int>? gained, String? ball, bool fled, double? foeHp}) factoryAfter(
+({List<double> hp, Map<String, int> bag, bool captured, int? capturedIndex, List<List<int>> fought, List<int>? gained, List<int>? crits, String? ball, bool fled, double? foeHp}) factoryAfter(
     TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
@@ -247,6 +247,17 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
       if (i < gained.length) gained[i] += (e.value as num).toInt();
     }
   }
+  // Os golpes críticos de cada um (o Farfetch'd de Galar evolui com 3), na ordem da corrida.
+  final critMap = (now?['crits'] as Map?) ?? const {};
+  List<int>? crits;
+  if (critMap.isNotEmpty) {
+    crits = List.filled(FactoryRun.teamOf(run).length, 0);
+    for (final e in critMap.entries) {
+      final slot = int.parse('${e.key}');
+      final i = slot < order.length ? order[slot] : slot;
+      if (i < crits.length) crits[i] += (e.value as num).toInt();
+    }
+  }
   // O lendário que fugiu: o HP que ficou (para a próxima vez).
   final foe = battle.teams[1].isEmpty ? null : battle.teams[1][0];
   final foeHp = battle.fled && foe != null && foe.maxHp > 0 ? ((foe.hp < 0 ? 0 : foe.hp) / foe.maxHp * 1000).round() / 1000 : null;
@@ -257,6 +268,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
     capturedIndex: battle.captured,
     fought: fought,
     gained: gained,
+    crits: crits,
     ball: battle.capturedBall,
     fled: battle.fled,
     foeHp: foeHp,
@@ -4152,6 +4164,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       }),
           key: const ValueKey('factory-menu-region'), active: _panel == 'region'),
       _toolButton('❓', tr('AJUDA'), () => setState(() => _panel = _panel == 'help' ? null : 'help'), key: const ValueKey('factory-menu-help'), active: _panel == 'help'),
+      // O Inkay no nível: virar a tela (o botão) e ele evolui na próxima vitória. Igual ao site.
+      if (FactoryRun.flipWaiting(data, run))
+        _toolButton('🙃', tr('VIRAR'), () => _save(FactoryRun.flipScreen(run)), key: const ValueKey('factory-menu-flip'), active: run['flip'] == true),
     ];
     Widget frame;
     void close() => setState(() => _panel = null);

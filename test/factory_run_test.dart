@@ -1975,6 +1975,23 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.winFloor(eevee, data)).first['id'], 196);
     expect(FactoryRun.teamOf(FactoryRun.winFloor(eevee, data, night: true)).first['id'], 197);
     expect(FactoryRun.levelTo({...first, 'id': 133}, 40, data, () => 0).$1['id'], 133);
+    // Evoluções especiais: Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch'd de Galar com 3 críticos.
+    final m = {...first, 'friendship': 0};
+    expect(FactoryRun.levelTo({...m, 'id': 686, 'level': 29}, 40, data, () => 0).$1['id'], 686);
+    expect(FactoryRun.levelTo({...m, 'id': 674, 'level': 31}, 40, data, () => 0).$1['id'], 674);
+    expect(FactoryRun.levelTo({...m, 'id': 10166, 'level': 24}, 40, data, () => 0).$1['id'], 10166);
+    final inkay = {...base(), 'team': [{...m, 'id': 686, 'level': 30}]};
+    expect(FactoryRun.flipWaiting(data, inkay), isTrue);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(inkay, data)).first['id'], 686);
+    final flipped = FactoryRun.winFloor(FactoryRun.flipScreen(inkay), data);
+    expect([FactoryRun.teamOf(flipped).first['id'], flipped['flip']], [687, null]);
+    expect((FactoryRun.pendingOf(flipped)!['levels'] as List).any((l) => l['evolved'] == 687), isTrue);
+    expect(FactoryRun.flipWaiting(data, {...base(), 'team': [{...m, 'id': 686, 'level': 29}]}), isFalse);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor({...base(), 'team': [{...m, 'id': 674, 'level': 32}, {...m, 'id': 19}]}, data)).first['id'], 674);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor({...base(), 'team': [{...m, 'id': 674, 'level': 32}, {...m, 'id': 197}]}, data)).first['id'], 675);
+    final farfetchd = {...base(), 'team': [{...m, 'id': 10166, 'level': 10}]};
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [2])).first['id'], 10166);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [FactoryRun.critEvolve])).first['id'], 865);
     var found = 0;
     for (var seed = 1; seed < 60; seed++) {
       final r = FactoryRun.winFloor({...base(seed), 'team': [{...first, 'id': FactoryRun.pickup.first}]}, data);

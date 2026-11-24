@@ -15316,5 +15316,11 @@
   "fr": "Capture critique !",
   "es": "¡Captura crítica!",
   "pt": "Captura crítica!"
+ },
+ "VIRAR": {
+  "en": "FLIP",
+  "fr": "RETOURNER",
+  "es": "VOLTEAR",
+  "pt": "VIRAR"
  }
 }

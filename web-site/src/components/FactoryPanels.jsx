@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, flipWaiting, flipScreen, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -2426,6 +2426,18 @@ function ToolButton({ icon, children, onClick, testid, active = false }) {
   )
 }
 
+/** O celular de cabeça para baixo (o topo para o chão): vira a tela para o Inkay. */
+function FlipSensor({ onFlip }) {
+  const fire = useRef(onFlip)
+  fire.current = onFlip
+  useEffect(() => {
+    const on = (e) => { if (e.beta != null && e.beta < -60) fire.current() }
+    window.addEventListener('deviceorientation', on)
+    return () => window.removeEventListener('deviceorientation', on)
+  }, [])
+  return null
+}
+
 /** Quantos botões tem o menu (um fragmento conta os de dentro): com mais de 4 (a cidade), um por linha; senão, 2 colunas. Igual ao app. */
 function menuCount(menu) {
   const flat = (n) => Children.toArray(n).flatMap((c) => (c?.type === Fragment ? flat(c.props.children) : [c]))
@@ -2893,6 +2905,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <ToolButton icon="🧩" onClick={() => setPanel(panel === 'team' ? null : 'team')} active={panel === 'team'} testid="factory-menu-team">{t('TIME')}</ToolButton>
       <ToolButton icon="🗺️" onClick={() => setPanel(panel === 'region' ? null : 'region')} active={panel === 'region'} testid="factory-menu-region">{t('MAPA')}</ToolButton>
       <ToolButton icon="❓" onClick={() => setPanel(panel === 'help' ? null : 'help')} active={panel === 'help'} testid="factory-menu-help">{t('AJUDA')}</ToolButton>
+      {/* O Inkay no nível: virar a tela (o celular de cabeça para baixo ou o botão) e ele evolui na próxima vitória. Igual ao app. */}
+      {run && flipWaiting(data, run) && (
+        <>
+          <ToolButton icon="🙃" onClick={() => save(flipScreen(run))} active={Boolean(run.flip)} testid="factory-menu-flip">{t('VIRAR')}</ToolButton>
+          {!run.flip && <FlipSensor onFlip={() => save(flipScreen(run))} />}
+        </>
+      )}
     </>
   )
 

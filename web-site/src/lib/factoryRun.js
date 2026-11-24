@@ -841,6 +841,28 @@ export const timeFits = (when, night) => !when || night == null || (when === 'ni
 /** Eevee com um golpe de Fada vira Sylveon pela amizade (como nos jogos). Igual ao app. */
 export const FAIRY_MOVES = ['baby-doll-eyes', 'charm', 'disarming-voice', 'draining-kiss', 'fairy-wind', 'dazzling-gleam', 'moonblast', 'play-rough', 'alluring-voice', 'sweet-kiss']
 
+/**
+ * Evoluções especiais (como nos jogos), não só pelo nível: Inkay vira Malamar com a tela de cabeça para baixo
+ * (flip: no celular, virando ele; no computador, o botão); Pancham vira Pangoro com um Pokémon Sombrio no time
+ * (dark); o Farfetch'd de Galar vira Sirfetch'd acertando CRIT_EVOLVE golpes críticos numa batalha (crits). Igual ao app.
+ */
+export const SPECIAL_EVOS = { 687: 'flip', 675: 'dark', 865: 'crits' }
+export const CRIT_EVOLVE = 3
+/** A evolução especial que ele faz agora (crits: os críticos dele nesta batalha), ou null. */
+export function specialEvolution(data, run, mon, crits = 0, region = null) {
+  const evo = evolutionsOf(data, mon, region).find(([to]) => SPECIAL_EVOS[to])
+  if (!evo) return null
+  const [to, at] = evo
+  const how = SPECIAL_EVOS[to]
+  const ok = how === 'crits' ? crits >= CRIT_EVOLVE
+    : mon.level >= (at ?? 1) && (how === 'flip' ? Boolean(run.flip) : run.team.some((o) => o !== mon && (speciesOf(data, o.id)?.[4] ?? []).includes('dark')))
+  return ok ? evolvedForm(data, mon, to, region) : null
+}
+/** Quem do time espera a tela virar (Inkay no nível). */
+export const flipWaiting = (data, run) => (run?.team ?? []).some((m) => evolutionsOf(data, m, regionOf(data, run)).some(([to, at]) => SPECIAL_EVOS[to] === 'flip' && m.level >= (at ?? 1)))
+/** Virou a tela (ou tocou no botão): o Inkay evolui na próxima vitória. */
+export const flipScreen = (run) => (run.flip ? run : { ...run, flip: true })
+
 /** Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao app. */
 export function withShedinja(run, before, after, rand) {
   const out = [...after]
@@ -864,7 +886,7 @@ export function levelTo(mon, level, data, rand, region = null, night = null) {
     // Evoluções por item (pedras) só com o item: canEvolveWith/buyItem.
     // As por amizade (FRIEND_EVOS) não são por nível (a Eevee, só por pedra ou amizade).
     const friends = FRIEND_EVOS[out.id] ? (out.id === 133 ? null : friendTargets(out.id)) : []
-    const options = evolutionsOf(data, out, region).filter(([to, at, item]) => !item && out.level >= at && friends && !friends.includes(to) && timeFits(TIME_EVOS[to], night))
+    const options = evolutionsOf(data, out, region).filter(([to, at, item]) => !item && !SPECIAL_EVOS[to] && out.level >= at && friends && !friends.includes(to) && timeFits(TIME_EVOS[to], night))
     if (!options.length) break
     // Tyrogue: como nos jogos, pelo Ataque e pela Defesa (Hitmonlee, Hitmonchan ou Hitmontop).
     const to = out.id === 236 ? tyrogue(out) : pickOne(options, rand)[0]
@@ -3228,6 +3250,19 @@ export function winFloor(run, data, after = {}) {
     levels.push({ index, from: m.level, to: m.level, evolved: id, friend: true })
     return { ...m, id, friendship }
   })
+  // Evoluções especiais (Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch'd de Galar com 3 críticos).
+  let flipped = false
+  out.team = out.team.map((m, index) => {
+    if (!((m.hp ?? 1) > 0)) return m
+    const id = specialEvolution(data, out, m, after.crits?.[index] ?? 0, regionOf(data, run))
+    if (id == null) return m
+    if (evolutionsOf(data, m, regionOf(data, run)).some(([to]) => SPECIAL_EVOS[to] === 'flip')) flipped = true
+    const at = levels.findIndex((l) => l.index === index && !l.friend)
+    if (at >= 0) levels[at] = { ...levels[at], evolved: id }
+    else levels.push({ index, from: m.level, to: m.level, evolved: id })
+    return { ...m, id }
+  })
+  if (flipped) delete out.flip
   // O Pokérus: raro; passa para os vizinhos no time e some em POKERUS_FLOORS andares (o dobro de EVs fica). Igual ao app.
   const pokerus = pokerusStep(out, run)
   // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).

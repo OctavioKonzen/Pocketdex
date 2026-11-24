@@ -457,7 +457,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, ball: after.ball, night: FactoryRun.clockOf().night, fled: after.fled, foeHp: after.foeHp)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, crits: after.crits, ball: after.ball, night: FactoryRun.clockOf().night, fled: after.fled, foeHp: after.foeHp)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {

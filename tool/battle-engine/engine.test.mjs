@@ -462,6 +462,15 @@ test('Battle Factory: critical capture (more species in the run dex) shakes once
   assert.ok(crits > 0);
 });
 
+test('Battle Factory: counts the critical hits of each of your Pokémon (exp.crits)', () => {
+  const game = sim.create({teams: [[mon('Lapras', ['frostbreath'])], [mon('Snorlax', ['splash'])]], seed: [1, 2, 3, 4],
+    exp: {mons: [{level: 50, exp: 125000}], table: [[100]], share: 0}});
+  try {
+    const next = sim.choose(game.handle, [move(0), move(0)]);
+    assert.equal(next.state.exp.crits[0], 1);
+  } finally {sim.dispose(game.handle);}
+});
+
 test('Battle Factory: a failed throw spends the ball and the turn; balls only work on wild battles', () => {
   const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Mewtwo', ['splash'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'poke-ball': 1}, null]});
   try {

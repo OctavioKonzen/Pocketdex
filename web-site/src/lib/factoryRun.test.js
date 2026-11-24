@@ -10,7 +10,7 @@ import {
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, GYM_CHALLENGES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
-  HELD_BOOST, levelTo, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
+  HELD_BOOST, levelTo, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, sceneRegion, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
   captureFor, dexBook, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
@@ -1472,6 +1472,30 @@ describe('cidade e lugares perto dela', () => {
 
 describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
   const base = () => ({ ...startRun(emptyFactory(), data, 1, 42), encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } })
+  it('evoluções especiais: Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch\'d de Galar com 3 críticos', () => {
+    const run = base()
+    const m = { ...run.team[0], friendship: 0 }
+    // Pelo nível, nenhum deles evolui sozinho.
+    expect(levelTo({ ...m, id: 686, level: 29 }, 40, data, () => 0)[0].id).toBe(686)
+    expect(levelTo({ ...m, id: 674, level: 31 }, 40, data, () => 0)[0].id).toBe(674)
+    expect(levelTo({ ...m, id: 10166, level: 24 }, 40, data, () => 0)[0].id).toBe(10166)
+    const inkay = { ...run, team: [{ ...m, id: 686, level: 30 }] }
+    expect(flipWaiting(data, inkay)).toBe(true)
+    expect(winFloor(inkay, data, {}).team[0].id).toBe(686)
+    const flipped = winFloor(flipScreen(inkay), data, {})
+    expect(flipped.team[0].id).toBe(687)
+    expect(flipped.flip).toBeUndefined()
+    expect(flipped.pending.levels.some((l) => l.evolved === 687)).toBe(true)
+    expect(flipWaiting(data, { ...run, team: [{ ...m, id: 686, level: 29 }] })).toBe(false)
+    // Pancham: com um Sombrio (Umbreon) no time.
+    expect(winFloor({ ...run, team: [{ ...m, id: 674, level: 32 }, { ...m, id: 19 }] }, data, {}).team[0].id).toBe(674)
+    expect(winFloor({ ...run, team: [{ ...m, id: 674, level: 32 }, { ...m, id: 197 }] }, data, {}).team[0].id).toBe(675)
+    // Farfetch'd de Galar: 3 críticos numa batalha (em qualquer nível).
+    const farfetchd = { ...run, team: [{ ...m, id: 10166, level: 10 }] }
+    expect(winFloor(farfetchd, data, { crits: [2] }).team[0].id).toBe(10166)
+    expect(winFloor(farfetchd, data, { crits: [CRIT_EVOLVE] }).team[0].id).toBe(865)
+  })
+
   it('amizade: a cada andar vencido; com FRIEND_EVOLVE, evolui (Eevee: Espeon de dia, Umbreon à noite)', () => {
     const run = { ...base(), team: [{ ...base().team[0], id: 133, friendship: FRIEND_EVOLVE - 1 }] }
     const day = winFloor(run, data, { night: false })

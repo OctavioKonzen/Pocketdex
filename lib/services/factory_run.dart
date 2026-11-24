@@ -985,6 +985,35 @@ class FactoryRun {
   /// Eevee com um golpe de Fada vira Sylveon pela amizade (como nos jogos). Igual ao site.
   static const fairyMoves = ['baby-doll-eyes', 'charm', 'disarming-voice', 'draining-kiss', 'fairy-wind', 'dazzling-gleam', 'moonblast', 'play-rough', 'alluring-voice', 'sweet-kiss'];
 
+  /// Evoluções especiais (como nos jogos), não só pelo nível: Inkay vira Malamar com a tela de cabeça para baixo
+  /// (flip: o botão); Pancham vira Pangoro com um Pokémon Sombrio no time (dark); o Farfetch'd de Galar vira
+  /// Sirfetch'd acertando critEvolve golpes críticos numa batalha (crits). Igual ao site.
+  static const specialEvos = {687: 'flip', 675: 'dark', 865: 'crits'};
+  static const critEvolve = 3;
+
+  /// A evolução especial que ele faz agora (crits: os críticos dele nesta batalha), ou null.
+  static int? specialEvolution(FactoryData data, Json run, Map mon, [int crits = 0, String? region]) {
+    final evo = evolutionsOf(data, mon, region).where((e) => specialEvos.containsKey(e[0])).firstOrNull;
+    if (evo == null) return null;
+    final to = evo[0] as int;
+    final at = evo.length > 1 && evo[1] != null ? _int(evo[1]) : 1;
+    final how = specialEvos[to];
+    final ok = how == 'crits'
+        ? crits >= critEvolve
+        : _int(mon['level']) >= at &&
+            (how == 'flip'
+                ? run['flip'] == true
+                : teamOf(run).any((o) => !identical(o, mon) && (((data.speciesOf(_int(o['id']))?.elementAtOrNull(4) as List?) ?? const []).contains('dark'))));
+    return ok ? evolvedForm(data, mon, to, region) : null;
+  }
+
+  /// Quem do time espera a tela virar (Inkay no nível).
+  static bool flipWaiting(FactoryData data, Json? run) => run != null &&
+      teamOf(run).any((m) => evolutionsOf(data, m, regionOf(data, run)).any((e) => specialEvos[e[0]] == 'flip' && _int(m['level']) >= (e[1] == null ? 1 : _int(e[1]))));
+
+  /// Virou a tela (o botão): o Inkay evolui na próxima vitória.
+  static Json flipScreen(Json run) => run['flip'] == true ? run : {...run, 'flip': true};
+
   /// Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao site.
   static List<Json> withShedinja(Json run, List<Json> before, List<Json> after, double Function() rand) {
     final out = [...after];
@@ -1032,7 +1061,7 @@ class FactoryRun {
       final friends = friendEvos.containsKey(id) ? (id == 133 ? null : _friendTargets(id)) : const <int>[];
       final options = [
         for (final e in evolutionsOf(data, out, region))
-          if (e.length < 3 && (out['level'] as int) >= (e[1] as int) && friends != null && !friends.contains(e[0]) && timeFits(timeEvos[e[0]], night)) e
+          if (e.length < 3 && !specialEvos.containsKey(e[0]) && (out['level'] as int) >= (e[1] as int) && friends != null && !friends.contains(e[0]) && timeFits(timeEvos[e[0]], night)) e
       ];
       if (options.isEmpty) break;
       // Tyrogue: como nos jogos, pelo Ataque e pela Defesa (Hitmonlee, Hitmonchan ou Hitmontop).
@@ -3169,6 +3198,7 @@ class FactoryRun {
       int? capturedIndex,
       List<List<int>>? fought,
       List<int>? gained,
+      List<int>? crits,
       String? ball,
       bool? night,
       bool fled = false,
@@ -3263,6 +3293,24 @@ class FactoryRun {
       levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
       team[i] = {...m, 'id': id, 'friendship': friendship};
     }
+    // Evoluções especiais (Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch'd de Galar com 3 críticos).
+    var flipped = false;
+    final now = {...out, 'team': [...team]};
+    for (var i = 0; i < team.length; i++) {
+      final m = (now['team'] as List)[i] as Json;
+      if (hpOf(m) <= 0) continue;
+      final id = specialEvolution(data, now, m, crits != null && i < crits.length ? crits[i] : 0, regionOf(data, run));
+      if (id == null) continue;
+      if (evolutionsOf(data, m, regionOf(data, run)).any((e) => specialEvos[e[0]] == 'flip')) flipped = true;
+      final at = levels.indexWhere((l) => l['index'] == i && l['friend'] != true);
+      if (at >= 0) {
+        levels[at] = {...levels[at], 'evolved': id};
+      } else {
+        levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id});
+      }
+      team[i] = {...team[i], 'id': id};
+    }
+    if (flipped) out.remove('flip');
     // O Pokérus: raro; passa para os vizinhos no time e some em pokerusFloors andares (o dobro de EVs fica). Igual ao site.
     final pokerus = _pokerusStep(team, run);
     // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).

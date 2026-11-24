@@ -94,11 +94,14 @@ export function factoryAfter(battle, run) {
   // O XP que cada um ganhou na luta (o motor deu na hora), na ordem da corrida.
   const gained = battle.expNow ? run.team.map(() => 0) : null
   if (gained) Object.entries(battle.expNow.gained ?? {}).forEach(([slot, exp]) => { gained[battle.factoryOrder?.[Number(slot)] ?? Number(slot)] += exp })
+  // Os golpes críticos de cada um (o Farfetch'd de Galar evolui com 3), na ordem da corrida.
+  const crits = Object.keys(battle.expNow?.crits ?? {}).length ? run.team.map(() => 0) : null
+  if (crits) Object.entries(battle.expNow.crits).forEach(([slot, n]) => { const i = battle.factoryOrder?.[Number(slot)] ?? Number(slot); if (i < crits.length) crits[i] += n })
   // A hora (pelo relógio): a Eevee evolui pela amizade em Espeon de dia e Umbreon à noite.
   // O lendário que fugiu: o HP que ficou (para a próxima vez).
   const foe = battle.sides[1].team[0]
   const fled = battle.fled ? { fled: true, foeHp: foe?.maxHp ? Math.round((Math.max(0, foe.hp) / foe.maxHp) * 1000) / 1000 : 1 } : {}
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, ...(battle.captured != null ? { capturedIndex: battle.captured } : {}), fought, ...fled, night: clockOf().night, ...(gained ? { gained } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, ...(battle.captured != null ? { capturedIndex: battle.captured } : {}), fought, ...fled, night: clockOf().night, ...(gained ? { gained } : {}), ...(crits ? { crits } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */

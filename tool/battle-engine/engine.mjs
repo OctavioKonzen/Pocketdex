@@ -401,7 +401,8 @@ function snapshot(game) {
     captured: game.captured ?? null,
     capturedBall: game.capturedBall ?? null,
     // Battle Factory: o XP de cada um (nível e XP de agora, quanto ganhou) e quem lutou contra cada adversário.
-    ...(game.exp ? {exp: {mons: game.exp.mons, gained: game.exp.gained}, fought: game.fought} : {}),
+    // crits: quantos golpes críticos cada um seu acertou (o Farfetch'd de Galar evolui com 3 numa batalha).
+    ...(game.exp ? {exp: {mons: game.exp.mons, gained: game.exp.gained, crits: game.exp.crits}, fought: game.fought} : {}),
     sides: b.sides.map(side => ({
       slots: slotsFor(game, side),
       actives: side.active.map(p => p ? originalIndex(p) : -1),
@@ -478,6 +479,7 @@ function eventsFor(game, lines) {
     } else if (kind === 'move') {
       const m = PocketDexSim.move(value);
       if (m) events.push({t: 'attack', side, type: m.type, category: m.category, slug: m.slug, ...at});
+      game.lastMover = {side, index: actorIndex};
       say('used', label(side), value);
     } else if (kind === '-damage' || kind === '-heal') {
       const index = Number(actor.split(': ')[1]?.slice(2));
@@ -552,7 +554,11 @@ function eventsFor(game, lines) {
     else if (kind === '-end' && value === 'confusion') say('confusionEnd', label(side));
     else if (kind === '-miss') { events.push({t: 'miss', side, ...at}); say('missed', label(side)); }
     else if (kind === '-immune') say('noEffect', label(side));
-    else if (kind === '-crit') say('crit');
+    else if (kind === '-crit') {
+      say('crit');
+      const by = game.lastMover;
+      if (game.exp && by?.side === 0 && side === 1 && Number.isInteger(by.index)) game.exp.crits[by.index] = (game.exp.crits[by.index] ?? 0) + 1;
+    }
     else if (kind === '-supereffective') say('super');
     else if (kind === '-resisted') say('weak');
     else if (kind === '-fail') say('failed', label(side));
@@ -805,7 +811,7 @@ export const PocketDexSim = {
     }
     // O XP na hora (Battle Factory): quem está em campo junto lutou contra o adversário.
     if (input.exp) {
-      game.exp = {mons: input.exp.mons.map(m => ({...m})), table: input.exp.table, share: input.exp.share ?? 0, given: {}, gained: {}};
+      game.exp = {mons: input.exp.mons.map(m => ({...m})), table: input.exp.table, share: input.exp.share ?? 0, given: {}, gained: {}, crits: {}};
       game.fought = {};
       markFought(game);
     }
