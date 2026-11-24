@@ -2359,7 +2359,14 @@ const TEAM_NAMES = {
 /** As falas em sequência (a caixa de fala mostra 2 linhas por vez e passa sozinha ou tocando). Sem falas, o fallback. */
 function Dialogue({ lines, fallback = null }) {
   if (!lines.length) return fallback ? <p>{fallback}</p> : null
-  return <div data-testid="factory-dialogue">{lines.map((l, i) => <p key={i}>{l}</p>)}</div>
+  // Uma fala da história ({who, text}): quem fala aparece na plaquinha em cima da caixa (e no cenário). Igual ao app.
+  return <div data-testid="factory-dialogue">{lines.map((l, i) => (l?.text != null ? <p key={i} data-who={l.who}>{l.text}</p> : <p key={i} data-who="">{l}</p>))}</div>
+}
+/** O treinador (sprite) de quem fala na história, pelo nome (Bill → sd-bill, Lorelei, Prof. Oak...). Igual ao app. */
+export function speakerTrainer(trainers, who) {
+  if (!who || !trainers?.length) return null
+  const key = who.toLowerCase().replace(/^prof(\.|essora|essor)?\s+/, '').replace(/[^a-z0-9]/g, '')
+  return trainers.find((x) => x.name?.toLowerCase() === who.toLowerCase()) ?? trainers.find((x) => x.id === key) ?? trainers.find((x) => x.id === `sd-${key}`) ?? null
 }
 
 /**
@@ -2373,10 +2380,18 @@ const AUTO_MS = 2400
 const SPEED = { slow: 1.6, normal: 1, fast: 0.55 }
 /** Nos testes no navegador automatizado, o texto já vem escrito e as escolhas aparecem logo (como nos testes do app). */
 const INSTANT_TEXT = typeof navigator !== 'undefined' && Boolean(navigator.webdriver)
-function PagedText({ className, children, onDone = null }) {
+function PagedText({ className, children, onDone = null, onSpeaker = null }) {
   const win = useRef(null)
   const body = useRef(null)
   const [view, setView] = useState({ page: 0, pages: 1, line: 0, sig: '', chars: 0 })
+  // Quem fala na página de agora (a fala que está no alto da caixa).
+  useLayoutEffect(() => {
+    const b = body.current
+    if (!b || !onSpeaker) return
+    const top = view.page * view.line * PAGE_LINES, bottom = top + view.line * PAGE_LINES
+    const p = [...b.querySelectorAll('[data-who]')].find((x) => x.dataset.who && x.offsetTop < bottom - 1 && x.offsetTop + x.offsetHeight > top + 1)
+    onSpeaker(p?.dataset.who ?? '')
+  })
   const [shown, setShown] = useState(PAGE_LINES)
   const factor = SPEED[usePrefs((s) => s.textSpeed)] ?? 1
   // Mede de novo quando o texto muda (volta para o começo e escreve de novo).
@@ -2698,17 +2713,28 @@ function Badges({ data, run }) {
 }
 
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false, menuWait = true }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false, menuWait = true, cast = false }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   // Como nos jogos: as escolhas só aparecem depois de toda a fala aparecer.
   const [textDone, setTextDone] = useState(true)
+  // Quem fala na história: a plaquinha com o nome e (cast: sem chefe já no campo) o sprite dele no cenário.
+  const [speaker, setSpeaker] = useState('')
+  const trainers = useTrainers()
+  const speakerSprite = cast ? speakerTrainer(trainers, speaker) : null
+  const [frameRef, frameWidth] = useWidth()
   return (
-    <div className={`battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge ${textDone ? '' : 'text-busy'}`} style={{ background: '#9fdcff' }}>
+    <div ref={frameRef} className={`battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge ${textDone ? '' : 'text-busy'}`} style={{ background: '#9fdcff' }}>
       {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
       <div key={field?.props?.testid ?? ''} className="page-in absolute inset-0">{field}</div>
+      {speakerSprite && (
+        <div key={speakerSprite.id} className="page-in pointer-events-none absolute right-[12%] bottom-[38%] z-20 flex items-end" data-testid="speaker-sprite">
+          <TrainerSprite trainer={speakerSprite} height={farPerson(frameWidth)} />
+        </div>
+      )}
+      {speaker && <span className={`speaker-plate absolute left-[2%] bottom-[23%] z-30 ${frame ? `frame-${frame}` : ''}`} data-testid="speaker-plate" data-no-translate>{t(speaker)}</span>}
       {/* A caixa de texto no lugar da da batalha (o que não cabe: tocar passa). */}
-      <PagedText onDone={setTextDone} className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}>
+      <PagedText onDone={setTextDone} onSpeaker={setSpeaker} className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}>
         {text}
       </PagedText>
       {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
@@ -3089,6 +3115,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
   // menuWait: os botões ao lado da caixa esperam a fala (não quando são só BOLSA/TIME/MAPA/AJUDA).
   let field, text, menu, below = null, toolRow = false, menuFill = false, hideHp = false, menuWait = true
+  // cast: quem fala na história aparece no cenário (sem um chefe já no campo).
+  let cast = false
   // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
   const daycareView = () => {
       const care = run.daycare
@@ -3214,6 +3242,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.badge && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
       </Field>
     )
+    // O chefe vencido fala depois (a história segue): ele aparece no cenário.
+    cast = Boolean(p.beat?.city) && !shown && !event
     text = (
       <>
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
@@ -3270,7 +3300,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         )}
         {/* O que o chefe diz depois de perder (a história segue). */}
         {p.beat?.city && sceneLines(data, p.beat.region ? sceneRegion(p.beat) : sceneRegion(data.bosses[run.boss.region]), 'after', `${p.beat.name}@${p.beat.city}`, language).map(([who, text], k) => (
-          <p key={`after-${k}`} className="text-sm" data-testid="factory-scene-after">{who ? `💬 ${t(who)}: ` : '📖 '}{text}</p>
+          <p key={`after-${k}`} className="text-sm" data-testid="factory-scene-after" data-who={who || ''}>{who ? '' : '📖 '}{text}</p>
         ))}
         {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
       </>
@@ -3792,7 +3822,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       </Field>
     )
     // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama).
-    const sceneText = ([who, text]) => (who ? `💬 ${t(who)}: ${text}` : `📖 ${text}`)
+    // Quem fala aparece na plaquinha (e no cenário); a narração, com o livro.
+    cast = !meeting && !rival
+    const sceneText = ([who, text]) => (who ? { who, text } : `📖 ${text}`)
     const arrival = town && pos === ROUTE_LENGTH ? sceneLines(data, sceneRegion(boss), 'city', to, language).map(sceneText) : []
     const before = meeting ? sceneLines(data, sceneRegion(boss), 'before', `${boss.name}@${bossCity(data, run)}`, language).map(sceneText) : []
     // As falas (uma por vez, tocando para passar, como nos jogos).
@@ -4062,7 +4094,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} cast={cast} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
           {note && <p data-testid="factory-note">{note}</p>}
