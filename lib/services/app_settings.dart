@@ -28,6 +28,7 @@ class AppSettings extends ChangeNotifier {
   static const _battleMusicKey = 'settings_battle_music';
   static const _musicVolumeKey = 'settings_music_volume';
   static const _battleStyleKey = 'settings_battle_style';
+  static const _amieKey = 'settings_amie_test';
 
   /// Os sprites se mexem ou ficam parados: (chave, nome).
   static const spriteMotions = [('on', 'Animados'), ('off', 'Parados')];
@@ -63,6 +64,9 @@ class AppSettings extends ChangeNotifier {
   /// Contra o computador: 'shift' (pergunta se quer trocar quando o do adversário
   /// desmaia) ou 'set' (como no competitivo, sem a pergunta). Igual ao site.
   String battleStyle = 'shift';
+
+  /// Pokémon-Amie (em teste): acariciar e dar Poké Puff ao Pokémon no Pokelike (TIME > OPÇÕES). Desligado de início. Igual ao site.
+  bool amieTest = false;
 
   /// Tema de Pokémon (0: o padrão). O app fica na cor dele e o desenho dele
   /// aparece no fundo no lugar da Pokébola (widgets/pokeball_background.dart).
@@ -122,6 +126,7 @@ class AppSettings extends ChangeNotifier {
       battleMusic = prefs.getBool(_battleMusicKey) ?? true;
       musicVolume = (prefs.getDouble(_musicVolumeKey) ?? 0.5).clamp(0.0, 1.0);
       battleStyle = prefs.getString(_battleStyleKey) ?? 'shift';
+      amieTest = prefs.getBool(_amieKey) ?? false;
     } catch (_) {}
   }
 
@@ -198,6 +203,14 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await (await SharedPreferences.getInstance()).setBool(_battleAnimsKey, value);
+    } catch (_) {}
+  }
+
+  Future<void> setAmieTest(bool value) async {
+    amieTest = value;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_amieKey, value);
     } catch (_) {}
   }
 

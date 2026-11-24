@@ -2007,6 +2007,14 @@ void main() {
     final farfetchd = {...base(), 'team': [{...m, 'id': 10166, 'level': 10}]};
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [2])).first['id'], 10166);
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [FactoryRun.critEvolve])).first['id'], 865);
+    // Pokémon-Amie (teste): o Poké Puff dá amizade, um por andar. Igual ao site.
+    final amieRun = {...base(), 'encounter': null, 'team': [{...first, 'friendship': 3}, {...first, 'hp': 0}]};
+    final fed = FactoryRun.feedPuff(amieRun, 0)!;
+    expect([FactoryRun.teamOf(fed)[0]['friendship'], fed['amieFloor']], [3 + FactoryRun.amiePuff, amieRun['floor']]);
+    expect(FactoryRun.feedPuff(fed, 0), isNull);
+    expect(FactoryRun.teamOf(FactoryRun.feedPuff({...fed, 'floor': (amieRun['floor'] as num).toInt() + 1}, 0)!)[0]['friendship'], 3 + 2 * FactoryRun.amiePuff);
+    expect(FactoryRun.feedPuff(amieRun, 1), isNull);
+    expect(FactoryRun.feedPuff({...amieRun, 'encounter': {'kind': 'wild', 'foes': []}}, 0), isNull);
     // A Pokédex de habitat: onde vive, só de dia ou à noite e o surto de hoje. Igual ao site.
     final pidgey = FactoryRun.habitatOf(data, 16);
     expect([pidgey.places, pidgey.time, pidgey.outbreak], [[for (final b in data.species[16]![6] as List) '$b'], 'day', false]);

@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -29,7 +29,7 @@ import {
   boostOf, memberOf, learnMove, movesLearnedBetween,
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
-  heartsOf, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
+  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
   expAt,
 } from '../lib/factoryRun'
 import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
@@ -384,16 +384,41 @@ function ItemRow({ id, main = false, children, testid }) {
   )
 }
 
-const BwButton = ({ color, onClick, children, testid }) => (
-  <button type="button" onClick={(e) => { e.stopPropagation(); onClick() }} className={`shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-black text-white ${color}`} data-testid={testid}>{children}</button>
+const BwButton = ({ color, onClick, children, testid, disabled = false }) => (
+  <button type="button" disabled={disabled} onClick={(e) => { e.stopPropagation(); onClick() }} className={`shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-black text-white disabled:cursor-default disabled:opacity-50 ${color}`} data-testid={testid}>{children}</button>
 )
 
 /**
  * Os itens e as opções de quem foi aberto no time: o item principal (o efeito de verdade), os extras (só um pouco no
  * atributo), segurar um item guardado, quem abre a batalha, a mecânica e ensinar golpe. Igual ao app.
  */
+/** Pokémon-Amie (em teste): tocar no Pokémon acaricia (o grito e um coração subindo); o Poké Puff dá amizade, um por andar. Igual ao app. */
+function AmiePanel({ run, i, save }) {
+  const m = run.team[i]
+  const [pets, setPets] = useState(0)
+  const puff = feedPuff(run, i)
+  const hearts = heartsOf(m)
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-pink-950/60 p-1.5" data-testid="team-amie-panel">
+      <button type="button" className="relative h-16 w-16 shrink-0 cursor-pointer" onClick={() => { playCry(m.id); setPets((n) => n + 1) }} data-testid="amie-pet" aria-label={t('Acariciar')}>
+        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-full w-full" />
+        {pets > 0 && <span key={pets} className="amie-heart pointer-events-none absolute left-1/2 top-0 text-xl">❤️</span>}
+      </button>
+      <div className="min-w-0 flex-1 space-y-1 text-xs">
+        <p data-testid="amie-hearts">{'❤️'.repeat(hearts)}{'🤍'.repeat(FRIEND_HEARTS - hearts)}</p>
+        <p className="text-slate-300">{t('Toque nele para fazer carinho.')}</p>
+        <BwButton color="bg-pink-600" onClick={() => puff && save(puff)} testid="amie-puff" disabled={!puff}>🧁 Poké Puff</BwButton>
+        {!puff && <p className="text-slate-300">{t('Ele já comeu um Poké Puff neste andar.')}</p>}
+      </div>
+    </div>
+  )
+}
+
 function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
   const [teaching, setTeaching] = useState(false)
+  // Pokémon-Amie (em teste): só com a opção ligada nas Configurações.
+  const amieOn = usePrefs((s) => s.amieTest)
+  const [amie, setAmie] = useState(false)
   const m = run.team[i]
   const extras = m.extras ?? []
   const canTeach = Object.values(run.tms ?? {}).some((n) => n > 0) || Object.values(run.tokens ?? {}).some((n) => n > 0)
@@ -407,6 +432,7 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
             ? <span className="rounded-lg bg-emerald-500 px-2 py-1 text-xs font-black text-slate-900">{t('Abre a batalha')}</span>
             : <BwButton color="bg-blue-600" onClick={() => { save(setLead(run, i)); onLead() }} testid="team-lead">⬆ {t('PRIMEIRO NA BATALHA')}</BwButton>}
           {canTeach && <BwButton color="bg-violet-600" onClick={() => setTeaching(true)} testid="team-teach">📀 {t('ENSINAR GOLPE')}</BwButton>}
+          {amieOn && <BwButton color="bg-pink-600" onClick={() => setAmie(!amie)} testid="team-amie">💞 Amie</BwButton>}
           {/* A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao app. */}
           {itemFormsOf(data, m).length > 0 && (
             <select aria-label={t('Forma')} value={m.id} onChange={(e) => save(setForm(run, data, i, Number(e.target.value), clockOf().night))}
@@ -423,6 +449,7 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
           )}
         </div>
         {teaching && <div className="text-xs text-text"><MoveTeacher run={run} index={i} save={save} onClose={() => setTeaching(false)} /></div>}
+        {amie && <AmiePanel run={run} i={i} save={save} />}
       </div>
     )
   }

@@ -1021,6 +1021,19 @@ class FactoryRun {
   static bool flipWaiting(FactoryData data, Json? run) => run != null &&
       teamOf(run).any((m) => evolutionsOf(data, m, regionOf(data, run)).any((e) => specialEvos[e[0]] == 'flip' && _int(m['level']) >= (e[1] == null ? 1 : _int(e[1]))));
 
+  /// Pokémon-Amie (em teste, ligado nas Configurações): acariciar é só carinho (o grito e os corações); o Poké Puff dá
+  /// amiePuff de amizade, um por andar. null se não dá (já deu neste andar, numa batalha, desmaiado). Igual ao site.
+  static const amiePuff = 1;
+  static Json? feedPuff(Json run, int index) {
+    final team = teamOf(run);
+    if (index < 0 || index >= team.length || run['amieFloor'] == run['floor'] || run['encounter'] != null || hpOf(team[index]) <= 0) return null;
+    return {
+      ...run,
+      'amieFloor': run['floor'],
+      'team': [for (var i = 0; i < team.length; i++) i == index ? {...team[i], 'friendship': math.min(friendMax, _int(team[i]['friendship'] ?? 0) + amiePuff)} : team[i]],
+    };
+  }
+
   /// Virou a tela (o botão): o Inkay evolui na próxima vitória.
   static Json flipScreen(Json run) => run['flip'] == true ? run : {...run, 'flip': true};
 

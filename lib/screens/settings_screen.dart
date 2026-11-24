@@ -246,6 +246,14 @@ class SettingsScreen extends StatelessWidget {
                           : null,
                     ),
                   ]),
+                  // Recursos em teste (desligados de início). Igual ao site.
+                  _Section('Em teste', Icons.science, 'Recursos novos para experimentar', const Color(0xFFA855F7), [
+                    row(
+                      title: 'Pokémon-Amie (teste)',
+                      subtitle: 'No Pokelike, em TIME > OPÇÕES: acaricie o Pokémon e dê um Poké Puff (um por andar) para ganhar amizade.',
+                      trailing: Switch(key: const ValueKey('amie-test'), value: settings.amieTest, activeTrackColor: const Color(0xFF0EA5E9), onChanged: settings.setAmieTest),
+                    ),
+                  ]),
                   if (DailyReminder.supported) _Section('Notificações', Icons.notifications, 'Avisos de amigos, lembrete e Pokémon do dia', const Color(0xFFF59E0B), [_PushSwitch(row: row), _ReminderSwitch(row: row), _MissionsReminderSwitch(row: row), _NightReminderSwitch(row: row), _DailyPokemonSwitch(row: row)]),
                   _Section('Dados e sobre', Icons.info_outline, 'Dados salvos, versão do app e apoiar o projeto', const Color(0xFF10B981), [
                     row(

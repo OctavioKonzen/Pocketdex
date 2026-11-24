@@ -44,6 +44,8 @@ export default function SettingsPage() {
   const setBattleMusic = usePrefs((s) => s.setBattleMusic)
   const musicVolume = usePrefs((s) => s.musicVolume ?? 0.5)
   const setMusicVolume = usePrefs((s) => s.setMusicVolume)
+  const amieTest = usePrefs((s) => s.amieTest)
+  const setAmieTest = usePrefs((s) => s.setAmieTest)
   const battleStyle = usePrefs((s) => s.battleStyle)
   const setBattleStyle = usePrefs((s) => s.setBattleStyle)
   const [confirm, setConfirm] = useState(false)
@@ -136,6 +138,13 @@ export default function SettingsPage() {
                 <span aria-hidden>🔊</span>
               </label>
             )}
+          </Row>
+        </Section>
+
+        {/* Recursos em teste (desligados de início). Igual ao app. */}
+        <Section title="Em teste" icon="🧪" summary="Recursos novos para experimentar" color="#A855F7">
+          <Row title="Pokémon-Amie (teste)" text="No Pokelike, em TIME > OPÇÕES: acaricie o Pokémon e dê um Poké Puff (um por andar) para ganhar amizade.">
+            <Switch on={amieTest} onChange={setAmieTest} label="Pokémon-Amie (teste)" />
           </Row>
         </Section>
 

@@ -49,6 +49,9 @@ export const usePrefs = create(
       // Estilo da batalha contra o computador: 'shift' (pergunta se quer trocar quando o do adversário desmaia) ou 'set' (como no competitivo, sem a pergunta).
       battleStyle: 'shift',
       setBattleStyle: (battleStyle) => set({ battleStyle }),
+      /** Pokémon-Amie (em teste): acariciar e dar Poké Puff ao Pokémon no Pokelike (TIME > OPÇÕES). Desligado de início. Igual ao app. */
+      amieTest: false,
+      setAmieTest: (amieTest) => set({ amieTest }),
     }),
     { name: 'pocketdex-prefs' },
   ),

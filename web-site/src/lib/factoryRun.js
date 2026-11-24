@@ -4488,6 +4488,17 @@ export function blindPick(run) {
 export const skipTrade = (run) => (run.pending ? { ...run, pending: { ...run.pending, trade: null } } : run)
 
 /** Quem abre a batalha: passa o Pokémon da posição para a frente do time (para treinar os mais fracos). Igual ao app. */
+/**
+ * Pokémon-Amie (em teste, ligado nas Configurações): acariciar é só carinho (o grito e os corações); o Poké Puff dá
+ * AMIE_PUFF de amizade, um por andar. null se não dá (já deu neste andar, numa batalha, desmaiado). Igual ao app.
+ */
+export const AMIE_PUFF = 1
+export function feedPuff(run, index) {
+  const m = run.team[index]
+  if (!m || run.amieFloor === run.floor || run.encounter || !((m.hp ?? 1) > 0)) return null
+  return { ...run, amieFloor: run.floor, team: run.team.map((x, i) => (i === index ? { ...x, friendship: Math.min(FRIEND_MAX, (x.friendship ?? 0) + AMIE_PUFF) } : x)) }
+}
+
 export function setLead(run, index) {
   if (!(index > 0) || !run.team[index]) return run
   const team = [...run.team]

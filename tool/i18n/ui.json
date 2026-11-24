@@ -15388,5 +15388,47 @@
   "fr": "Apparition massive aujourd’hui !",
   "es": "¡Brote hoy!",
   "pt": "Surto hoje!"
+ },
+ "Toque nele para fazer carinho.": {
+  "en": "Tap it to pet it.",
+  "fr": "Touchez-le pour le caresser.",
+  "es": "Tócalo para acariciarlo.",
+  "pt": "Toque nele para fazer carinho."
+ },
+ "Ele já comeu um Poké Puff neste andar.": {
+  "en": "It already ate a Poké Puff on this floor.",
+  "fr": "Il a déjà mangé un Poffin sur cet étage.",
+  "es": "Ya comió un Poké Lito en este piso.",
+  "pt": "Ele já comeu um Poké Puff neste andar."
+ },
+ "Acariciar": {
+  "en": "Pet",
+  "fr": "Caresser",
+  "es": "Acariciar",
+  "pt": "Acariciar"
+ },
+ "Em teste": {
+  "en": "Experimental",
+  "fr": "En test",
+  "es": "En pruebas",
+  "pt": "Em teste"
+ },
+ "Recursos novos para experimentar": {
+  "en": "New features to try out",
+  "fr": "Nouvelles fonctions à essayer",
+  "es": "Funciones nuevas para probar",
+  "pt": "Recursos novos para experimentar"
+ },
+ "Pokémon-Amie (teste)": {
+  "en": "Pokémon-Amie (test)",
+  "fr": "Poké Récré (test)",
+  "es": "Poké Recreo (prueba)",
+  "pt": "Pokémon-Amie (teste)"
+ },
+ "No Pokelike, em TIME > OPÇÕES: acaricie o Pokémon e dê um Poké Puff (um por andar) para ganhar amizade.": {
+  "en": "In Pokelike, under TEAM > OPTIONS: pet your Pokémon and give it a Poké Puff (one per floor) to raise friendship.",
+  "fr": "Dans Pokelike, dans ÉQUIPE > OPTIONS : caressez le Pokémon et donnez-lui un Poffin (un par étage) pour gagner de l'amitié.",
+  "es": "En Pokelike, en EQUIPO > OPCIONES: acaricia al Pokémon y dale un Poké Lito (uno por piso) para ganar amistad.",
+  "pt": "No Pokelike, em TIME > OPÇÕES: acaricie o Pokémon e dê um Poké Puff (um por andar) para ganhar amizade."
  }
 }

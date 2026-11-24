@@ -1005,6 +1005,8 @@ class _BagAndItemsState extends State<_BagAndItems> {
               _open(0);
             }, key: const ValueKey('team-lead')),
           if (canTeach) _bwButton('📀 ${tr('ENSINAR GOLPE')}', const Color(0xFF7C3AED), () => _teach(i), key: const ValueKey('team-teach')),
+          // Pokémon-Amie (em teste): só com a opção ligada nas Configurações. Igual ao site.
+          if (AppSettings.instance.amieTest) _bwButton('💞 Amie', const Color(0xFFDB2777), () => setState(() => _amie = !_amie), key: const ValueKey('team-amie')),
           // A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao site.
           if (FactoryRun.itemFormsOf(widget.data, mon).isNotEmpty)
             Container(
@@ -1049,6 +1051,63 @@ class _BagAndItemsState extends State<_BagAndItems> {
               ),
             ),
         ]),
+        if (_amie && AppSettings.instance.amieTest) Padding(padding: const EdgeInsets.only(top: 6), child: _amiePanel(i)),
+      ]),
+    );
+  }
+
+  bool _amie = false;
+  int _pets = 0;
+
+  /// Pokémon-Amie (em teste): tocar no Pokémon acaricia (o grito e um coração subindo); o Poké Puff dá amizade, um por
+  /// andar. Igual ao site.
+  Widget _amiePanel(int i) {
+    final run = widget.run;
+    final mon = FactoryRun.teamOf(run)[i];
+    final puff = FactoryRun.feedPuff(run, i);
+    final hearts = FactoryRun.heartsOf(mon);
+    return Container(
+      key: const ValueKey('team-amie-panel'),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(color: const Color(0x99500724), borderRadius: BorderRadius.circular(8)),
+      child: Row(children: [
+        GestureDetector(
+          key: const ValueKey('amie-pet'),
+          onTap: () {
+            BattleSounds.cry(_int(mon['id']));
+            setState(() => _pets++);
+          },
+          child: SizedBox.square(
+            dimension: 64,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Positioned.fill(child: PokemonSprite(_int(mon['id']), shiny: mon['shiny'] == true, fill: 0.9)),
+              if (_pets > 0)
+                Positioned(
+                  left: 20,
+                  top: 0,
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey('amie-heart-$_pets'),
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 900),
+                    builder: (context, t, _) => Opacity(
+                      opacity: t < 0.3 ? t / 0.3 : (1 - t).clamp(0.0, 1.0),
+                      child: Transform.translate(offset: Offset(0, 10 - 36 * t), child: Transform.scale(scale: 0.6 + 0.6 * t, child: const Text('❤️', style: TextStyle(fontSize: 20)))),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${'❤️' * hearts}${'🤍' * (FactoryRun.friendHearts - hearts)}', key: const ValueKey('amie-hearts'), style: const TextStyle(fontSize: 12)),
+            Text(tr('Toque nele para fazer carinho.'), style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+            const SizedBox(height: 4),
+            _bwButton('🧁 Poké Puff', const Color(0xFFDB2777), puff == null ? null : () => widget.onSave(puff), key: const ValueKey('amie-puff')),
+            if (puff == null) Text(tr('Ele já comeu um Poké Puff neste andar.'), style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+          ]),
+        ),
       ]),
     );
   }
