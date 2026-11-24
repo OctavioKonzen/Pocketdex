@@ -4672,10 +4672,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
     // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...). Igual ao site.
     final town = FactoryRun.inTown('${run['scene'] ?? 'grass'}');
     final (healerSprite, healerName) = town ? ('sd-nurse', 'Enfermeira Joy') : FactoryRun.healerOf(run);
+    // Durante a cena da insígnia, a tela é toda dela (sem a caixa de HP e sem quem fala no cenário). Igual ao site.
+    final badgeScene = badge != null && _badgeFly == '${run['floor']}-${badge['name']}';
     return _frame(
       run: run,
+      hideHp: badgeScene,
       // O chefe vencido fala depois (a história segue): ele aparece no cenário. Igual ao site.
-      cast: beat?['city'] != null && event == null && items.isEmpty && p['center'] != true && p['joy'] != true,
+      cast: beat?['city'] != null && event == null && items.isEmpty && p['center'] != true && p['joy'] != true && !badgeScene,
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
             if (p['center'] == true || p['joy'] == true)
               _far(_farPerson(healerSprite, w), w, h)
@@ -4698,7 +4701,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 child: _BadgeScene(
                   color: getColorForType('${badge['type']}'),
                   art: FactoryRun.badgeArt('${badge['name']}'),
-                  title: '🏅 ${tr('Insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
+                  trainer: Trainers.byId('${_gymLeaderOf(badge['name'])?['trainer'] ?? ''}') ?? speakerTrainer(Trainers.list, '${badge['name']}'),
                   onDone: () {
                     if (mounted) setState(() => _badgeFly = null);
                   },
@@ -4914,6 +4917,16 @@ class _FactoryScreenState extends State<FactoryScreen> {
   List<(int, int, int)>? _evoList; // (posição no time, de, para)
   String? _badgeKey; // a fanfarra da insígnia já tocou
   String? _badgeFly; // a cena da insígnia que está passando
+
+  /// O líder (dos dados dos chefes) pelo nome: o treinador dele para o sprite da cena da insígnia. Igual ao site.
+  Map? _gymLeaderOf(Object? name) {
+    for (final b in _data?.bosses ?? const []) {
+      for (final l in (b['leaders'] as List?) ?? const []) {
+        if (l['kind'] == 'gym' && l['name'] == name) return l as Map;
+      }
+    }
+    return null;
+  }
   String? _creditsDone; // os créditos do Campeão já passaram (a chave do andar)
   final Map<String, List<String>> _contestMoves = {}; // os golpes do nível (quem nunca mudou de golpes), para o concurso
   (String, String)? _tipNow; // a dica mostrada agora (id, a tela)
@@ -6998,12 +7011,14 @@ class _BadgeShine extends StatelessWidget {
 /// ganha cor até parar grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou
 /// esperar) fecha e ela fica pequena no alto. Igual ao site.
 class _BadgeScene extends StatefulWidget {
-  const _BadgeScene({required this.color, required this.title, required this.onDone, this.art});
+  const _BadgeScene({required this.color, required this.onDone, this.art, this.trainer});
   final Color color;
 
   /// O desenho oficial da insígnia (sprites/badges); sem ele, o losango na cor do tipo.
   final int? art;
-  final String title;
+
+  /// O líder (o sprite de corpo inteiro na metade direita).
+  final Trainer? trainer;
   final VoidCallback onDone;
 
   @override
@@ -7011,7 +7026,7 @@ class _BadgeScene extends StatefulWidget {
 }
 
 class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin {
-  static const _sceneMs = 3600;
+  static const _sceneMs = 4200;
   static const _sparks = [(0.18, 0.30, 0.0), (0.78, 0.26, 0.35), (0.84, 0.64, 0.7), (0.16, 0.70, 0.5), (0.50, 0.12, 0.2), (0.62, 0.82, 0.9)];
   late final AnimationController _fly = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
   late final AnimationController _loop = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat();
@@ -7053,7 +7068,8 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
       onTap: _close,
       child: LayoutBuilder(builder: (context, box) {
         final w = box.maxWidth, h = box.maxHeight;
-        final size = w * 0.22;
+        // No app o campo é mais baixo (a caixa de texto e os botões ocupam a parte de baixo): tudo um pouco menor e mais alto.
+        final size = min(w * 0.27, h * 0.62);
         return AnimatedBuilder(
           animation: Listenable.merge([_fly, _loop]),
           builder: (context, _) {
@@ -7063,8 +7079,9 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
             final e = Curves.easeOutCubic.transform((t / 0.65).clamp(0.0, 1.0));
             final scale = t < 0.65 ? 0.12 + (1.18 - 0.12) * e : t < 0.82 ? 1.18 - (1.18 - 0.94) * ((t - 0.65) / 0.17) : 0.94 + 0.06 * ((t - 0.82) / 0.18);
             final turn = t < 0.65 ? e * 3 : t < 0.82 ? 3 + (t - 0.65) / 0.17 : 4.0;
-            final dx = (1 - e) * -1.9 * size, dy = (1 - e) * 1.2 * size;
-            final rays = ((ms - 1050) / 600).clamp(0.0, 1.0) * 0.85;
+            final dx = (1 - e) * -1.2 * size, dy = (1 - e) * 0.3 * size;
+            // O líder entra de lado (0,25 s a 0,95 s).
+            final leader = Curves.easeOutCubic.transform(((ms - 250) / 700).clamp(0.0, 1.0));
             final pulse = ms > 1600 ? 0.5 + 0.5 * sin((ms - 1600) / 1100 * pi) : 0.0;
             final sweep = ((ms - 1700) / 900).clamp(0.0, 1.0);
             final dim = (ms / 350).clamp(0.0, 1.0);
@@ -7113,24 +7130,21 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
               ),
             );
             return Stack(clipBehavior: Clip.none, children: [
+              // O fundo da tela da insígnia do Black & White: azul-acinzentado, com o emblema apagado. Igual ao site.
               Positioned.fill(
                 child: Opacity(
                   opacity: dim,
-                  child: const DecoratedBox(decoration: BoxDecoration(gradient: RadialGradient(colors: [Color(0x33000000), Color(0xB3000000)]))),
-                ),
-              ),
-              if (rays > 0)
-                Center(
-                  child: Opacity(
-                    opacity: rays,
-                    child: Transform.rotate(angle: _loop.value * 2 * pi, child: CustomPaint(size: Size.square(w * 0.62), painter: _RaysPainter(Color.lerp(widget.color, Colors.white, 0.5)!))),
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A5466), Color(0xFF2C333F)])),
+                    child: CustomPaint(painter: _BadgeEmblemPainter()),
                   ),
                 ),
+              ),
               for (final (x, y, d) in _sparks)
                 if (ms > 1500 + d * 1000)
                   Positioned(
-                    left: w * x,
-                    top: h * y,
+                    left: w * (x * 0.5 + 0.04),
+                    top: h * y * 0.8,
                     child: () {
                       final k = sin(((ms - 1500 - d * 1000) / 1200) * pi).abs();
                       return Opacity(
@@ -7139,7 +7153,12 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
                       );
                     }(),
                   ),
-              Center(
+              // A insígnia grande à esquerda: entra girando como moeda, cinza, e ganha cor.
+              Positioned(
+                left: w * 0.1,
+                top: h * 0.05,
+                width: size,
+                height: size,
                 child: Transform.translate(
                   offset: Offset(dx, dy),
                   child: Transform(
@@ -7152,20 +7171,18 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
                   ),
                 ),
               ),
-              if (ms > 1400)
+              // O líder de corpo inteiro na metade direita, de pé em cima da caixa de texto, entrando de lado.
+              if (widget.trainer != null)
                 Positioned(
-                  left: 0,
-                  right: 0,
-                  // No alto do campo (embaixo fica a caixa de texto).
-                  top: h * 0.05,
-                  child: Center(
-                    child: Opacity(
-                      opacity: ((ms - 1400) / 400).clamp(0.0, 1.0),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: w * 0.02, vertical: w * 0.005),
-                        decoration: BoxDecoration(color: const Color(0xBF0F172A), borderRadius: BorderRadius.circular(8)),
-                        child: Text(widget.title, style: TextStyle(color: Colors.white, fontSize: w * 0.026, fontWeight: FontWeight.w900, shadows: const [Shadow(offset: Offset(0, 2))])),
-                      ),
+                  key: const ValueKey('badge-leader'),
+                  right: w * 0.06,
+                  bottom: h * 0.36,
+                  width: w * 0.4,
+                  child: Opacity(
+                    opacity: leader,
+                    child: FractionalTranslation(
+                      translation: Offset(0.7 * (1 - leader), 0),
+                      child: Align(alignment: Alignment.bottomCenter, child: TrainerSprite(widget.trainer!, height: h * 0.58)),
                     ),
                   ),
                 ),
@@ -7177,29 +7194,36 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
   }
 }
 
-/// Os raios atrás da insígnia (somem para as pontas).
-class _RaysPainter extends CustomPainter {
-  const _RaysPainter(this.color);
-  final Color color;
+/// O emblema grande e apagado atrás da insígnia (como na tela do Black & White). Igual ao site.
+class _BadgeEmblemPainter extends CustomPainter {
+  const _BadgeEmblemPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero), r = size.width / 2;
+    // O mesmo desenho do site (viewBox 200x200, centrado, 86% da altura).
+    final side = size.height * 0.86, k = side / 200;
+    final o = Offset(size.width / 2 - side / 2, size.height * 0.44 - side / 2);
+    Offset p(double x, double y) => o + Offset(x * k, y * k);
     final paint = Paint()
-      ..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)], stops: const [0.25, 1]).createShader(Rect.fromCircle(center: c, radius: r));
-    for (var k = 0; k < 15; k++) {
-      final a = k * 2 * pi / 15;
-      final path = Path()
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(c.dx + r * cos(a), c.dy + r * sin(a))
-        ..lineTo(c.dx + r * cos(a + 0.157), c.dy + r * sin(a + 0.157))
-        ..close();
-      canvas.drawPath(path, paint);
-    }
+      ..color = const Color(0x47AABEDC)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5 * k;
+    canvas.drawCircle(p(86, 96), 66 * k, paint);
+    canvas.drawCircle(p(86, 96), 24 * k, paint);
+    canvas.drawPath(
+        Path()
+          ..moveTo(p(20, 96).dx, p(20, 96).dy)
+          ..lineTo(p(62, 96).dx, p(62, 96).dy)
+          ..moveTo(p(110, 96).dx, p(110, 96).dy)
+          ..lineTo(p(152, 96).dx, p(152, 96).dy)
+          ..lineTo(p(190, 20).dx, p(190, 20).dy)
+          ..moveTo(p(152, 96).dx, p(152, 96).dy)
+          ..lineTo(p(112, 186).dx, p(112, 186).dy),
+        paint);
   }
 
   @override
-  bool shouldRepaint(_RaysPainter old) => old.color != color;
+  bool shouldRepaint(_BadgeEmblemPainter old) => false;
 }
 
 class _EvolutionFx extends StatefulWidget {

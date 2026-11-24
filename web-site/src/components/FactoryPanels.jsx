@@ -1731,20 +1731,28 @@ function stepOf(p) {
  * para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao app.
  */
 /**
- * A cena da insígnia (como no Black & White): o campo escurece, ela vem de longe girando como moeda, cinza, e ganha cor até parar
- * grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou esperar) fecha e
- * ela fica pequena no alto. Igual ao app.
+ * A cena da insígnia (como no Black & White): o fundo azul-acinzentado com o emblema apagado, o líder de corpo inteiro à
+ * direita e a insígnia grande à esquerda, que entra girando como moeda, cinza, e ganha cor; o brilho passa por ela e
+ * as estrelinhas piscam. Tocar (ou esperar) fecha e ela fica pequena no alto. Igual ao app.
  */
-const BADGE_SCENE_MS = 3600
+const BADGE_SCENE_MS = 4200
+/** A altura do líder na cena (parte da largura do campo). */
+const BADGE_LEADER_H = 0.36
+/** O líder (dos dados dos chefes) pelo nome: o treinador dele para o sprite. */
+const gymLeaderOf = (data, name) => {
+  for (const b of data?.bosses ?? []) for (const l of b.leaders ?? []) if (l.kind === 'gym' && l.name === name) return l
+  return null
+}
 /** A máscara com o formato da insígnia (o brilho só passa por ela). */
 const badgeMask = (art) => {
   const url = `url(${spriteUrl(`badges/${art}.png`)})`
   return { WebkitMaskImage: url, maskImage: url, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }
 }
 const SPARKS = [[18, 30, 0], [78, 26, 0.35], [84, 64, 0.7], [16, 70, 0.5], [50, 12, 0.2], [62, 82, 0.9]]
-function BadgeScene({ badge, onDone }) {
+function BadgeScene({ badge, trainer = null, onDone }) {
   const done = useRef(onDone)
   done.current = onDone
+  const [ref, width] = useWidth()
   useEffect(() => {
     const id = setTimeout(() => done.current(), INSTANT_TEXT ? 0 : BADGE_SCENE_MS)
     return () => clearTimeout(id)
@@ -1752,10 +1760,16 @@ function BadgeScene({ badge, onDone }) {
   const color = typeColor(badge.type)
   const art = badgeArt(badge.name)
   return (
-    <div className="badge-scene absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center" onClick={() => done.current()} data-testid="badge-scene">
-      <div className="badge-rays absolute" style={{ '--badge': color }} />
-      {SPARKS.map(([x, y, d], k) => <span key={k} className="badge-spark absolute" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${1.5 + d}s` }}>✦</span>)}
-      <div className="badge-fly relative w-[22%]" style={{ aspectRatio: '1' }}>
+    <div ref={ref} className="badge-scene absolute inset-0 z-30 cursor-pointer overflow-hidden" onClick={() => done.current()} data-testid="badge-scene">
+      {/* O emblema grande e apagado atrás (como no Black & White). */}
+      <svg className="badge-emblem absolute left-1/2 top-[44%] h-[86%] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
+        <circle cx="86" cy="96" r="66" />
+        <circle cx="86" cy="96" r="24" />
+        <path d="M20 96 H62 M110 96 H152 L190 20 M152 96 L112 186" />
+      </svg>
+      {SPARKS.map(([x, y, d], k) => <span key={k} className="badge-spark absolute" style={{ left: `${x * 0.5 + 4}%`, top: `${y * 0.8}%`, animationDelay: `${1.5 + d}s` }}>✦</span>)}
+      {/* A insígnia grande à esquerda: entra girando como moeda, cinza, e ganha cor; o brilho passa por cima. */}
+      <div className="badge-fly absolute left-[9%] top-[9%] w-[32%]" style={{ aspectRatio: '1' }}>
         {art ? (
           // O desenho oficial; o brilho passa só por cima dele (a máscara é a própria insígnia).
           <>
@@ -1768,7 +1782,13 @@ function BadgeScene({ badge, onDone }) {
           </div>
         )}
       </div>
-      <p className="badge-title relative mt-[2%] rounded-lg px-[2%] py-[0.5%] text-[2.6cqw] font-black text-white" data-no-translate>🏅 {t('Insígnia de {0}!').replace('{0}', badge.name)}</p>
+      {/* O líder de corpo inteiro à direita, entrando de lado. */}
+      {trainer && (
+        // Na metade direita, de pé em cima da caixa de texto (a caixa de HP some durante a cena).
+        <div className="badge-leader absolute right-[4%] bottom-[22%] flex w-[44%] items-end justify-center" data-testid="badge-leader">
+          <TrainerSprite trainer={trainer} height={width * BADGE_LEADER_H} />
+        </div>
+      )}
     </div>
   )
 }
@@ -3307,12 +3327,14 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {!shown && event && <FarStand scene={here}>{event.kind === 'clue' ? <span data-testid="quest-silhouette" style={event.clues >= QUEST_CLUES ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={event.legend} className="h-28 w-28" /></span> : <span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span>}</FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
         {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
-        {p.badge && badgeFly === `${run.floor}-${p.badge.name}` && <BadgeScene badge={p.badge} onDone={() => setBadgeFly(null)} />}
+        {p.badge && badgeFly === `${run.floor}-${p.badge.name}` && <BadgeScene badge={p.badge} trainer={trainers?.find((x) => x.id === gymLeaderOf(data, p.badge.name)?.trainer) ?? speakerTrainer(trainers, p.badge.name)} onDone={() => setBadgeFly(null)} />}
         {p.badge && badgeFly !== `${run.floor}-${p.badge.name}` && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}>{badgeArt(p.badge.name) ? <img src={spriteUrl(`badges/${badgeArt(p.badge.name)}.png`)} alt="" className="h-full w-full object-contain" draggable={false} /> : <span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} />}</span></div>}
       </Field>
     )
     // O chefe vencido fala depois (a história segue): ele aparece no cenário.
-    cast = Boolean(p.beat?.city) && !shown && !event
+    cast = Boolean(p.beat?.city) && !shown && !event && !(p.badge && badgeFly === `${run.floor}-${p.badge.name}`)
+    // Durante a cena da insígnia, a caixa de HP some (a tela é toda dela, como no Black & White).
+    if (p.badge && badgeFly === `${run.floor}-${p.badge.name}`) hideHp = true
     text = (
       <>
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
