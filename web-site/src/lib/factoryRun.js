@@ -4152,6 +4152,14 @@ export const DAY_ONLY = [16, 165, 166, 161, 162, 191, 10, 13, 187, 263, 396, 504
 export const SNOW_SCENES = ['snow', 'acuity']
 export const SAND_SCENES = ['desert', 'dunes']
 /** A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...). */
+/**
+ * A Pokédex de habitat (como a de Diamond/Pearl e a de Legends: Arceus): onde a espécie vive (os lugares da rota),
+ * se só sai de dia ou à noite e se é o surto de hoje (day: o dia de clockOf). Igual ao app.
+ */
+export function habitatOf(data, id, day = null) {
+  return { places: data.species[id]?.[6] ?? [], time: DAY_ONLY.includes(id) ? 'day' : NIGHT_ONLY.includes(id) ? 'night' : null, outbreak: day != null && outbreakOf(data, day) === id }
+}
+
 export function clockOf(date = new Date()) {
   const hour = date.getHours()
   // day: o dia de quem joga (muda à meia-noite; o surto do dia).

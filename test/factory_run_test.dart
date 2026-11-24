@@ -2007,6 +2007,12 @@ void main() {
     final farfetchd = {...base(), 'team': [{...m, 'id': 10166, 'level': 10}]};
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [2])).first['id'], 10166);
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [FactoryRun.critEvolve])).first['id'], 865);
+    // A Pokédex de habitat: onde vive, só de dia ou à noite e o surto de hoje. Igual ao site.
+    final pidgey = FactoryRun.habitatOf(data, 16);
+    expect([pidgey.places, pidgey.time, pidgey.outbreak], [[for (final b in data.species[16]![6] as List) '$b'], 'day', false]);
+    expect(FactoryRun.habitatOf(data, 163).time, 'night');
+    expect(FactoryRun.habitatOf(data, 25).time, isNull);
+    expect(FactoryRun.habitatOf(data, FactoryRun.outbreakOf(data, 20000)!, 20000).outbreak, isTrue);
     // O acampamento: curry (Sitrus) e sanduíche (Lum), uma vez por rota. Igual ao site.
     final campRun = {...base(), 'encounter': null, 'pending': null, 'leg': 2, 'route': {'floor': 4, 'biome': 'grass', 'options': [{'kind': 'trainer'}]}, 'stash': ['sitrus-berry', 'lum-berry']};
     final camp = {...campRun, 'team': [{...first, 'hp': 0.3, 'friendship': 2}, {...first, 'hp': 0}]};

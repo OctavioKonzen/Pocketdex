@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -2210,6 +2210,17 @@ function DexPanel({ factory, data, run, name, onClose }) {
               {entry.flavor && <p className="line-clamp-3 text-[1.15cqw] leading-snug text-slate-200" data-testid="dex-flavor">{entry.flavor}</p>}
             </div>
           )}
+          {/* O habitat (de quem você já viu): onde vive, dia ou noite e o surto de hoje. Igual ao app. */}
+          {seen && (() => {
+            const h = habitatOf(data, pick, clockOf().day)
+            return (
+              <div className="w-full text-center text-[1.2cqw] leading-snug" data-testid="dex-habitat">
+                {h.places.length > 0 && <p className="line-clamp-2 text-slate-200">🗺️ {h.places.map((b) => `${BIOME_INFO[b]?.icon ?? ''} ${t(BIOME_INFO[b]?.label ?? b)}`).join(' · ')}</p>}
+                {h.time && <p className="text-amber-200">{h.time === 'day' ? `☀️ ${t('Só de dia')}` : `🌙 ${t('Só à noite')}`}</p>}
+                {h.outbreak && <p className="font-black text-orange-300" data-testid="dex-outbreak">🔥 {t('Surto hoje!')}</p>}
+              </div>
+            )
+          })()}
           <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-[0.5cqw]">

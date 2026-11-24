@@ -3561,6 +3561,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
               ]);
             },
           ),
+        // O habitat (de quem você já viu): onde vive, dia ou noite e o surto de hoje. Igual ao site.
+        if (seen)
+          () {
+            final h = FactoryRun.habitatOf(data, pick, FactoryRun.clockOf().day);
+            return Column(key: const ValueKey('dex-habitat'), children: [
+              if (h.places.isNotEmpty)
+                Text('🗺️ ${[for (final b in h.places) '${_biomeInfo[b]?.$2 ?? ''} ${tr(_biomeInfo[b]?.$1 ?? b)}'].join(' · ')}',
+                    maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: ink.copyWith(fontSize: 9, fontWeight: FontWeight.w500, color: const Color(0xFFE2E8F0))),
+              if (h.time != null) Text(h.time == 'day' ? '☀️ ${tr('Só de dia')}' : '🌙 ${tr('Só à noite')}', style: ink.copyWith(fontSize: 9, color: const Color(0xFFFDE68A))),
+              if (h.outbreak) Text('🔥 ${tr('Surto hoje!')}', key: const ValueKey('dex-outbreak'), style: ink.copyWith(fontSize: 10, color: const Color(0xFFFDBA74))),
+            ]);
+          }(),
         Text(caught ? '✔ ${tr('Capturado')}' : seen ? '👁 ${tr('Visto')}' : '❔ ${tr('Não visto')}',
             key: const ValueKey('dex-status'), style: ink.copyWith(fontSize: 11, color: caught ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1))),
       ]),

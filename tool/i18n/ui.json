@@ -15370,5 +15370,23 @@
   "fr": "encore {0} étages",
   "es": "{0} pisos más",
   "pt": "mais {0} andares"
+ },
+ "Só de dia": {
+  "en": "Daytime only",
+  "fr": "Seulement de jour",
+  "es": "Solo de día",
+  "pt": "Só de dia"
+ },
+ "Só à noite": {
+  "en": "Nighttime only",
+  "fr": "Seulement la nuit",
+  "es": "Solo de noche",
+  "pt": "Só à noite"
+ },
+ "Surto hoje!": {
+  "en": "Outbreak today!",
+  "fr": "Apparition massive aujourd’hui !",
+  "es": "¡Brote hoy!",
+  "pt": "Surto hoje!"
  }
 }

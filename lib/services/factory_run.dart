@@ -5736,6 +5736,14 @@ class FactoryRun {
   static const sandScenes = ['desert', 'dunes'];
 
   /// A hora e a estação de agora: noite das 19h às 6h; a estação pelo mês (jan primavera, fev verão, mar outono, abr inverno...).
+  /// A Pokédex de habitat (como a de Diamond/Pearl e a de Legends: Arceus): onde a espécie vive (os lugares da rota),
+  /// se só sai de dia ou à noite e se é o surto de hoje (day: o dia de clockOf). Igual ao site.
+  static ({List<String> places, String? time, bool outbreak}) habitatOf(FactoryData data, int id, [int? day]) => (
+        places: [for (final b in (data.species[id]?.elementAtOrNull(6) as List?) ?? const []) '$b'],
+        time: dayOnly.contains(id) ? 'day' : nightOnly.contains(id) ? 'night' : null,
+        outbreak: day != null && outbreakOf(data, day) == id,
+      );
+
   static ({bool night, String season, int? day}) clockOf([DateTime? date]) {
     final now = date ?? DateTime.now();
     // day: o dia de quem joga (muda à meia-noite; o surto do dia).
