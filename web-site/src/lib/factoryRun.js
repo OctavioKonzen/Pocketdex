@@ -1570,6 +1570,34 @@ function fishPool(data, common, tier) {
   return pool.length ? pool : water
 }
 const routeAction = (run) => Boolean(run.route && !run.route.town && run.route.options.length >= 1 && !run.encounter && !run.pending)
+/**
+ * O acampamento (como o curry de Sword/Shield e o sanduíche de Scarlet/Violet): uma vez por rota, cozinha com uma
+ * fruta guardada. O curry (Sitrus Berry) cura CURRY_HEAL do HP de quem está de pé, dá um ponto de amizade e
+ * CURRY_BOOST a mais em tudo por CAMP_FLOORS andares; o sanduíche (Lum Berry) dá SANDWICH_SHINY× de chance de
+ * shiny e SANDWICH_CATCH% a mais na captura pelos mesmos andares. Igual ao app.
+ */
+export const MEALS = { curry: 'sitrus-berry', sandwich: 'lum-berry' }
+export const CAMP_FLOORS = 3
+export const CURRY_HEAL = 0.5
+export const CURRY_BOOST = 0.05
+export const SANDWICH_SHINY = 2
+export const SANDWICH_CATCH = 10
+/** A refeição kind ainda vale (nos CAMP_FLOORS andares depois de comer). */
+export const mealOn = (run, kind) => run?.meal?.kind === kind && run.floor < run.meal.until
+/** Quantos andares a refeição ainda vale (0: acabou). */
+export const mealLeft = (run) => (run?.meal && run.floor < run.meal.until ? run.meal.until - run.floor : 0)
+/** Acampar e cozinhar kind (curry ou sanduíche). null se não dá (já acampou nesta rota, sem a fruta, fora da rota). */
+export function campMeal(run, kind) {
+  const berry = MEALS[kind]
+  const at = (run.stash ?? []).indexOf(berry)
+  if (!berry || at < 0 || !routeAction(run) || run.route.town || run.campLeg === (run.leg ?? 1)) return null
+  const out = { ...run, stash: run.stash.filter((_, k) => k !== at), campLeg: run.leg ?? 1, meal: { kind, until: run.floor + CAMP_FLOORS } }
+  if (kind === 'curry') {
+    out.team = run.team.map((m) => ((m.hp ?? 1) > 0 ? { ...m, hp: Math.min(1, round3((m.hp ?? 1) + CURRY_HEAL)), friendship: Math.min(FRIEND_MAX, (m.friendship ?? 0) + 1) } : m))
+  }
+  return out
+}
+
 /** Pescar (uma vez por rota): abre um caminho com um Pokémon de Água; quem vem depende da vara. null se não dá. */
 export function fishPath(run, data) {
   const tier = rodOf(run)
@@ -2713,7 +2741,7 @@ export function chooseNode(run, data, index, clock = null) {
     // O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes.
     const sky = weatherOf(run, shownScene(run, scene, data), null, data)
     const mist = fieldOf(run, shownScene(run, scene, data), data)
-    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: (run.shinyRate ?? 1) * (node.radar ? radarShiny(run.chain) : 1) * (node.call === 'rare' ? CALL_SHINY : 1), ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
+    const roll = () => ({ ...encounterFor(data, out.floor, rand, node.kind === 'boss' ? bossOf(data, out) : null, node.kind === 'wildboss', { ...node, biome: scene, shiny: (run.shinyRate ?? 1) * (mealOn(out, 'sandwich') ? SANDWICH_SHINY : 1) * (node.radar ? radarShiny(run.chain) : 1) * (node.call === 'rare' ? CALL_SHINY : 1), ...when, ...(sky ? { weather: sky } : {}), ...(FIELD_TYPES[mist] ? { field: mist } : {}), ...huntNode(run), ...(SEASON_EVENTS[run.event] ? { event: run.event } : {}) }), scene })
     out.encounter = roll()
     // Nuzlocke (cláusula de repetidos): o primeiro selvagem da área não é de uma linha evolutiva que você já teve.
     if (nuzRule(run, 'dupes') && out.encounter.kind === 'wild' && !areaUsed(run)) {
@@ -5104,7 +5132,7 @@ export function captureFor(run, data) {
   if (nuzRule(run, 'noLegendary') && foes.some((f) => [1, 2].includes(speciesOf(data, f.id)?.[2]))) return null
   // Monotipo: só quem tem um tipo do inicial.
   if (run.mono && !foes.some((f) => (speciesOf(data, f.id)?.[4] ?? []).some((t) => run.mono.includes(t)))) return null
-  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), dex: dexOf(run).length, ...(run.catchBonus ? { bonus: run.catchBonus } : {}) }
+  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), dex: dexOf(run).length, ...(run.catchBonus || mealOn(run, 'sandwich') ? { bonus: (run.catchBonus ?? 0) + (mealOn(run, 'sandwich') ? SANDWICH_CATCH : 0) } : {}) }
 }
 
 /**
@@ -5133,6 +5161,7 @@ export function boostOf(run, mon) {
   let out = { ...zero(), ...(run.teamBoost ?? {}) }
   if (mon.shiny) out = addStats(out, shinyBoost())
   if (mon.alpha) out = addStats(out, Object.fromEntries(STATS.map((s) => [s, ALPHA_BOOST])))
+  if (mealOn(run, 'curry')) out = addStats(out, Object.fromEntries(STATS.map((s) => [s, CURRY_BOOST])))
   // Nuzlocke sem itens de segurar: os extras também não contam.
   if (!nuzRule(run, 'noHeldItems')) for (const id of mon.extras ?? []) out = addStats(out, HELD_BOOST[id])
   return Object.fromEntries(STATS.map((s) => [s, round3(out[s])]))

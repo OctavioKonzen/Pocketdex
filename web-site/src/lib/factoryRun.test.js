@@ -10,7 +10,7 @@ import {
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, GYM_CHALLENGES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
-  HELD_BOOST, levelTo, itemFormsOf, formItemOf, setForm, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
+  HELD_BOOST, levelTo, campMeal, mealLeft, CAMP_FLOORS, itemFormsOf, formItemOf, setForm, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, sceneRegion, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
   captureFor, dexBook, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
@@ -1494,6 +1494,25 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     const farfetchd = { ...run, team: [{ ...m, id: 10166, level: 10 }] }
     expect(winFloor(farfetchd, data, { crits: [2] }).team[0].id).toBe(10166)
     expect(winFloor(farfetchd, data, { crits: [CRIT_EVOLVE] }).team[0].id).toBe(865)
+  })
+
+  it('acampamento: curry (Sitrus) e sanduíche (Lum), uma vez por rota, por CAMP_FLOORS andares', () => {
+    const run = { ...base(), encounter: null, pending: null, leg: 2, route: { floor: 4, biome: 'grass', options: [{ kind: 'trainer' }] }, stash: ['sitrus-berry', 'lum-berry'] }
+    const m = run.team[0]
+    const camp = { ...run, team: [{ ...m, hp: 0.3, friendship: 2 }, { ...m, hp: 0 }] }
+    const curry = campMeal(camp, 'curry')
+    expect(curry.team.map((x) => [x.hp, x.friendship ?? 0])).toEqual([[0.8, 3], [0, m.friendship ?? 0]])
+    expect(curry.stash).toEqual(['lum-berry'])
+    expect(curry.meal).toEqual({ kind: 'curry', until: run.floor + CAMP_FLOORS })
+    expect(campMeal(curry, 'sandwich')).toBe(null)
+    expect(mealLeft(curry)).toBe(CAMP_FLOORS)
+    expect(memberOf(curry, curry.team[0], ['tackle']).set.boost.atk).toBeCloseTo(memberOf(camp, camp.team[0], ['tackle']).set.boost.atk + 0.05)
+    expect(mealLeft({ ...curry, floor: run.floor + CAMP_FLOORS })).toBe(0)
+    expect(campMeal({ ...run, stash: [] }, 'curry')).toBe(null)
+    const sandwich = campMeal(run, 'sandwich')
+    expect(sandwich.stash).toEqual(['sitrus-berry'])
+    const wild = { ...sandwich, encounter: { kind: 'wild', biome: 'grass', foes: [{ id: 16, level: 5 }] } }
+    expect(captureFor(wild, data).bonus).toBe(10)
   })
 
   it('formas por item: Rotom Catalog, Gracidea (só de dia) e Meteorite', () => {

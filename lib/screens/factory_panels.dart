@@ -5293,6 +5293,14 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (bike != null) act('factory-bike', '🚲 Bicycle', bike),
       if (radar != null) act('factory-radar', '📶 Poké Radar', radar),
       if (!meeting && FactoryRun.applyRepel(run) != null) act('factory-repel', '🧴 ${tr('REPELENTE')} (${run['repels']})', FactoryRun.applyRepel(run)!),
+      // O acampamento: curry (Sitrus Berry) ou sanduíche (Lum Berry), uma vez por rota. Igual ao site.
+      if (!meeting && FactoryRun.campMeal(run, 'curry') != null) act('factory-curry', '🍛 ${tr('FAZER CURRY')} (Sitrus Berry)', FactoryRun.campMeal(run, 'curry')!),
+      if (!meeting && FactoryRun.campMeal(run, 'sandwich') != null) act('factory-sandwich', '🥪 ${tr('FAZER SANDUÍCHE')} (Lum Berry)', FactoryRun.campMeal(run, 'sandwich')!),
+      if (FactoryRun.mealLeft(run) > 0)
+        _menuButton(
+            '${run['meal']['kind'] == 'curry' ? '🍛 ${tr('Curry: +5% em tudo')}' : '🥪 ${tr('Sanduíche: 2× shiny e captura mais fácil')}'} · ${tr('mais {0} andares').replaceAll('{0}', '${FactoryRun.mealLeft(run)}')}',
+            null,
+            key: const ValueKey('factory-meal')),
       if (photos.isNotEmpty)
         _menuButton('📷 ${tr('ÁLBUM')} (${photos.length})', widget.busy ? null : () => setState(() => _panel = _panel == 'album' ? null : 'album'),
             active: _panel == 'album', key: const ValueKey('factory-album')),

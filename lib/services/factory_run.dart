@@ -2646,7 +2646,7 @@ class FactoryRun {
       final mist = fieldOf(run, shownScene(run, scene, data), data);
       Json roll() => {
             ...encounterFor(data, floor, rand, node['kind'] == 'boss' ? bossOf(data, out) : null, node['kind'] == 'wildboss',
-                {...node, 'biome': scene, 'shiny': ((run['shinyRate'] as num?) ?? 1) * (node['radar'] == true ? radarShiny(run['chain'] as Map?) : 1) * (node['call'] == 'rare' ? callShiny : 1), ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
+                {...node, 'biome': scene, 'shiny': ((run['shinyRate'] as num?) ?? 1) * (mealOn(out, 'sandwich') ? sandwichShiny : 1) * (node['radar'] == true ? radarShiny(run['chain'] as Map?) : 1) * (node['call'] == 'rare' ? callShiny : 1), ...when, if (sky.isNotEmpty) 'weather': sky, if (fieldTypes.containsKey(mist)) 'field': mist, ...huntNode(run), if (seasonEvents.containsKey(run['event'])) 'event': run['event']}),
             'scene': scene,
           };
       out['encounter'] = roll();
@@ -2842,7 +2842,7 @@ class FactoryRun {
       'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
       'dusk': darkBiomes.contains(encounter?['biome']),
       'dex': dexOf(run).length,
-      if (run['catchBonus'] != null) 'bonus': run['catchBonus'],
+      if (run['catchBonus'] != null || mealOn(run, 'sandwich')) 'bonus': ((run['catchBonus'] as num?) ?? 0) + (mealOn(run, 'sandwich') ? sandwichCatch : 0),
     };
   }
 
@@ -3956,6 +3956,36 @@ class FactoryRun {
             ? [for (final p in water) if (p.rate >= 60 && p.rate < 225) p]
             : [for (final p in water) if (p.rate <= 90) p];
     return pool.isNotEmpty ? pool : water;
+  }
+
+  /// O acampamento (como o curry de Sword/Shield e o sanduíche de Scarlet/Violet): uma vez por rota, cozinha com uma
+  /// fruta guardada. O curry (Sitrus Berry) cura curryHeal do HP de quem está de pé, dá um ponto de amizade e
+  /// curryBoost a mais em tudo por campFloors andares; o sanduíche (Lum Berry) dá sandwichShiny× de chance de shiny e
+  /// sandwichCatch% a mais na captura pelos mesmos andares. Igual ao site.
+  static const meals = {'curry': 'sitrus-berry', 'sandwich': 'lum-berry'};
+  static const campFloors = 3, sandwichShiny = 2, sandwichCatch = 10;
+  static const curryHeal = 0.5, curryBoost = 0.05;
+
+  /// A refeição kind ainda vale (nos campFloors andares depois de comer).
+  static bool mealOn(Json? run, String kind) => run?['meal'] is Map && run!['meal']['kind'] == kind && _int(run['floor']) < _int(run['meal']['until']);
+
+  /// Quantos andares a refeição ainda vale (0: acabou).
+  static int mealLeft(Json? run) => run?['meal'] is Map && _int(run!['floor']) < _int(run['meal']['until']) ? _int(run['meal']['until']) - _int(run['floor']) : 0;
+
+  /// Acampar e cozinhar kind (curry ou sanduíche). null se não dá (já acampou nesta rota, sem a fruta, fora da rota).
+  static Json? campMeal(Json run, String kind) {
+    final berry = meals[kind];
+    final stash = [for (final x in (run['stash'] as List?) ?? const []) '$x'];
+    final at = berry == null ? -1 : stash.indexOf(berry);
+    if (at < 0 || !_routeAction(run) || run['campLeg'] == (run['leg'] ?? 1)) return null;
+    final out = {...run, 'stash': [for (var k = 0; k < stash.length; k++) if (k != at) stash[k]], 'campLeg': run['leg'] ?? 1, 'meal': {'kind': kind, 'until': _int(run['floor']) + campFloors}};
+    if (kind == 'curry') {
+      out['team'] = [
+        for (final m in teamOf(run))
+          hpOf(m) > 0 ? {...m, 'hp': math.min(1.0, _round3(hpOf(m) + curryHeal)), 'friendship': math.min(friendMax, _int(m['friendship'] ?? 0) + 1)} : m,
+      ];
+    }
+    return out;
   }
 
   static bool _routeAction(Json run) {
@@ -6534,6 +6564,11 @@ class FactoryRun {
     if (mon['alpha'] == true) {
       for (final s in stats) {
         out[s] = out[s]! + alphaBoost;
+      }
+    }
+    if (mealOn(run, 'curry')) {
+      for (final s in stats) {
+        out[s] = out[s]! + curryBoost;
       }
     }
     // Nuzlocke sem itens de segurar: os extras também não contam.

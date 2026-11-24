@@ -15340,5 +15340,35 @@
   "fr": "Forme",
   "es": "Forma",
   "pt": "Forma"
+ },
+ "FAZER CURRY": {
+  "en": "MAKE CURRY",
+  "fr": "FAIRE UN CURRY",
+  "es": "HACER CURRY",
+  "pt": "FAZER CURRY"
+ },
+ "FAZER SANDUÍCHE": {
+  "en": "MAKE A SANDWICH",
+  "fr": "FAIRE UN SANDWICH",
+  "es": "HACER UN BOCADILLO",
+  "pt": "FAZER SANDUÍCHE"
+ },
+ "Curry: +5% em tudo": {
+  "en": "Curry: +5% to all stats",
+  "fr": "Curry : +5 % partout",
+  "es": "Curry: +5 % en todo",
+  "pt": "Curry: +5% em tudo"
+ },
+ "Sanduíche: 2× shiny e captura mais fácil": {
+  "en": "Sandwich: 2× shiny odds and easier catches",
+  "fr": "Sandwich : 2× shiny et captures plus faciles",
+  "es": "Bocadillo: 2× shiny y capturas más fáciles",
+  "pt": "Sanduíche: 2× shiny e captura mais fácil"
+ },
+ "mais {0} andares": {
+  "en": "{0} more floors",
+  "fr": "encore {0} étages",
+  "es": "{0} pisos más",
+  "pt": "mais {0} andares"
  }
 }

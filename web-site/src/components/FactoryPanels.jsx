@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -3898,11 +3898,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
             !meeting && radarPath(run) && ['factory-radar', '📶 Poké Radar', () => save(radarPath(run))],
             !meeting && applyRepel(run) && ['factory-repel', `🧴 ${t('REPELENTE')} (${run.repels})`, () => save(applyRepel(run))],
+            // O acampamento: curry (Sitrus Berry) ou sanduíche (Lum Berry), uma vez por rota. Igual ao app.
+            !meeting && campMeal(run, 'curry') && ['factory-curry', `🍛 ${t('FAZER CURRY')} (Sitrus Berry)`, () => save(campMeal(run, 'curry'))],
+            !meeting && campMeal(run, 'sandwich') && ['factory-sandwich', `🥪 ${t('FAZER SANDUÍCHE')} (Lum Berry)`, () => save(campMeal(run, 'sandwich'))],
+            mealLeft(run) > 0 && ['factory-meal', `${run.meal.kind === 'curry' ? `🍛 ${t('Curry: +5% em tudo')}` : `🥪 ${t('Sanduíche: 2× shiny e captura mais fácil')}`} · ${t('mais {0} andares').replace('{0}', mealLeft(run))}`, null],
             (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
           ].filter(Boolean)
           return acts.length > 0 && (
             <div className="grid grid-cols-1 gap-1" data-testid="route-actions">
-              {acts.map(([id, label, go]) => <MenuButton key={id} testid={id} disabled={busy} onClick={go} active={id === 'factory-album' && panel === 'album'}>{label}</MenuButton>)}
+              {acts.map(([id, label, go]) => <MenuButton key={id} testid={id} disabled={busy || !go} onClick={go ?? undefined} active={id === 'factory-album' && panel === 'album'}>{label}</MenuButton>)}
             </div>
           )
         })()}

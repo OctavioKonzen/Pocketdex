@@ -2007,6 +2007,21 @@ void main() {
     final farfetchd = {...base(), 'team': [{...m, 'id': 10166, 'level': 10}]};
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [2])).first['id'], 10166);
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [FactoryRun.critEvolve])).first['id'], 865);
+    // O acampamento: curry (Sitrus) e sanduíche (Lum), uma vez por rota. Igual ao site.
+    final campRun = {...base(), 'encounter': null, 'pending': null, 'leg': 2, 'route': {'floor': 4, 'biome': 'grass', 'options': [{'kind': 'trainer'}]}, 'stash': ['sitrus-berry', 'lum-berry']};
+    final camp = {...campRun, 'team': [{...first, 'hp': 0.3, 'friendship': 2}, {...first, 'hp': 0}]};
+    final curry = FactoryRun.campMeal(camp, 'curry')!;
+    expect([for (final x in FactoryRun.teamOf(curry)) [x['hp'], x['friendship'] ?? 0]], [[0.8, 3], [0, first['friendship'] ?? 0]]);
+    expect(curry['stash'], ['lum-berry']);
+    expect(curry['meal'], {'kind': 'curry', 'until': (campRun['floor'] as num).toInt() + FactoryRun.campFloors});
+    expect(FactoryRun.campMeal(curry, 'sandwich'), isNull);
+    expect(FactoryRun.mealLeft(curry), FactoryRun.campFloors);
+    expect(FactoryRun.boostOf(curry, FactoryRun.teamOf(curry)[0])['atk'], closeTo(FactoryRun.boostOf(camp, FactoryRun.teamOf(camp)[0])['atk']! + 0.05, 1e-9));
+    expect(FactoryRun.mealLeft({...curry, 'floor': (campRun['floor'] as num).toInt() + FactoryRun.campFloors}), 0);
+    expect(FactoryRun.campMeal({...campRun, 'stash': []}, 'curry'), isNull);
+    final sandwich = FactoryRun.campMeal(campRun, 'sandwich')!;
+    expect(sandwich['stash'], ['sitrus-berry']);
+    expect(FactoryRun.captureFor({...sandwich, 'encounter': {'kind': 'wild', 'biome': 'grass', 'foes': [{'id': 16, 'level': 5}]}}, data)!['bonus'], 10);
     // Formas por item: Rotom Catalog, Gracidea (só de dia) e Meteorite. Igual ao site.
     final rotom = {...base(), 'team': [{...first, 'id': 479}, {...first, 'id': 19}]};
     expect(FactoryRun.itemFormsOf(data, FactoryRun.teamOf(rotom)[0]), [479, 10008, 10009, 10010, 10011, 10012]);
