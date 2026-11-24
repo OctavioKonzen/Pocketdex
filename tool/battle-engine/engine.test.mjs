@@ -441,6 +441,27 @@ test('Battle Factory: a Master Ball catches the wild Pokémon and ends the battl
   } finally {sim.dispose(game.handle);}
 });
 
+test('Battle Factory: critical capture (more species in the run dex) shakes once', () => {
+  let crits = 0;
+  for (let k = 0; k < 40; k++) {
+    const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Rattata', ['splash'])]], seed: [k, 2, 3, 4], capture: {rates: [255], dex: 40}, bags: [{'poke-ball': 1}, null]});
+    try {
+      const next = sim.choose(game.handle, [{kind: 'item', item: 'poke-ball', index: 0}, move(0)]);
+      const ball = next.events.find(e => e.t === 'ball');
+      if (ball.crit) {
+        crits++;
+        assert.equal(ball.shakes, 1);
+        assert.ok(next.events.some(e => e.key === 'critCapture'));
+      }
+    } finally {sim.dispose(game.handle);}
+    const none = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Rattata', ['splash'])]], seed: [k, 2, 3, 4], capture: {rates: [255]}, bags: [{'poke-ball': 1}, null]});
+    try {
+      assert.ok(!sim.choose(none.handle, [{kind: 'item', item: 'poke-ball', index: 0}, move(0)]).events.find(e => e.t === 'ball').crit);
+    } finally {sim.dispose(none.handle);}
+  }
+  assert.ok(crits > 0);
+});
+
 test('Battle Factory: a failed throw spends the ball and the turn; balls only work on wild battles', () => {
   const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Mewtwo', ['splash'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'poke-ball': 1}, null]});
   try {

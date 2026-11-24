@@ -620,7 +620,8 @@ class TurnBattle {
       case 'weather': return BattleEvent.weather(e['weather'] as String);
       case 'terrain': return BattleEvent.terrain(e['terrain'] as String);
       case 'place': return BattleEvent.place(e['place'] as String);
-      case 'ball': return BattleEvent.ball(side, e['ball'] as String, e['shakes'] as int, e['caught'] == true ? 1 : 0);
+      // index: 1 capturou; + 2 captura crítica (uma balançada só).
+      case 'ball': return BattleEvent.ball(side, e['ball'] as String, e['shakes'] as int, (e['caught'] == true ? 1 : 0) + (e['crit'] == true ? 2 : 0));
       default: return BattleEvent.text(e['key'] as String, [for (final dynamic arg in e['args'] as List) arg is Map ? (arg['side'] as int, arg['name'] as String) : arg as Object]);
     }
   }
@@ -1826,6 +1827,7 @@ class TurnBattle {
     'healed': ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
     'revived': ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
     'threwBall': 'Você jogou uma {1}!',
+    'critCapture': 'Captura crítica!',
     'caught': ['', 'Pegou! {0} foi capturado!'],
     'brokeFree': ['', 'Ah, não! {0} escapou da bola!'],
     'burned': ['{0} foi queimado!', '{0} inimigo foi queimado!'],

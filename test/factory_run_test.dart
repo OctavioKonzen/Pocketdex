@@ -1331,7 +1331,7 @@ void main() {
     }
     expect(local, 100);
     final cave = {...at(20), 'encounter': {'kind': 'wild', 'biome': 'cave', 'foes': [{'id': 74, 'level': 20}]}};
-    expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true});
+    expect(FactoryRun.captureFor(cave, data), {'rates': [255], 'dusk': true, 'dex': 1});
     final ace = FactoryRun.encounterFor(data, 30, rand, null, false, {'kind': 'ace'});
     final won = FactoryRun.winFloor({...at(30), 'encounter': {...ace, 'reward': 'ultra-ball'}}, data);
     expect(won['bag']['ultra-ball'], 1);

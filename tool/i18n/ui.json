@@ -15310,5 +15310,11 @@
   "fr": "Apparition massive du jour : {0} apparaît beaucoup ici (plus de chances de shiny) !",
   "es": "¡Brote del día: {0} aparece mucho por aquí (más probabilidad de shiny)!",
   "pt": "Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!"
+ },
+ "Captura crítica!": {
+  "en": "Critical capture!",
+  "fr": "Capture critique !",
+  "es": "¡Captura crítica!",
+  "pt": "Captura crítica!"
  }
 }

@@ -1526,11 +1526,17 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         await wait(380)
         setSide(setPoke, 1, 'hidden')
         setSide(setBall, 1, 'still')
+        // Captura crítica: a bola brilha dourada e balança uma vez só.
+        if (e.crit) {
+          playSound('shiny')
+          setSide(setBall, 1, 'crit')
+          await wait(700)
+        }
         for (let k = 0; k < e.shakes; k++) {
           await wait(250)
-          setSide(setBall, 1, 'shake')
+          setSide(setBall, 1, e.crit ? 'critshake' : 'shake')
           await wait(520)
-          setSide(setBall, 1, 'still')
+          setSide(setBall, 1, e.crit ? 'crit' : 'still')
         }
         await wait(300)
         if (e.caught) setSide(setBall, 1, 'caught')

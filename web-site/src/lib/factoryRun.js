@@ -5026,7 +5026,7 @@ export function captureFor(run, data) {
   if (nuzRule(run, 'noLegendary') && foes.some((f) => [1, 2].includes(speciesOf(data, f.id)?.[2]))) return null
   // Monotipo: só quem tem um tipo do inicial.
   if (run.mono && !foes.some((f) => (speciesOf(data, f.id)?.[4] ?? []).some((t) => run.mono.includes(t)))) return null
-  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), ...(run.catchBonus ? { bonus: run.catchBonus } : {}) }
+  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), dex: dexOf(run).length, ...(run.catchBonus ? { bonus: run.catchBonus } : {}) }
 }
 
 /**

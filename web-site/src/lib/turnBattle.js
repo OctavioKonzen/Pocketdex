@@ -1174,6 +1174,7 @@ export const LINES = {
   healed: ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
   revived: ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],
   threwBall: 'Você jogou uma {1}!',
+  critCapture: 'Captura crítica!',
   caught: ['', 'Pegou! {0} foi capturado!'],
   brokeFree: ['', 'Ah, não! {0} escapou da bola!'],
   burned: ['{0} foi queimado!', '{0} inimigo foi queimado!'],

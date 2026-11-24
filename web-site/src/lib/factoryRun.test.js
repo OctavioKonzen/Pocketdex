@@ -879,7 +879,7 @@ describe('mapa da corrida', () => {
       expect(local).toBe(100)
     }
     const run = { ...runAt(20), encounter: { kind: 'wild', biome: 'cave', foes: [{ id: 74, level: 20 }] } }
-    expect(captureFor(run, data)).toEqual({ rates: [255], dusk: true })
+    expect(captureFor(run, data)).toEqual({ rates: [255], dusk: true, dex: 1 })
     expect(captureFor({ ...run, encounter: { kind: 'trainer', foes: [{ id: 74, level: 20 }] } }, data)).toBe(null)
   })
 

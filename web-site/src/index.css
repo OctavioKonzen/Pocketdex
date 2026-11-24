@@ -605,6 +605,14 @@ body {
   25% { transform: translate(-50%, 0) scale(0.8) rotate(-22deg); }
   75% { transform: translate(-50%, 0) scale(0.8) rotate(22deg); }
 }
+/* Captura crítica: a bola brilha dourada (e balança uma vez só). */
+.pokeball-crit-1 { transform: translate(-50%, 0) scale(0.8); animation: pokeball-crit 700ms ease-out; filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 0 12px #facc15); }
+@keyframes pokeball-crit {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(2.4) drop-shadow(0 0 16px #fde047); }
+  100% { filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 0 12px #facc15); }
+}
+.pokeball-critshake-1 { transform-origin: 50% 90%; animation: pokeball-shake 520ms ease-in-out; filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 0 12px #facc15); }
 .pokeball-open-0, .pokeball-open-1 { animation: pokeball-open 260ms ease-out forwards; }
 @keyframes pokeball-open {
   0% { transform: translate(-50%, 0) scale(0.9); filter: none; opacity: 1; }

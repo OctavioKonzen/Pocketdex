@@ -2238,17 +2238,25 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
             _poke[1] = 'hidden';
             _ball[1] = 'still';
           });
+          // Captura crítica: a bola brilha dourada e balança uma vez só.
+          final crit = e.index & 2 != 0;
+          if (crit) {
+            BattleSounds.play('shiny');
+            setState(() => _ball[1] = 'crit');
+            await _wait(700);
+            if (!mounted) return;
+          }
           for (var k = 0; k < e.value; k++) {
             await _wait(250);
             if (!mounted) return;
-            setState(() => _ball[1] = 'shake');
+            setState(() => _ball[1] = crit ? 'critshake' : 'shake');
             await _wait(520);
             if (!mounted) return;
-            setState(() => _ball[1] = 'still');
+            setState(() => _ball[1] = crit ? 'crit' : 'still');
           }
           await _wait(300);
           if (!mounted) return;
-          if (e.index == 1) {
+          if (e.index & 1 != 0) {
             setState(() => _ball[1] = 'caught');
           } else {
             await _release(1);
@@ -4251,9 +4259,32 @@ class _Ball extends StatelessWidget {
       return TweenAnimationBuilder<double>(
         key: ValueKey(phase),
         tween: Tween(begin: 0, end: 1),
-        duration: Duration(milliseconds: phase == 'throw' || phase == 'catch' || phase == 'shake' ? 520 : phase == 'open' ? 260 : 1),
-        curve: phase == 'throw' || phase == 'catch' ? const Cubic(.3, .7, .5, 1) : phase == 'shake' ? Curves.easeInOut : Curves.easeOut,
+        duration: Duration(milliseconds: phase == 'throw' || phase == 'catch' || phase == 'shake' || phase == 'critshake' ? 520 : phase == 'open' ? 260 : phase == 'crit' ? 700 : 1),
+        curve: phase == 'throw' || phase == 'catch' ? const Cubic(.3, .7, .5, 1) : phase == 'shake' || phase == 'critshake' ? Curves.easeInOut : Curves.easeOut,
         builder: (context, t, _) {
+          // Captura crítica: a bola com brilho dourado (parada ou balançando).
+          if (phase == 'crit' || phase == 'critshake') {
+            final pulse = phase == 'crit' ? sin(t * pi) : 0.0;
+            return Stack(children: [
+              Positioned(
+                left: ground.dx,
+                top: ground.dy,
+                width: size,
+                height: size,
+                child: DecoratedBox(
+                  key: const ValueKey('ball-crit'),
+                  decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
+                    BoxShadow(color: const Color(0xFFFDE047).withValues(alpha: 0.7), blurRadius: 10 + 14 * pulse, spreadRadius: 2 + 4 * pulse),
+                  ]),
+                  child: Transform.rotate(
+                    alignment: Alignment.bottomCenter,
+                    angle: phase == 'critshake' ? sin(t * 2 * pi) * 0.38 : 0,
+                    child: _sprite(pulse * 0.6),
+                  ),
+                ),
+              ),
+            ]);
+          }
           // Battle Factory: a bola parada no chão, balançando ou fechada (capturou).
           if (phase == 'still' || phase == 'shake' || phase == 'caught') {
             return Stack(children: [

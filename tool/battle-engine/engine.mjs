@@ -334,10 +334,16 @@ function throwBall(game, battle, pokemon, ball) {
   const above = foe.level > mine.level ? Math.max(0.3, (mine.level / foe.level) ** 2) : 1;
   const a = ((3 * foe.maxhp - 2 * foe.hp) * rate * BALLS[ball](battle, foe, game.capture)) / (3 * foe.maxhp) * status * low * above;
   const chance = Math.min(1, a / 255) ** 0.1875;
+  // Captura crítica (como na 5ª geração em diante): quanto mais espécies na Pokédex da corrida
+  // (capture.dex), maior a chance. Na crítica, a bola balança uma vez só e basta passar nesse sorteio.
+  const dex = Number(game.capture.dex ?? 0);
+  const critMult = dex >= 30 ? 2.5 : dex >= 20 ? 2 : dex >= 12 ? 1.5 : dex >= 6 ? 1 : dex >= 2 ? 0.5 : 0;
+  const crit = ball !== 'master-ball' && critMult > 0 && battle.random() < Math.min(255, a * critMult) / 6 / 256;
   let shakes = 0;
-  while (shakes < 4 && (a >= 255 || ball === 'master-ball' || battle.random() < chance)) shakes++;
+  if (crit) shakes = a >= 255 || battle.random() < chance ? 4 : 0;
+  else while (shakes < 4 && (a >= 255 || ball === 'master-ball' || battle.random() < chance)) shakes++;
   const caught = shakes === 4;
-  battle.add('pocketdexball', foe, ball, String(Math.min(3, shakes)), caught ? 'caught' : 'free');
+  battle.add('pocketdexball', foe, ball, String(crit ? 1 : Math.min(3, shakes)), caught ? 'caught' : 'free', ...(crit ? ['crit'] : []));
   if (caught) {
     game.captured = originalIndex(foe);
     game.capturedBall = ball;
@@ -624,7 +630,8 @@ function eventsFor(game, lines) {
       const index = Number(actor.split(': ')[1]?.slice(2));
       const target = {side, name: game.teams[side][index].name || game.teams[side][index].set.species};
       say('threwBall', {side: 1 - side, name: ''}, BALL_NAMES[value]);
-      events.push({t: 'ball', side, ball: value, shakes: Number(extra), caught: parts[5] === 'caught'});
+      events.push({t: 'ball', side, ball: value, shakes: Number(extra), caught: parts[5] === 'caught', ...(parts[6] === 'crit' ? {crit: true} : {})});
+      if (parts[6] === 'crit') say('critCapture');
       say(parts[5] === 'caught' ? 'caught' : 'brokeFree', target);
     } else if (kind === 'message') say('sim', actor);
     else if (kind === 'win' && game.captured != null) continue;

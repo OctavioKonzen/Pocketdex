@@ -2761,6 +2761,7 @@ class FactoryRun {
     return {
       'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
       'dusk': darkBiomes.contains(encounter?['biome']),
+      'dex': dexOf(run).length,
       if (run['catchBonus'] != null) 'bonus': run['catchBonus'],
     };
   }
