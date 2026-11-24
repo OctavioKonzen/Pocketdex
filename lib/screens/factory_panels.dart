@@ -2799,6 +2799,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
 
   /// Como nos jogos: as escolhas (os botões e as cartas) só aparecem depois de toda a fala aparecer. Igual ao site.
   bool _textDone = true;
+
+  /// Quem fala na caixa agora (a plaquinha e o sprite no cenário).
+  String _speaker = '';
   Widget _choiceWait(Widget child) =>
       IgnorePointer(ignoring: !_textDone, child: AnimatedOpacity(opacity: _textDone ? 1 : 0, duration: const Duration(milliseconds: 180), child: child));
 
@@ -3933,14 +3936,15 @@ class _FactoryScreenState extends State<FactoryScreen> {
         ),
       );
 
-  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true}) =>
-      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill, hideHp: hideHp, menuWait: menuWait);
+  Widget _frame({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true, bool cast = false}) =>
+      _frameColumn(field: field, run: run, text: text, menu: menu, tools: tools, menuFill: menuFill, hideHp: hideHp, menuWait: menuWait, cast: cast);
 
   /// A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, a vida do Pokémon
   /// da frente e, embaixo dela, os botões, ao lado da caixa; a faixa de dica embaixo. Tudo numa tela só, nada embaixo
   /// dela (a Bolsa, o time, o mapa e o resto abrem por cima do campo). Igual ao site.
   /// menuWait: os botões ao lado da caixa esperam a fala (não quando são só BOLSA/TIME/MAPA/AJUDA). Igual ao site.
-  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true}) => DsLayout(
+  /// cast: quem fala na história aparece no cenário (sem um chefe já no campo). Igual ao site.
+  Widget _frameColumn({required Widget field, Json? run, required List<Widget> text, Widget? menu, List<Widget>? tools, bool menuFill = false, bool hideHp = false, bool menuWait = true, bool cast = false}) => DsLayout(
         single: true,
         top: LayoutBuilder(builder: (context, box) {
           final w = box.maxWidth, h = w * 9 / 16;
@@ -3965,8 +3969,35 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       child: field,
                     ),
                   ),
+                  // Quem fala na história, no cenário (o treinador dele, pelo nome). Igual ao site.
+                  if (cast && speakerTrainer(Trainers.list, _speaker) != null)
+                    Positioned(
+                      key: ValueKey('speaker-sprite-${speakerTrainer(Trainers.list, _speaker)!.id}'),
+                      right: w * 0.12,
+                      bottom: h * 0.38,
+                      child: IgnorePointer(child: TrainerSprite(speakerTrainer(Trainers.list, _speaker)!, height: farPerson(w))),
+                    ),
                   // A vida do Pokémon da frente, no lugar da sua caixa de HP na batalha (os botões ficam embaixo dela).
                   if (run != null && menu != null && !hideHp) Positioned(right: w * 0.0125, bottom: m.hpBottom, width: w * 0.24, child: _leadHp(run, m.font * 0.75)),
+                  // A plaquinha com o nome de quem fala, em cima da caixa de texto. Igual ao site.
+                  if (_speaker.isNotEmpty)
+                    Positioned(
+                      left: w * 0.02,
+                      bottom: m.bottom + m.zone,
+                      child: Container(
+                        key: const ValueKey('speaker-plate'),
+                        padding: EdgeInsets.symmetric(horizontal: w * 0.014, vertical: w * 0.001),
+                        decoration: _dlgBox().copyWith(
+                          border: Border(
+                            top: BorderSide(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 2),
+                            left: BorderSide(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 2),
+                            right: BorderSide(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 2),
+                          ),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(w * 0.006)),
+                        ),
+                        child: Text(tr(_speaker), style: _portText.copyWith(fontSize: w * 0.019, fontWeight: FontWeight.w900, height: 1.4)),
+                      ),
+                    ),
                   // A caixa de texto no lugar da da batalha (o que não cabe: tocar passa).
                   Positioned(
                     left: w * 0.0125,
@@ -3977,6 +4008,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       key: const ValueKey('factory-text'),
                       onDone: (done) {
                         if (done != _textDone && mounted) setState(() => _textDone = done);
+                      },
+                      onSpeaker: (who) {
+                        if (who != _speaker && mounted) setState(() => _speaker = who);
                       },
                       decoration: currentFactory()['frame'] is String
                           ? _dlgBox().copyWith(border: Border.all(color: _frameColors[currentFactory()['frame']]?.$1 ?? _border, width: 3))
@@ -4576,6 +4610,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final (healerSprite, healerName) = town ? ('sd-nurse', 'Enfermeira Joy') : FactoryRun.healerOf(run);
     return _frame(
       run: run,
+      // O chefe vencido fala depois (a história segue): ele aparece no cenário. Igual ao site.
+      cast: beat?['city'] != null && event == null && items.isEmpty && p['center'] != true && p['joy'] != true,
       field: _field('${run['scene'] ?? 'grass'}', key: const ValueKey('factory-result'), (w, h) => [
             if (p['center'] == true || p['joy'] == true)
               _far(_farPerson(healerSprite, w), w, h)
@@ -4699,7 +4735,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         // O que o chefe diz depois de perder (a história segue). Igual ao site.
         if ((p['beat'] as Map?)?['city'] != null && _data != null)
           for (final l in FactoryRun.sceneLines(_data!, FactoryRun.sceneRegion(p['beat'] as Map), 'after', '${(p['beat'] as Map)['name']}@${(p['beat'] as Map)['city']}', I18n.language))
-            Text(l.$1.isNotEmpty ? '💬 ${tr(l.$1)}: ${l.$2}' : '📖 ${l.$2}', key: const ValueKey('factory-scene-after'), style: const TextStyle(fontSize: 13)),
+            _Who(l.$1, Text(l.$1.isNotEmpty ? l.$2 : '📖 ${l.$2}', key: const ValueKey('factory-scene-after'), style: const TextStyle(fontSize: 13))),
         if (p['story'] != null)
           for (final line in '${p['story']}'.split('\n\n')) Text('📖 $line', key: const ValueKey('factory-story-end'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       ],
@@ -6143,7 +6179,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
             ? FactoryRun.bossScene(data, boss, '${route['biome']}')
             : '${route['biome']}';
     // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama). Igual ao site.
-    String sceneText((String, String) l) => l.$1.isNotEmpty ? '💬 ${tr(l.$1)}: ${l.$2}' : '📖 ${l.$2}';
+    // Quem fala aparece na plaquinha (e no cenário); a narração, com o livro.
+    String sceneText((String, String) l) => l.$1.isNotEmpty ? '$_whoMark${l.$1}$_whoEnd${l.$2}' : '📖 ${l.$2}';
     final arrival = town && pos == FactoryRun.routeLength ? FactoryRun.sceneLines(data, region, 'city', cities.to, I18n.language).map(sceneText).toList() : <String>[];
     final before = meeting ? FactoryRun.sceneLines(data, region, 'before', '${boss['name']}@${FactoryRun.bossCity(data, run)}', I18n.language).map(sceneText).toList() : <String>[];
     // As falas (uma por vez, tocando para passar, como nos jogos).
@@ -6354,6 +6391,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     // O Pokémon que segue você: o que ele sente aqui (o balão em cima dele).
     final petMood = FactoryRun.followerMood(data, run, FactoryRun.clockOf().night);
     return _frame(
+      cast: !meeting && rival == null,
       menuFill: asCards,
       menuWait: !asCards,
       run: run,
@@ -6940,6 +6978,28 @@ const _teamNames = {
 
 /// As falas uma de cada vez, no mesmo lugar (a caixa não cresce), como nos jogos: tocar passa para a próxima (▼). Sem
 /// falas, o texto de fallback. Igual ao site.
+/// A marca de uma fala da história nas falas da caixa: _whoMark + quem fala + _whoEnd + o texto.
+const _whoMark = '\u0001', _whoEnd = '\u0002';
+
+/// Uma fala da história de alguém (a plaquinha com o nome e o sprite dele no cenário). Igual ao site.
+class _Who extends StatelessWidget {
+  const _Who(this.who, this.child, {super.key});
+  final String who;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+/// O treinador (sprite) de quem fala na história, pelo nome (Bill → sd-bill, Lorelei, Prof. Oak...). Igual ao site.
+Trainer? speakerTrainer(List<Trainer> trainers, String who) {
+  if (who.isEmpty || trainers.isEmpty) return null;
+  final key = who.toLowerCase().replaceFirst(RegExp(r'^prof(\.|essora|essor)?\s+'), '').replaceAll(RegExp(r'[^a-z0-9]'), '');
+  return trainers.where((x) => x.name.toLowerCase() == who.toLowerCase()).firstOrNull ??
+      trainers.where((x) => x.id == key).firstOrNull ??
+      trainers.where((x) => x.id == 'sd-$key').firstOrNull;
+}
+
 class _Dialogue extends StatefulWidget {
   const _Dialogue({super.key, required this.lines, this.fallback, required this.sub});
   final List<String> lines;
@@ -6956,7 +7016,11 @@ class _DialogueState extends State<_Dialogue> {
     final lines = widget.lines;
     if (lines.isEmpty) return widget.fallback == null ? const SizedBox.shrink() : Text(widget.fallback!);
     // As falas em sequência: a caixa de fala mostra 2 linhas por vez e passa sozinha ou tocando.
-    return Column(key: const ValueKey('factory-dialogue'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final l in lines) Text(l)]);
+    // Uma fala da história (marcada com _whoMark): quem fala vai para a plaquinha (e para o cenário). Igual ao site.
+    return Column(key: const ValueKey('factory-dialogue'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final l in lines)
+        if (l.startsWith(_whoMark) && l.contains(_whoEnd)) _Who(l.substring(1, l.indexOf(_whoEnd)), Text(l.substring(l.indexOf(_whoEnd) + 1))) else Text(l),
+    ]);
   }
 }
 
@@ -7494,9 +7558,12 @@ class _TreePainter extends CustomPainter {
 /// A caixa de texto da corrida (a mesma da batalha): sempre do mesmo tamanho; o que não cabe vem em partes (tocar passa
 /// para a próxima parte, com a setinha ▼ no canto, como nos jogos).
 class _PagedText extends StatefulWidget {
-  const _PagedText({super.key, required this.children, required this.decoration, required this.style, this.onDone});
+  const _PagedText({super.key, required this.children, required this.decoration, required this.style, this.onDone, this.onSpeaker});
   final List<Widget> children;
   final ValueChanged<bool>? onDone;
+
+  /// Quem fala na página de agora (a fala da história que está na caixa; '' sem ninguém).
+  final ValueChanged<String>? onSpeaker;
   final BoxDecoration decoration;
   final TextStyle style;
 
@@ -7537,7 +7604,41 @@ class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMi
     }
     if (w is Padding && w.child != null) return Padding(key: w.key, padding: EdgeInsets.zero, child: _uniform(w.child!));
     if (w is Column) return Column(key: w.key, crossAxisAlignment: w.crossAxisAlignment, children: [for (final c in w.children) _uniform(c)]);
+    if (w is _Who) return _Who(w.who, _uniform(w.child), key: w.key);
     return w;
+  }
+
+  final _content = GlobalKey();
+  String? _lastWho;
+
+  /// Quem fala na página de agora: a primeira fala da história (_Who) que aparece nela.
+  void _speakerNow() {
+    if (!mounted || widget.onSpeaker == null) return;
+    final root = _content.currentContext as Element?;
+    final col = root?.findRenderObject() as RenderBox?;
+    final top = _page * _line * _lines, bottom = top + _line * _lines;
+    var found = '';
+    void visit(Element e) {
+      if (found.isNotEmpty) return;
+      final w = e.widget;
+      if (w is _Who && w.who.isNotEmpty) {
+        final box = e.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize && col != null) {
+          final y = box.localToGlobal(Offset.zero, ancestor: col).dy;
+          if (y < bottom - 1 && y + box.size.height > top + 1) {
+            found = w.who;
+            return;
+          }
+        }
+      }
+      e.visitChildren(visit);
+    }
+
+    root?.visitChildren(visit);
+    if (found != _lastWho) {
+      _lastWho = found;
+      widget.onSpeaker!(found);
+    }
   }
 
   @override
@@ -7591,6 +7692,7 @@ class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMi
     if (!_scroll.hasClients) return;
     setState(() => _page = page);
     _scroll.jumpTo(min(page * _line * _lines, _scroll.position.maxScrollExtent));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _speakerNow());
     final perLine = max(8.0, _sig.length / max(1, _pages * _lines));
     _type.duration = Duration(milliseconds: max(120, (perLine * _charMs * _factor * _lines).round()));
     if (_instant) {
@@ -7646,7 +7748,7 @@ class _PagedTextState extends State<_PagedText> with SingleTickerProviderStateMi
               child: SingleChildScrollView(
                 controller: _scroll,
                 physics: const NeverScrollableScrollPhysics(),
-                child: DefaultTextStyle.merge(style: widget.style, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (final c in widget.children) _uniform(c)])),
+                child: DefaultTextStyle.merge(style: widget.style, child: Column(key: _content, crossAxisAlignment: CrossAxisAlignment.start, children: [for (final c in widget.children) _uniform(c)])),
               ),
             ),
           ),

@@ -747,6 +747,16 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
       await tester.pump(const Duration(milliseconds: 150));
     }
   },
+  // A fala da Misty depois da luta: a plaquinha com o nome dela aparece em cima da caixa (passando as páginas).
+  'Battle Factory (cena depois da luta)': (tester) async {
+    for (var k = 0; k < 10 && find.byKey(const ValueKey('speaker-plate')).evaluate().isEmpty; k++) {
+      await tester.tap(find.byKey(const ValueKey('factory-text')), warnIfMissed: false);
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+      }
+    }
+    expect(find.byKey(const ValueKey('speaker-plate')), findsOneWidget);
+  },
   'Battle Factory (time, opções)': (tester) async {
     await actions['Battle Factory (time, dados)']!(tester);
     await tester.tap(find.byKey(const ValueKey('team-tab-3')));
