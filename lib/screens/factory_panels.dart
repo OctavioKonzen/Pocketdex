@@ -3627,13 +3627,19 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (seen)
           () {
             final h = FactoryRun.habitatOf(data, pick, FactoryRun.clockOf().day);
-            return Column(key: const ValueKey('dex-habitat'), children: [
-              if (h.places.isNotEmpty)
-                Text('🗺️ ${[for (final b in h.places) '${_biomeInfo[b]?.$2 ?? ''} ${tr(_biomeInfo[b]?.$1 ?? b)}'].join(' · ')}',
-                    maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: ink.copyWith(fontSize: 9, fontWeight: FontWeight.w500, color: const Color(0xFFE2E8F0))),
-              if (h.time != null) Text(h.time == 'day' ? '☀️ ${tr('Só de dia')}' : '🌙 ${tr('Só à noite')}', style: ink.copyWith(fontSize: 9, color: const Color(0xFFFDE68A))),
-              if (h.outbreak) Text('🔥 ${tr('Surto hoje!')}', key: const ValueKey('dex-outbreak'), style: ink.copyWith(fontSize: 10, color: const Color(0xFFFDBA74))),
-            ]);
+            // Numa linha só (os lugares pelos ícones), para caber com o resto. Igual ao site.
+            return Text.rich(
+              key: const ValueKey('dex-habitat'),
+              TextSpan(children: [
+                if (h.places.isNotEmpty) TextSpan(text: '🗺️ ${[for (final b in h.places) _biomeInfo[b]?.$2 ?? ''].join()}'),
+                if (h.time != null) TextSpan(text: ' · ${h.time == 'day' ? '☀️ ${tr('Só de dia')}' : '🌙 ${tr('Só à noite')}'}', style: const TextStyle(color: Color(0xFFFDE68A))),
+                if (h.outbreak) TextSpan(text: ' · 🔥 ${tr('Surto hoje!')}', style: const TextStyle(color: Color(0xFFFDBA74), fontWeight: FontWeight.w900)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: ink.copyWith(fontSize: 9, fontWeight: FontWeight.w500, color: const Color(0xFFE2E8F0)),
+            );
           }(),
         Text(caught ? '✔ ${tr('Capturado')}' : seen ? '👁 ${tr('Visto')}' : '❔ ${tr('Não visto')}',
             key: const ValueKey('dex-status'), style: ink.copyWith(fontSize: 11, color: caught ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1))),
@@ -4295,9 +4301,6 @@ class _FactoryScreenState extends State<FactoryScreen> {
       }),
           key: const ValueKey('factory-menu-region'), active: _panel == 'region'),
       _toolButton('❓', tr('AJUDA'), () => setState(() => _panel = _panel == 'help' ? null : 'help'), key: const ValueKey('factory-menu-help'), active: _panel == 'help'),
-      // O Inkay no nível: virar a tela (o botão) e ele evolui na próxima vitória. Igual ao site.
-      if (FactoryRun.flipWaiting(data, run))
-        _toolButton('🙃', tr('VIRAR'), () => _save(FactoryRun.flipScreen(run)), key: const ValueKey('factory-menu-flip'), active: run['flip'] == true),
     ];
     Widget frame;
     void close() => setState(() => _panel = null);
@@ -5400,6 +5403,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (bike != null) act('factory-bike', '🚲 Bicycle', bike),
       if (radar != null) act('factory-radar', '📶 Poké Radar', radar),
       if (!meeting && FactoryRun.applyRepel(run) != null) act('factory-repel', '🧴 ${tr('REPELENTE')} (${run['repels']})', FactoryRun.applyRepel(run)!),
+      // O Inkay no nível: virar a tela (o botão) e ele evolui na próxima vitória. Igual ao site.
+      if (FactoryRun.flipWaiting(data, run))
+        run['flip'] == true
+            ? _menuButton('🙃 ${tr('Tela virada: o Inkay evolui na próxima vitória')}', null, key: const ValueKey('factory-flip'))
+            : act('factory-flip', '🙃 ${tr('VIRAR A TELA')}', FactoryRun.flipScreen(run)),
       // O acampamento: curry (Sitrus Berry) ou sanduíche (Lum Berry), uma vez por rota. Igual ao site.
       if (!meeting && FactoryRun.campMeal(run, 'curry') != null) act('factory-curry', '🍛 ${tr('FAZER CURRY')} (Sitrus Berry)', FactoryRun.campMeal(run, 'curry')!),
       if (!meeting && FactoryRun.campMeal(run, 'sandwich') != null) act('factory-sandwich', '🥪 ${tr('FAZER SANDUÍCHE')} (Lum Berry)', FactoryRun.campMeal(run, 'sandwich')!),

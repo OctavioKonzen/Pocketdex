@@ -772,9 +772,10 @@ function TeraCrown({ color }) {
 const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = '', fainted }, ref) {
   const [failed, setFailed] = useState(false)
   const kind = back ? (mon.shiny ? 'back-shiny' : 'back') : mon.shiny ? 'shiny' : 'front'
-  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : undefined
+  // O Alfa: maior e com o brilho vermelho (como em Legends: Arceus). Igual ao app.
+  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : undefined
   return (
-    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)' } : undefined}>
+    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
       <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
         {failed ? (
           <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}.png`) : `pokemon/${id}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />

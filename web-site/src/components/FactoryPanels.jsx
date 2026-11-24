@@ -2241,11 +2241,12 @@ function DexPanel({ factory, data, run, name, onClose }) {
           {seen && (() => {
             const h = habitatOf(data, pick, clockOf().day)
             return (
-              <div className="w-full text-center text-[1.2cqw] leading-snug" data-testid="dex-habitat">
-                {h.places.length > 0 && <p className="line-clamp-2 text-slate-200">🗺️ {h.places.map((b) => `${BIOME_INFO[b]?.icon ?? ''} ${t(BIOME_INFO[b]?.label ?? b)}`).join(' · ')}</p>}
-                {h.time && <p className="text-amber-200">{h.time === 'day' ? `☀️ ${t('Só de dia')}` : `🌙 ${t('Só à noite')}`}</p>}
-                {h.outbreak && <p className="font-black text-orange-300" data-testid="dex-outbreak">🔥 {t('Surto hoje!')}</p>}
-              </div>
+              // Numa linha só (os lugares pelos ícones; o nome de cada um ao passar o mouse), para caber com o resto.
+              <p className="w-full truncate text-center text-[1.2cqw] leading-snug text-slate-200" data-testid="dex-habitat" title={h.places.map((b) => t(BIOME_INFO[b]?.label ?? b)).join(' · ')}>
+                {h.places.length > 0 && `🗺️ ${h.places.map((b) => BIOME_INFO[b]?.icon ?? '').join('')}`}
+                {h.time && <span className="text-amber-200">{` · ${h.time === 'day' ? `☀️ ${t('Só de dia')}` : `🌙 ${t('Só à noite')}`}`}</span>}
+                {h.outbreak && <span className="font-black text-orange-300" data-testid="dex-outbreak">{` · 🔥 ${t('Surto hoje!')}`}</span>}
+              </p>
             )
           })()}
           <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
@@ -2976,13 +2977,6 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <ToolButton icon="🧩" onClick={() => setPanel(panel === 'team' ? null : 'team')} active={panel === 'team'} testid="factory-menu-team">{t('TIME')}</ToolButton>
       <ToolButton icon="🗺️" onClick={() => setPanel(panel === 'region' ? null : 'region')} active={panel === 'region'} testid="factory-menu-region">{t('MAPA')}</ToolButton>
       <ToolButton icon="❓" onClick={() => setPanel(panel === 'help' ? null : 'help')} active={panel === 'help'} testid="factory-menu-help">{t('AJUDA')}</ToolButton>
-      {/* O Inkay no nível: virar a tela (o celular de cabeça para baixo ou o botão) e ele evolui na próxima vitória. Igual ao app. */}
-      {run && flipWaiting(data, run) && (
-        <>
-          <ToolButton icon="🙃" onClick={() => save(flipScreen(run))} active={Boolean(run.flip)} testid="factory-menu-flip">{t('VIRAR')}</ToolButton>
-          {!run.flip && <FlipSensor onFlip={() => save(flipScreen(run))} />}
-        </>
-      )}
     </>
   )
 
@@ -3887,6 +3881,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ].filter(Boolean)
     text = (
       <>
+        {flipWaiting(data, run) && !run.flip && <FlipSensor onFlip={() => save(flipScreen(run))} />}
         <Dialogue key={`${run.floor}-${run.dungeon?.place ?? ''}-${route.options.map((o) => o.kind).join()}`} lines={lines}
           fallback={town ? null : !fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, você não sabe aonde cada caminho leva.')} />
         {run.mission && run.mission.leg === (run.leg ?? 1) && (
@@ -3968,6 +3963,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
             !meeting && radarPath(run) && ['factory-radar', '📶 Poké Radar', () => save(radarPath(run))],
             !meeting && applyRepel(run) && ['factory-repel', `🧴 ${t('REPELENTE')} (${run.repels})`, () => save(applyRepel(run))],
+            // O Inkay no nível: virar a tela (o celular de cabeça para baixo ou o botão) e ele evolui na próxima vitória. Igual ao app.
+            flipWaiting(data, run) && (run.flip ? ['factory-flip', `🙃 ${t('Tela virada: o Inkay evolui na próxima vitória')}`, null] : ['factory-flip', `🙃 ${t('VIRAR A TELA')}`, () => save(flipScreen(run))]),
             // O acampamento: curry (Sitrus Berry) ou sanduíche (Lum Berry), uma vez por rota. Igual ao app.
             !meeting && campMeal(run, 'curry') && ['factory-curry', `🍛 ${t('FAZER CURRY')} (Sitrus Berry)`, () => save(campMeal(run, 'curry'))],
             !meeting && campMeal(run, 'sandwich') && ['factory-sandwich', `🥪 ${t('FAZER SANDUÍCHE')} (Lum Berry)`, () => save(campMeal(run, 'sandwich'))],

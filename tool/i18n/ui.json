@@ -15430,5 +15430,17 @@
   "fr": "Dans Pokelike, dans ÉQUIPE > OPTIONS : caressez le Pokémon et donnez-lui un Poffin (un par étage) pour gagner de l'amitié.",
   "es": "En Pokelike, en EQUIPO > OPCIONES: acaricia al Pokémon y dale un Poké Lito (uno por piso) para ganar amistad.",
   "pt": "No Pokelike, em TIME > OPÇÕES: acaricie o Pokémon e dê um Poké Puff (um por andar) para ganhar amizade."
+ },
+ "VIRAR A TELA": {
+  "en": "FLIP THE SCREEN",
+  "fr": "RETOURNER L’ÉCRAN",
+  "es": "VOLTEAR LA PANTALLA",
+  "pt": "VIRAR A TELA"
+ },
+ "Tela virada: o Inkay evolui na próxima vitória": {
+  "en": "Screen flipped: Inkay evolves after the next win",
+  "fr": "Écran retourné : Sepiatop évolue après la prochaine victoire",
+  "es": "Pantalla volteada: Inkay evoluciona tras la próxima victoria",
+  "pt": "Tela virada: o Inkay evolui na próxima vitória"
  }
 }
