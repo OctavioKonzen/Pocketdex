@@ -2007,6 +2007,20 @@ void main() {
     final farfetchd = {...base(), 'team': [{...m, 'id': 10166, 'level': 10}]};
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [2])).first['id'], 10166);
     expect(FactoryRun.teamOf(FactoryRun.winFloor(farfetchd, data, crits: [FactoryRun.critEvolve])).first['id'], 865);
+    // Formas por item: Rotom Catalog, Gracidea (só de dia) e Meteorite. Igual ao site.
+    final rotom = {...base(), 'team': [{...first, 'id': 479}, {...first, 'id': 19}]};
+    expect(FactoryRun.itemFormsOf(data, FactoryRun.teamOf(rotom)[0]), [479, 10008, 10009, 10010, 10011, 10012]);
+    expect(FactoryRun.formItemOf(data, FactoryRun.teamOf(rotom)[0]), 'rotom-catalog');
+    final heat = FactoryRun.setForm(rotom, data, 0, 10008)!;
+    expect(FactoryRun.teamOf(heat)[0]['id'], 10008);
+    expect(FactoryRun.itemFormsOf(data, FactoryRun.teamOf(heat)[0]), [479, 10008, 10009, 10010, 10011, 10012]);
+    expect(FactoryRun.teamOf(FactoryRun.setForm(heat, data, 0, 479)!)[0]['id'], 479);
+    expect(FactoryRun.setForm(rotom, data, 0, 10006), isNull);
+    expect(FactoryRun.setForm(rotom, data, 1, 10008), isNull);
+    final shaymin = {...base(), 'team': [{...first, 'id': 492}]};
+    expect(FactoryRun.teamOf(FactoryRun.setForm(shaymin, data, 0, 10006, false)!)[0]['id'], 10006);
+    expect(FactoryRun.setForm(shaymin, data, 0, 10006, true), isNull);
+    expect(FactoryRun.itemFormsOf(data, {'id': 386}), [386, 10001, 10002, 10003]);
     var found = 0;
     for (var seed = 1; seed < 60; seed++) {
       final r = FactoryRun.winFloor({...base(seed), 'team': [{...first, 'id': FactoryRun.pickup.first}]}, data);

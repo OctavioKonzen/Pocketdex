@@ -1005,6 +1005,31 @@ class _BagAndItemsState extends State<_BagAndItems> {
               _open(0);
             }, key: const ValueKey('team-lead')),
           if (canTeach) _bwButton('📀 ${tr('ENSINAR GOLPE')}', const Color(0xFF7C3AED), () => _teach(i), key: const ValueKey('team-teach')),
+          // A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao site.
+          if (FactoryRun.itemFormsOf(widget.data, mon).isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: Tooltip(
+                message: FactoryRun.formItemNames[FactoryRun.formItemOf(widget.data, mon)] ?? '',
+                child: DropdownButton<int>(
+                  key: const ValueKey('team-form'),
+                  underline: const SizedBox(),
+                  isDense: true,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900),
+                  value: FactoryRun.idOf(mon),
+                  items: [
+                    for (final id in {...FactoryRun.itemFormsOf(widget.data, mon, FactoryRun.clockOf().night), FactoryRun.idOf(mon)})
+                      DropdownMenuItem(value: id, child: Text('🔄 ${FactoryRun.formLabels[id] ?? id}')),
+                  ],
+                  onChanged: (id) {
+                    final next = id == null ? null : FactoryRun.setForm(run, widget.data, i, id, FactoryRun.clockOf().night);
+                    if (next != null) widget.onSave(next);
+                  },
+                ),
+              ),
+            ),
           if (gimmicks.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),

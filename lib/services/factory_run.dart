@@ -61,10 +61,13 @@ class FactoryData {
   /// As cenas da história de cada região (tool/factory_scenes.py): {cities: {cidade: falas}, bosses: {"Nome@Cidade":
   /// {before, last, after}}}; cada fala é [quem fala, pt, en, fr, es].
   final Json scenes;
+
+  /// As formas que um item muda (Rotom Catalog, Gracidea, Meteorite): espécie → [item, [formas]].
+  final Map<int, List> itemForms;
   const FactoryData(this.species, this.evolutions, this.starters,
       [this.bosses = const [], this.forms = const {}, this.megas = const {}, this.gmax = const [], this.zcrystals = const {},
       this.tms = const [], this.stones = const [], this.stories = const {}, this.routes = const {}, this.formSpecies = const {},
-      this.regional = const {}, this.scenes = const {}]);
+      this.regional = const {}, this.scenes = const {}, this.itemForms = const {}]);
 
   static Future<FactoryData>? _loading;
 
@@ -105,6 +108,7 @@ class FactoryData {
       {for (final e in ((j['formSpecies'] as Map?) ?? const {}).entries) int.parse('${e.key}'): e.value as List},
       Map<String, dynamic>.from((j['regional'] as Map?) ?? const {}),
       Map<String, dynamic>.from((j['scenes'] as Map?) ?? const {}),
+      {for (final e in ((j['itemForms'] as Map?) ?? const {}).entries) int.parse('${e.key}'): e.value as List},
     );
   }
 
@@ -1019,6 +1023,34 @@ class FactoryRun {
 
   /// Virou a tela (o botão): o Inkay evolui na próxima vitória.
   static Json flipScreen(Json run) => run['flip'] == true ? run : {...run, 'flip': true};
+
+  /// Formas por item (como nos jogos): o Rotom com o Rotom Catalog (os aparelhos), o Shaymin com a Gracidea (a Sky
+  /// Forme, só de dia) e o Deoxys com o Meteorite. Quem tem um deles no time já vem com o item e troca a forma em
+  /// TIME > OPÇÕES. Igual ao site.
+  static const formItemNames = {'rotom-catalog': 'Rotom Catalog', 'gracidea': 'Gracidea', 'meteorite': 'Meteorite'};
+  static const formLabels = {479: 'Rotom', 10008: 'Heat', 10009: 'Wash', 10010: 'Frost', 10011: 'Fan', 10012: 'Mow', 492: 'Land', 10006: 'Sky', 386: 'Normal', 10001: 'Attack', 10002: 'Defense', 10003: 'Speed'};
+  static int _formBase(FactoryData data, int id) => data.formSpecies[id] != null && data.formSpecies[id]!.length > 8 ? _int(data.formSpecies[id]![8]) : id;
+  static int idOf(Map mon) => _int(mon['id']);
+
+  /// As formas em que ele pode ficar com o item ([a normal, ...as do item]); vazio se não muda. À noite, nada de Sky Forme.
+  static List<int> itemFormsOf(FactoryData data, Map mon, [bool? night]) {
+    final base = _formBase(data, _int(mon['id']));
+    final f = data.itemForms[base];
+    if (f == null) return const [];
+    return [base, for (final id in f[1] as List) if (!(base == 492 && night == true)) _int(id)];
+  }
+
+  /// O item que muda a forma dele (ou null).
+  static String? formItemOf(FactoryData data, Map mon) => data.itemForms[_formBase(data, _int(mon['id']))]?.first as String?;
+
+  /// Troca a forma do Pokémon index (null se não dá).
+  static Json? setForm(Json run, FactoryData data, int index, int id, [bool? night]) {
+    final team = teamOf(run);
+    if (index < 0 || index >= team.length) return null;
+    final mon = team[index];
+    if (_int(mon['id']) == id || !itemFormsOf(data, mon, night).contains(id)) return null;
+    return {...run, 'team': [for (var i = 0; i < team.length; i++) i == index ? {...team[i], 'id': id} : team[i]]};
+  }
 
   /// Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao site.
   static List<Json> withShedinja(Json run, List<Json> before, List<Json> after, double Function() rand) {

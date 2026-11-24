@@ -873,6 +873,31 @@ export const flipWaiting = (data, run) => (run?.team ?? []).some((m) => evolutio
 /** Virou a tela (ou tocou no botão): o Inkay evolui na próxima vitória. */
 export const flipScreen = (run) => (run.flip ? run : { ...run, flip: true })
 
+/**
+ * Formas por item (como nos jogos): o Rotom com o Rotom Catalog (os aparelhos), o Shaymin com a Gracidea (a Sky
+ * Forme, só de dia) e o Deoxys com o Meteorite. Quem tem um deles no time já vem com o item e troca a forma em
+ * TIME > OPÇÕES. Igual ao app.
+ */
+export const FORM_ITEM_NAMES = { 'rotom-catalog': 'Rotom Catalog', gracidea: 'Gracidea', meteorite: 'Meteorite' }
+export const FORM_LABELS = { 479: 'Rotom', 10008: 'Heat', 10009: 'Wash', 10010: 'Frost', 10011: 'Fan', 10012: 'Mow', 492: 'Land', 10006: 'Sky', 386: 'Normal', 10001: 'Attack', 10002: 'Defense', 10003: 'Speed' }
+/** A espécie de uma forma (Rotom Heat → Rotom). */
+const formBase = (data, id) => data.formSpecies?.[id]?.[8] ?? id
+/** As formas em que ele pode ficar com o item ([a normal, ...as do item]); vazio se não muda. À noite, nada de Sky Forme. */
+export function itemFormsOf(data, mon, night = null) {
+  const base = formBase(data, mon.id)
+  const f = data.itemForms?.[base]
+  if (!f) return []
+  return [base, ...f[1].filter((id) => !(base === 492 && night))]
+}
+/** O item que muda a forma dele (ou null). */
+export const formItemOf = (data, mon) => data.itemForms?.[formBase(data, mon.id)]?.[0] ?? null
+/** Troca a forma do Pokémon index (null se não dá). */
+export function setForm(run, data, index, id, night = null) {
+  const mon = run.team[index]
+  if (!mon || mon.id === id || !itemFormsOf(data, mon, night).includes(id)) return null
+  return { ...run, team: run.team.map((m, i) => (i === index ? { ...m, id } : m)) }
+}
+
 /** Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao app. */
 export function withShedinja(run, before, after, rand) {
   const out = [...after]

@@ -10,7 +10,7 @@ import {
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, GYM_CHALLENGES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
-  HELD_BOOST, levelTo, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
+  HELD_BOOST, levelTo, itemFormsOf, formItemOf, setForm, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, sceneRegion, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
   captureFor, dexBook, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
@@ -1494,6 +1494,26 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     const farfetchd = { ...run, team: [{ ...m, id: 10166, level: 10 }] }
     expect(winFloor(farfetchd, data, { crits: [2] }).team[0].id).toBe(10166)
     expect(winFloor(farfetchd, data, { crits: [CRIT_EVOLVE] }).team[0].id).toBe(865)
+  })
+
+  it('formas por item: Rotom Catalog, Gracidea (só de dia) e Meteorite', () => {
+    const run = base()
+    const m = run.team[0]
+    const rotom = { ...run, team: [{ ...m, id: 479 }, { ...m, id: 19 }] }
+    expect(itemFormsOf(data, rotom.team[0])).toEqual([479, 10008, 10009, 10010, 10011, 10012])
+    expect(formItemOf(data, rotom.team[0])).toBe('rotom-catalog')
+    const heat = setForm(rotom, data, 0, 10008)
+    expect(heat.team[0].id).toBe(10008)
+    expect(itemFormsOf(data, heat.team[0])).toEqual([479, 10008, 10009, 10010, 10011, 10012])
+    expect(setForm(heat, data, 0, 479).team[0].id).toBe(479)
+    expect(setForm(rotom, data, 0, 10006)).toBe(null)
+    expect(setForm(rotom, data, 1, 10008)).toBe(null)
+    expect(itemFormsOf(data, rotom.team[1])).toEqual([])
+    const shaymin = { ...run, team: [{ ...m, id: 492 }] }
+    expect(setForm(shaymin, data, 0, 10006, false).team[0].id).toBe(10006)
+    expect(setForm(shaymin, data, 0, 10006, true)).toBe(null)
+    expect(itemFormsOf(data, { id: 386 })).toEqual([386, 10001, 10002, 10003])
+    expect(memberOf(heat, heat.team[0], ['tackle']).id).toBe(10008)
   })
 
   it('amizade: a cada andar vencido; com FRIEND_EVOLVE, evolui (Eevee: Espeon de dia, Umbreon à noite)', () => {

@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, flipWaiting, flipScreen, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -407,6 +407,13 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
             ? <span className="rounded-lg bg-emerald-500 px-2 py-1 text-xs font-black text-slate-900">{t('Abre a batalha')}</span>
             : <BwButton color="bg-blue-600" onClick={() => { save(setLead(run, i)); onLead() }} testid="team-lead">⬆ {t('PRIMEIRO NA BATALHA')}</BwButton>}
           {canTeach && <BwButton color="bg-violet-600" onClick={() => setTeaching(true)} testid="team-teach">📀 {t('ENSINAR GOLPE')}</BwButton>}
+          {/* A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao app. */}
+          {itemFormsOf(data, m).length > 0 && (
+            <select aria-label={t('Forma')} value={m.id} onChange={(e) => save(setForm(run, data, i, Number(e.target.value), clockOf().night))}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-form" title={FORM_ITEM_NAMES[formItemOf(data, m)]}>
+              {itemFormsOf(data, m, clockOf().night).concat(itemFormsOf(data, m, clockOf().night).includes(m.id) ? [] : [m.id]).map((id) => <option key={id} value={id}>🔄 {FORM_LABELS[id] ?? id}</option>)}
+            </select>
+          )}
           {options.length > 0 && (
             <select aria-label={t('Mecânica')} value={gimmickOf(data, run, m) || 'none'} onChange={(e) => save(setGimmick(run, i, e.target.value))}
               className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-gimmick">

@@ -87,6 +87,14 @@ FORM_EVOS = {
     10238: [[10239, 30]], 10241: [[10242, 50]], 10247: [[902, 25]],
     10253: [[980, 20]],
 }
+# As formas que um item muda (como nos jogos): o Rotom com o catálogo (os aparelhos), o Shaymin com a Gracidea
+# (a Sky Forme) e o Deoxys com o Meteorite (Ataque, Defesa e Velocidade). espécie: [item, [formas]].
+ITEM_FORMS = {
+    479: ['rotom-catalog', [10008, 10009, 10010, 10011, 10012]],
+    492: ['gracidea', [10006]],
+    386: ['meteorite', [10001, 10002, 10003]],
+}
+
 # Evoluções que nos jogos só a forma regional faz (ou só numa região): saem da espécie comum.
 REGIONAL_ONLY = {(52, 863), (83, 865), (122, 866), (222, 864), (264, 862), (562, 867), (194, 980), (211, 904), (215, 903),
                  (550, 902), (234, 899), (123, 900), (217, 901)}
@@ -572,7 +580,8 @@ def main():
     tms = sorted({m[0] for p in records.values() for m in p['moves'] if m[1] == 'machine' and m[0] in move_info and (move_info[m[0]].get('power') or 0) >= 50})
     # Os dados das formas regionais (tipos, atributos e XP da forma; captura, raridade e lugares da espécie).
     form_ids = {f for fs in REGIONAL['forms'].values() for f in fs.values()} | {f for fs in REGIONAL['evolveIn'].values() for f in fs.values()} \
-        | {t for es in FORM_EVOS.values() for e in es for t in [e[0]] if t > 10000} | set(REGIONAL['femaleForm'].values())
+        | {t for es in FORM_EVOS.values() for e in es for t in [e[0]] if t > 10000} | set(REGIONAL['femaleForm'].values()) \
+        | {f for _, fs in ITEM_FORMS.values() for f in fs}
     form_species = {}
     for fid in sorted(form_ids):
         rec = records[fid]
@@ -582,7 +591,7 @@ def main():
     regional_items = {e[2] for es in REGIONAL['regionEvos'].values() for x in es.values() for e in x if len(e) > 2}
     stones = sorted({e[2] for es in evolutions.values() for e in es if len(e) > 2} | regional_items)
     data = {'species': out_species, 'evolutions': evolutions, 'starters': STARTERS, 'bosses': bosses, 'forms': forms,
-            'formSpecies': form_species, 'regional': REGIONAL,
+            'formSpecies': form_species, 'regional': REGIONAL, 'itemForms': ITEM_FORMS,
             'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES,
             'scenes': {r: {'cities': {c: [list(x) for x in ls] for c, ls in sc.get('cities', {}).items()},
                            'bosses': {k: {w: [list(x) for x in ls] for w, ls in v.items()} for k, v in sc.get('bosses', {}).items()}} for r, sc in SCENES.items()},
