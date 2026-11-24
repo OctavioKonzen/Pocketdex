@@ -1730,6 +1730,35 @@ function stepOf(p) {
  * O resultado do andar sem nada para ver com calma (só XP, dinheiro, níveis sem evolução e itens achados): passa direto
  * para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao app.
  */
+/**
+ * A cena da insígnia (como no Black & White): o campo escurece, ela vem de longe girando como moeda, cinza, e ganha cor até parar
+ * grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou esperar) fecha e
+ * ela fica pequena no alto. Igual ao app.
+ */
+const BADGE_SCENE_MS = 3600
+const SPARKS = [[18, 30, 0], [78, 26, 0.35], [84, 64, 0.7], [16, 70, 0.5], [50, 12, 0.2], [62, 82, 0.9]]
+function BadgeScene({ badge, onDone }) {
+  const done = useRef(onDone)
+  done.current = onDone
+  useEffect(() => {
+    const id = setTimeout(() => done.current(), INSTANT_TEXT ? 0 : BADGE_SCENE_MS)
+    return () => clearTimeout(id)
+  }, [])
+  const color = typeColor(badge.type)
+  return (
+    <div className="badge-scene absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center" onClick={() => done.current()} data-testid="badge-scene">
+      <div className="badge-rays absolute" style={{ '--badge': color }} />
+      {SPARKS.map(([x, y, d], k) => <span key={k} className="badge-spark absolute" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${1.5 + d}s` }}>✦</span>)}
+      <div className="badge-fly relative w-[22%]" style={{ aspectRatio: '1' }}>
+        <div className="badge-gem absolute inset-[12%] overflow-hidden rounded-[14%] border-[4px] border-white" style={{ background: `linear-gradient(135deg, #fffb, ${color} 45%, #0006)` }}>
+          <span className="badge-sweep absolute" />
+        </div>
+      </div>
+      <p className="badge-title relative mt-[2%] rounded-lg px-[2%] py-[0.5%] text-[2.6cqw] font-black text-white" data-no-translate>🏅 {t('Insígnia de {0}!').replace('{0}', badge.name)}</p>
+    </div>
+  )
+}
+
 function quickResult(p) {
   if (!p || p.seen || p.exp == null || p.center || p.event) return false
   for (const k of ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission', 'quest']) {
@@ -2880,6 +2909,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   }, [evo?.at, evo?.phase])
   // A fanfarra da insígnia (uma vez).
   const badgeShown = useRef(null)
+  // A cena da insígnia que está passando (a chave do andar e do líder).
+  const [badgeFly, setBadgeFly] = useState(null)
   // A dica mostrada agora ([id, a tela]).
   const tipNow = useRef(null)
   // Os créditos do Campeão já passaram (a chave do andar).
@@ -3253,6 +3284,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     if (p.badge && badgeShown.current !== `${run.floor}-${p.badge.name}`) {
       badgeShown.current = `${run.floor}-${p.badge.name}`
       playSound('badge', 0.7)
+      // A cena da insígnia (girando e ganhando cor até o meio), uma vez.
+      setBadgeFly(badgeShown.current)
     }
     field = (
       <Field biome={here} fieldRef={fieldRef} testid="factory-result">
@@ -3260,7 +3293,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {!shown && event && <FarStand scene={here}>{event.kind === 'clue' ? <span data-testid="quest-silhouette" style={event.clues >= QUEST_CLUES ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={event.legend} className="h-28 w-28" /></span> : <span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span>}</FarStand>}
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
         {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
-        {p.badge && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
+        {p.badge && badgeFly === `${run.floor}-${p.badge.name}` && <BadgeScene badge={p.badge} onDone={() => setBadgeFly(null)} />}
+        {p.badge && badgeFly !== `${run.floor}-${p.badge.name}` && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
       </Field>
     )
     // O chefe vencido fala depois (a história segue): ele aparece no cenário.

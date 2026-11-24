@@ -15442,5 +15442,11 @@
   "fr": "Écran retourné : Sepiatop évolue après la prochaine victoire",
   "es": "Pantalla volteada: Inkay evoluciona tras la próxima victoria",
   "pt": "Tela virada: o Inkay evolui na próxima vitória"
+ },
+ "Insígnia de {0}!": {
+  "en": "{0}’s Badge!",
+  "fr": "Badge de {0} !",
+  "es": "¡Medalla de {0}!",
+  "pt": "Insígnia de {0}!"
  }
 }

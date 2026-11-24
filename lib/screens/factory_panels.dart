@@ -4666,6 +4666,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (badge != null && _badgeKey != '${run['floor']}-${badge['name']}') {
       _badgeKey = '${run['floor']}-${badge['name']}';
       BattleSounds.play('badge', volume: 0.7);
+      // A cena da insígnia (girando como moeda e ganhando cor até o meio), uma vez. Igual ao site.
+      _badgeFly = _badgeKey;
     }
     // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...). Igual ao site.
     final town = FactoryRun.inTown('${run['scene'] ?? 'grass'}');
@@ -4691,7 +4693,17 @@ class _FactoryScreenState extends State<FactoryScreen> {
               _far(Text(eventIcon, style: TextStyle(fontSize: w * 0.12)), w, h),
             if (lead != null) _fieldMon(lead, w, h, back: true),
             // A insígnia (como nos jogos): grande, brilhando, no alto do campo.
-            if (badge != null)
+            if (badge != null && _badgeFly == '${run['floor']}-${badge['name']}')
+              Positioned.fill(
+                child: _BadgeScene(
+                  color: getColorForType('${badge['type']}'),
+                  title: '🏅 ${tr('Insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
+                  onDone: () {
+                    if (mounted) setState(() => _badgeFly = null);
+                  },
+                ),
+              )
+            else if (badge != null)
               Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14))),
           ]),
       text: [
@@ -4900,6 +4912,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// terminando, a musiquinha e "Parabéns!". Uma de cada vez, antes do resultado do andar. Igual ao site.
   List<(int, int, int)>? _evoList; // (posição no time, de, para)
   String? _badgeKey; // a fanfarra da insígnia já tocou
+  String? _badgeFly; // a cena da insígnia que está passando
   String? _creditsDone; // os créditos do Campeão já passaram (a chave do andar)
   final Map<String, List<String>> _contestMoves = {}; // os golpes do nível (quem nunca mudou de golpes), para o concurso
   (String, String)? _tipNow; // a dica mostrada agora (id, a tela)
@@ -6965,6 +6978,192 @@ class _BadgeShine extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// A cena da insígnia (como no Black & White): o campo escurece, ela vem de longe girando como moeda (em 3D), cinza, e
+/// ganha cor até parar grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou
+/// esperar) fecha e ela fica pequena no alto. Igual ao site.
+class _BadgeScene extends StatefulWidget {
+  const _BadgeScene({required this.color, required this.title, required this.onDone});
+  final Color color;
+  final String title;
+  final VoidCallback onDone;
+
+  @override
+  State<_BadgeScene> createState() => _BadgeSceneState();
+}
+
+class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin {
+  static const _sceneMs = 3600;
+  static const _sparks = [(0.18, 0.30, 0.0), (0.78, 0.26, 0.35), (0.84, 0.64, 0.7), (0.16, 0.70, 0.5), (0.50, 0.12, 0.2), (0.62, 0.82, 0.9)];
+  late final AnimationController _fly = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
+  late final AnimationController _loop = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat();
+  Timer? _timer;
+  bool _closed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final instant = Platform.environment.containsKey('FLUTTER_TEST');
+    _timer = Timer(Duration(milliseconds: instant ? 0 : _sceneMs), _close);
+  }
+
+  void _close() {
+    if (_closed) return;
+    _closed = true;
+    widget.onDone();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _fly.dispose();
+    _loop.dispose();
+    super.dispose();
+  }
+
+  /// Cinza (0) até a cor (1).
+  static ColorFilter _saturation(double s) {
+    final r = 0.2126 * (1 - s), g = 0.7152 * (1 - s), b = 0.0722 * (1 - s);
+    return ColorFilter.matrix([r + s, g, b, 0, 0, r, g + s, b, 0, 0, r, g, b + s, 0, 0, 0, 0, 0, 1, 0]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: const ValueKey('badge-scene'),
+      behavior: HitTestBehavior.opaque,
+      onTap: _close,
+      child: LayoutBuilder(builder: (context, box) {
+        final w = box.maxWidth, h = box.maxHeight;
+        final size = w * 0.22;
+        return AnimatedBuilder(
+          animation: Listenable.merge([_fly, _loop]),
+          builder: (context, _) {
+            // 0 a 1,6 s: vem girando; depois, o brilho e as estrelinhas.
+            final ms = _fly.value * 2600;
+            final t = (ms / 1600).clamp(0.0, 1.0);
+            final e = Curves.easeOutCubic.transform((t / 0.65).clamp(0.0, 1.0));
+            final scale = t < 0.65 ? 0.12 + (1.18 - 0.12) * e : t < 0.82 ? 1.18 - (1.18 - 0.94) * ((t - 0.65) / 0.17) : 0.94 + 0.06 * ((t - 0.82) / 0.18);
+            final turn = t < 0.65 ? e * 3 : t < 0.82 ? 3 + (t - 0.65) / 0.17 : 4.0;
+            final dx = (1 - e) * -1.9 * size, dy = (1 - e) * 1.2 * size;
+            final rays = ((ms - 1050) / 600).clamp(0.0, 1.0) * 0.85;
+            final pulse = ms > 1600 ? 0.5 + 0.5 * sin((ms - 1600) / 1100 * pi) : 0.0;
+            final sweep = ((ms - 1700) / 900).clamp(0.0, 1.0);
+            final dim = (ms / 350).clamp(0.0, 1.0);
+            final gem = Transform.rotate(
+              angle: pi / 4,
+              child: Container(
+                width: size * 0.76,
+                height: size * 0.76,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Color.lerp(widget.color, Colors.white, 0.7)!, widget.color, Color.lerp(widget.color, Colors.black, 0.35)!], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  border: Border.all(color: Colors.white, width: 4),
+                  borderRadius: BorderRadius.circular(size * 0.1),
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.5 + 0.4 * pulse), blurRadius: 8 + 18 * pulse)],
+                ),
+                // O brilho passando por ela.
+                child: sweep > 0 && sweep < 1
+                    ? FractionalTranslation(
+                        translation: Offset(-1.3 + 2.6 * sweep, 0),
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [Color(0x00FFFFFF), Color(0xE6FFFFFF), Color(0x00FFFFFF)], stops: [0.4, 0.5, 0.6], begin: Alignment(-1, -0.2), end: Alignment(1, 0.2)),
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            );
+            return Stack(clipBehavior: Clip.none, children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: dim,
+                  child: const DecoratedBox(decoration: BoxDecoration(gradient: RadialGradient(colors: [Color(0x33000000), Color(0xB3000000)]))),
+                ),
+              ),
+              if (rays > 0)
+                Center(
+                  child: Opacity(
+                    opacity: rays,
+                    child: Transform.rotate(angle: _loop.value * 2 * pi, child: CustomPaint(size: Size.square(w * 0.62), painter: _RaysPainter(Color.lerp(widget.color, Colors.white, 0.5)!))),
+                  ),
+                ),
+              for (final (x, y, d) in _sparks)
+                if (ms > 1500 + d * 1000)
+                  Positioned(
+                    left: w * x,
+                    top: h * y,
+                    child: () {
+                      final k = sin(((ms - 1500 - d * 1000) / 1200) * pi).abs();
+                      return Opacity(
+                        opacity: k,
+                        child: Transform.scale(scale: 0.3 + 0.95 * k, child: Text('✦', style: TextStyle(color: Colors.white, fontSize: w * 0.024, shadows: const [Shadow(color: Color(0xFFFDE047), blurRadius: 10)]))),
+                      );
+                    }(),
+                  ),
+              Center(
+                child: Transform.translate(
+                  offset: Offset(dx, dy),
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.0016)
+                      ..rotateY(turn * 2 * pi)
+                      ..scaleByDouble(scale, scale, 1, 1),
+                    child: ColorFiltered(colorFilter: _saturation(t < 0.82 ? 0.65 * e + 0.35 * ((t - 0.65) / 0.17).clamp(0.0, 1.0) : 1.0), child: SizedBox.square(dimension: size, child: Center(child: gem))),
+                  ),
+                ),
+              ),
+              if (ms > 1400)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  // No alto do campo (embaixo fica a caixa de texto).
+                  top: h * 0.05,
+                  child: Center(
+                    child: Opacity(
+                      opacity: ((ms - 1400) / 400).clamp(0.0, 1.0),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: w * 0.02, vertical: w * 0.005),
+                        decoration: BoxDecoration(color: const Color(0xBF0F172A), borderRadius: BorderRadius.circular(8)),
+                        child: Text(widget.title, style: TextStyle(color: Colors.white, fontSize: w * 0.026, fontWeight: FontWeight.w900, shadows: const [Shadow(offset: Offset(0, 2))])),
+                      ),
+                    ),
+                  ),
+                ),
+            ]);
+          },
+        );
+      }),
+    );
+  }
+}
+
+/// Os raios atrás da insígnia (somem para as pontas).
+class _RaysPainter extends CustomPainter {
+  const _RaysPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero), r = size.width / 2;
+    final paint = Paint()
+      ..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)], stops: const [0.25, 1]).createShader(Rect.fromCircle(center: c, radius: r));
+    for (var k = 0; k < 15; k++) {
+      final a = k * 2 * pi / 15;
+      final path = Path()
+        ..moveTo(c.dx, c.dy)
+        ..lineTo(c.dx + r * cos(a), c.dy + r * sin(a))
+        ..lineTo(c.dx + r * cos(a + 0.157), c.dy + r * sin(a + 0.157))
+        ..close();
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RaysPainter old) => old.color != color;
 }
 
 class _EvolutionFx extends StatefulWidget {
