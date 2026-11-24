@@ -3859,8 +3859,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
               name: (m['nick'] as String?) ?? _name(m['id']),
               level: (m['level'] as num).toInt(),
               hp: FactoryRun.hpOf(m).toDouble(),
-              // O item e as fitas dos concursos (🎀 da categoria). Igual ao site.
+              // O Alfa, o item e as fitas dos concursos (🎀 da categoria). Igual ao site.
               sub: [
+                if (m['alpha'] == true) 'α ${tr('Alfa')}',
                 if (m['item'] != null) _itemName('${m['item']}'),
                 if (((m['ribbons'] as List?) ?? const []).isNotEmpty) [for (final r in m['ribbons'] as List) FactoryRun.contestCats['$r']?.$1 ?? '🎀'].join(),
               ].join(' · ').nullIfEmpty),

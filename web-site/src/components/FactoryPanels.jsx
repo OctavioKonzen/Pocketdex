@@ -251,7 +251,7 @@ function BagPanel({ run, byId, save, onClose }) {
 /** O time da corrida para a tela do time (BwParty). */
 // O item e as fitas dos concursos (🎀 da categoria). Igual ao app.
 const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1,
-  sub: [m.item ? itemName(m.item) : '', (m.ribbons ?? []).map((r) => CONTEST_CATS[r]?.[0] ?? '🎀').join('')].filter(Boolean).join(' · ') || undefined }))
+  sub: [m.alpha ? `α ${t('Alfa')}` : '', m.item ? itemName(m.item) : '', (m.ribbons ?? []).map((r) => CONTEST_CATS[r]?.[0] ?? '🎀').join('')].filter(Boolean).join(' · ') || undefined }))
 
 const CATEGORY_LABEL = { physical: 'Físico', special: 'Especial', status: 'Status' }
 

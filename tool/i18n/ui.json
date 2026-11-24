@@ -15322,5 +15322,17 @@
   "fr": "RETOURNER",
   "es": "VOLTEAR",
   "pt": "VIRAR"
+ },
+ "Um {0} Alfa apareceu!": {
+  "en": "An alpha {0} appeared!",
+  "fr": "Un {0} Baron apparaît !",
+  "es": "¡Ha aparecido un {0} alfa!",
+  "pt": "Um {0} Alfa apareceu!"
+ },
+ "Alfa": {
+  "en": "Alpha",
+  "fr": "Baron",
+  "es": "Alfa",
+  "pt": "Alfa"
  }
 }

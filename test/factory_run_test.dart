@@ -757,6 +757,21 @@ void main() {
         }(),
     ];
     expect(norm(extras), expected['extras']);
+    // O Pokémon Alfa (igual ao site).
+    final alpha = [
+      for (var k = 0; k < 80; k++)
+        () {
+          final r = {...rt, 'seed': 200 + k, 'floor': 12, 'route': {'floor': 12, 'biome': 'grass', 'options': [{'kind': 'wild'}]}};
+          final next = FactoryRun.chooseNode(r, data, 0);
+          final enc = next['encounter'] as Map;
+          final foes = [for (final f in enc['foes'] as List) [f['id'], f['level'], f['boost'], f['minIv'], f['alpha']]];
+          if (enc['alpha'] != true) return [null, foes];
+          final won = FactoryRun.winFloor(next, data, captured: true, capturedIndex: 0);
+          final mon = FactoryRun.capturedMon(won)!;
+          return [true, foes, mon['alpha'], mon['ivs'], FactoryRun.memberOf(won, mon, ['tackle']).$2['boost'], FactoryRun.foeMember((enc['foes'] as List).first as Json, ['tackle']).$2['alpha']];
+        }()
+    ];
+    expect(norm(alpha), expected['alpha']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

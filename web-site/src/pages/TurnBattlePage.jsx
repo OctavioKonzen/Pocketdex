@@ -671,6 +671,7 @@ function PortHp({ mon, hp, mine, status, dmax, hpTestId, exp = null }) {
   return (
     <div className={`port-hp ${mine ? 'port-hp-mine' : 'port-hp-foe'}`} data-testid={mine ? 'port-hp-me' : 'port-hp-foe'}>
       <div className="port-hp-row">
+        {mon.alpha && <span className="port-alpha" title={t('Alfa')} data-testid="hp-alpha">α</span>}
         <span className="port-name truncate">{mon.name}</span>
         {gender && <span className={`port-gender ${gender[1]}`} data-testid="hp-gender">{gender[0]}</span>}
         {mon.terastal && <span className="port-tag" style={{ background: typeColor(mon.teraType) }} data-testid="tera-badge">{`TERA ${mon.teraType}`.toUpperCase()}</span>}
@@ -785,6 +786,8 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
   )
 })
 
+/** O Alfa: maior e com o brilho vermelho em volta (os olhos vermelhos de Legends: Arceus). Igual ao app. */
+const ALPHA_STYLE = { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 3px #dc2626) drop-shadow(0 0 7px rgba(220, 38, 38, 0.6))' }
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
@@ -796,7 +799,8 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
-        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : undefined}
+        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : undefined}
+        data-alpha={mon.alpha ? '' : undefined}
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
         <div ref={ref} className={`relative h-full w-full ${teraColor ? 'tera-glow' : ''}`} style={teraColor ? { '--tera': teraColor } : undefined} data-tera={tera || undefined}>
@@ -1079,7 +1083,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
     tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
-  const [text, setText] = useState(() => (wild ? t('Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
+  const [text, setText] = useState(() => (wild ? t(active(battle, 1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   // O registro da batalha ao lado dela (no PC): os turnos, cada texto inteiro e o HP que cada um perdeu ou recuperou.
   const [log, setLog] = useState(() => [{ kind: 'text', text }])
   // Contra o computador: depois de derrubar o Pokémon dele, pergunta se quer trocar (estilo "Troca";
@@ -1249,7 +1253,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     if (wild) {
       // Selvagem: ele já está ali, sem Poké Ball.
       setSide(setPoke, 1, '')
-      say(t('Um {0} selvagem apareceu!').replace('{0}', foeMon.name), 1)
+      say(t(foeMon.alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', foeMon.name), 1)
       await sparkleIfShiny(1)
       await wait(900)
     } else {

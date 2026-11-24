@@ -1412,7 +1412,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     _note('hp', side, '${mon.name}: ${diff < 0 ? '−' : '+'}${diff.abs()} HP ($pct%) → ${hp < 0 ? 0 : hp}/${mon.maxHp}');
   }
 
-  late String _text = widget.wild ? tr('Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
+  late String _text = widget.wild ? tr(widget.battle.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag
   String? _item; // item da Bolsa escolhido (falta escolher em quem)
@@ -1683,7 +1683,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       setState(() {
         _foeGone = true;
         _poke[1] = '';
-        _text = tr('Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
+        _text = tr(_b.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
         _note('text', 1, _text);
       });
       await _sparkleIfShiny(1);
@@ -3911,6 +3911,12 @@ class _PortHp extends StatelessWidget {
           ),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              // O Alfa: a marca vermelha antes do nome. Igual ao site.
+              if (mon.alpha)
+                Padding(
+                  padding: EdgeInsets.only(right: w * 0.003),
+                  child: m.Text('α', key: const ValueKey('hp-alpha'), style: font.copyWith(color: const Color(0xFFDC2626), fontWeight: FontWeight.w900, shadows: const [Shadow(color: Colors.white, blurRadius: 2)])),
+                ),
               // Nome como no jogo (não traduz).
               Flexible(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(mon.name, style: font))),
               if (gender != null)
@@ -4016,7 +4022,8 @@ class _PortSprite extends StatelessWidget {
   Widget build(BuildContext context) {
     final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back);
     if (src == null) return fallback;
-    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : null;
+    // O Alfa: maior e com o brilho vermelho. Igual ao site.
+    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : null;
     Widget img = Image.network(
       src.url,
       key: ValueKey('port-sprite-$id-$back'),
@@ -4037,7 +4044,7 @@ class _PortSprite extends StatelessWidget {
       child: AnimatedOpacity(
         opacity: fainted ? 0 : 1,
         duration: const Duration(milliseconds: 500),
-        child: dmax ? Transform.scale(scale: 1.3, alignment: Alignment.bottomCenter, child: img) : img,
+        child: dmax || mon.alpha ? Transform.scale(scale: dmax ? 1.3 : 1.25, alignment: Alignment.bottomCenter, child: img) : img,
       ),
     );
   }
@@ -4144,18 +4151,19 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               // O tamanho dele (pela altura) e, no Dinamax, gigante.
               // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
               scale: battleScale(battleHeights[widget.id]) *
-                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : 1) *
+                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : widget.mon.alpha ? 1.25 : 1) *
                   (widget.dmax || widget.id == widget.mon.baseId ? 1 : AnimatedSprites.instance.pixelRatio(widget.mon.baseId, widget.id, shiny: widget.mon.shiny, back: widget.back)),
               alignment: Alignment.bottomCenter,
               duration: const Duration(milliseconds: 700),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (widget.dmax)
+                  if (widget.dmax || widget.mon.alpha)
                     ImageFiltered(
+                      key: widget.dmax ? null : const ValueKey('alpha-glow'),
                       imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                       child: ColorFiltered(
-                        colorFilter: const ColorFilter.mode(Color(0xFFE11D48), BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : const Color(0xFFDC2626), BlendMode.srcIn),
                         child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
                       ),
                     ),

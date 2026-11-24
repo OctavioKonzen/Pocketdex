@@ -146,6 +146,12 @@ class FactoryRun {
   /// O seu shiny: +25% em todos os atributos (o adversário shiny, +10%). Igual ao site.
   static const shinyBoost = 0.25, foeShinyBoost = 0.1;
 
+  /// Pokémon Alfa (como em Legends: Arceus): de vez em quando, a partir do andar alphaFloor, um selvagem sozinho vem
+  /// maior, com olhos vermelhos, alphaLevels níveis acima e alphaBoost a mais em tudo. Capturado, fica Alfa (maior,
+  /// com o bônus e IVs altos). Igual ao site.
+  static const alphaFloor = 10, alphaLevels = 5, alphaIvs = 20;
+  static const alphaChance = 0.05, alphaBoost = 0.1;
+
   /// Nos andares 5, 15, 25...: chance de um chefe sem treinador (Mega, Gigantamax ou lendário).
   static const wildBossChance = 0.4;
 
@@ -2635,6 +2641,19 @@ class FactoryRun {
           if (node['radar'] == true) 'radar': true else if (node['grotto'] == true) 'grotto': true else 'call': 'rare',
         };
       }
+      // O Alfa: um selvagem sozinho, maior e mais forte (o sorteio vem da semente e do andar, sem gastar a sequência).
+      final enc = out['encounter'] as Map;
+      final one = enc['kind'] == 'wild' && enc['horde'] != true && (enc['foes'] as List).length == 1;
+      if (one && node['radar'] != true && node['grotto'] != true && node['call'] == null && _int(out['floor']) >= alphaFloor && followRoll(out, 2654435761) < alphaChance) {
+        final f = Map<String, dynamic>.from((enc['foes'] as List).first as Map);
+        out['encounter'] = {
+          ...Map<String, dynamic>.from(enc),
+          'alpha': true,
+          'foes': [
+            {...f, 'alpha': true, 'level': _int(f['level']) + alphaLevels, 'boost': _round3(((f['boost'] as num?) ?? 0).toDouble() + alphaBoost), 'minIv': math.max(_int(f['minIv'] ?? 0), alphaIvs)}
+          ],
+        };
+      }
       _countHunt(data, out);
       // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
       if (node['plot'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'plot': node['plot']};
@@ -3718,6 +3737,8 @@ class FactoryRun {
     var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : _int(foe['minIv'] ?? 0), foe['shiny'] == true);
     // O do Hidden Grotto: com a habilidade oculta.
     if (foe['ha'] == true) mon = {...mon, 'ha': true};
+    // O Alfa capturado continua Alfa (maior e mais forte).
+    if (foe['alpha'] == true) mon = {...mon, 'alpha': true};
     // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
     if (pendingOf(run)?['ball'] != null) mon = {...mon, 'ball': pendingOf(run)!['ball']};
     // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao site.
@@ -6478,6 +6499,11 @@ class FactoryRun {
         out[s] = out[s]! + shinyBoost;
       }
     }
+    if (mon['alpha'] == true) {
+      for (final s in stats) {
+        out[s] = out[s]! + alphaBoost;
+      }
+    }
     // Nuzlocke sem itens de segurar: os extras também não contam.
     for (final id in nuzRule(run, 'noHeldItems') ? const [] : (mon['extras'] as List?) ?? const []) {
       for (final e in (heldBoost['$id'] ?? const <String, double>{}).entries) {
@@ -6499,6 +6525,7 @@ class FactoryRun {
           if (gimmick.isNotEmpty) 'gimmick': gimmick,
           if (mon['ha'] == true) 'ability': 'hidden',
           if (mon['ball'] != null) 'ball': mon['ball'],
+          if (mon['alpha'] == true) 'alpha': true,
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
       );
@@ -6531,6 +6558,7 @@ class FactoryRun {
         if (boost != 0) 'boost': {for (final s in stats) s: _round3(boost)},
         if (foe['shiny'] == true) 'shiny': true,
         if (foe['ha'] == true) 'ability': 'hidden',
+        if (foe['alpha'] == true) 'alpha': true,
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],

@@ -591,6 +591,8 @@ body {
   100% { transform: translate(-50%, 0) rotate(720deg) scale(0.8); }
 }
 /* Battle Factory: a sua bola no selvagem (sai da sua mão e cai na plataforma dele), os balanços e a bola fechada. */
+/* O Alfa: a marca vermelha antes do nome. */
+.port-alpha { color: #dc2626; font-weight: 900; margin-right: 2px; text-shadow: 0 0 2px rgba(255, 255, 255, 0.8); }
 .pokeball-catch-1 { animation: pokeball-catch-1 520ms cubic-bezier(.3,.7,.5,1) forwards; }
 @keyframes pokeball-catch-1 {
   0% { transform: translate(-420%, 320%) rotate(0deg) scale(1.1); }

@@ -2100,7 +2100,17 @@ function round14Trace(F) {
   const fainted = F.winFloor({ ...caught, pending: null, team: [{ ...caught.team[0], hp: 1 }, { ...caught.team[1], hp: 1 }], encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data, { hp: [0, 0.5] })
   const extras = [luvdisc.scales ?? null, luvdisc.pending.scale ?? null, zWon.pending.badge, zWon.stash ?? null, caught.team[1].ball ?? null, fainted.diary, F.addToHistory([], fainted, 10, '2026-01-01')[0].diary,
     ...[1, 0].map((scales) => { const rs = data.bosses.findIndex((b) => b.game === 'Ruby/Sapphire'); const r = F.townReminder({ ...route, money: 5000, scales, boss: { region: rs, step: data.bosses[rs].leaders.findIndex((l) => l.city === 'Lavaridge Town') }, town: { leg: 1 }, encounter: null, pending: null }, data); return r ? [r.money, r.scales ?? null, r.tokens['move-reminder']] : null })]
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras }
+  // O Pokémon Alfa: no selvagem sozinho, a partir do andar ALPHA_FLOOR; capturado, fica Alfa (o mesmo no app).
+  const alpha = Array.from({ length: 80 }, (_, k) => {
+    const r = { ...route, seed: 200 + k, floor: 12, route: { floor: 12, biome: 'grass', options: [{ kind: 'wild' }] } }
+    const next = F.chooseNode(r, data, 0)
+    const foes = next.encounter.foes.map((f) => [f.id, f.level, f.boost ?? null, f.minIv ?? null, f.alpha ?? null])
+    if (!next.encounter.alpha) return [null, foes]
+    const won = F.winFloor(next, data, { captured: true, capturedIndex: 0 })
+    const mon = F.capturedMon(won)
+    return [true, foes, mon.alpha ?? null, mon.ivs, F.memberOf(won, mon, ['tackle']).set.boost, F.foeMember(next.encounter.foes[0], ['tackle']).set.alpha ?? null]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

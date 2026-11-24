@@ -61,6 +61,16 @@ export const SHINY_CHANCE = 1 / 4096
 export const SHINY_BOOST = 0.25
 /** O adversário shiny: +10%. */
 export const FOE_SHINY_BOOST = 0.1
+/**
+ * Pokémon Alfa (como em Legends: Arceus): de vez em quando, a partir do andar ALPHA_FLOOR, um selvagem sozinho vem
+ * maior, com olhos vermelhos, ALPHA_LEVELS níveis acima e ALPHA_BOOST a mais em tudo. Capturado, fica Alfa (maior,
+ * com o bônus e IVs altos). Igual ao app.
+ */
+export const ALPHA_FLOOR = 10
+export const ALPHA_CHANCE = 0.05
+export const ALPHA_LEVELS = 5
+export const ALPHA_BOOST = 0.1
+export const ALPHA_IVS = 20
 export const BOSS_EVERY = 10
 /** Nos andares 5, 15, 25...: chance de um chefe sem treinador (Mega, Gigantamax ou lendário). */
 export const WILD_BOSS_CHANCE = 0.4
@@ -2692,6 +2702,12 @@ export function chooseNode(run, data, index, clock = null) {
       const minIv = node.grotto ? GROTTO_IVS : node.radar ? radarIvs(run.chain?.n) : CALL_IVS
       out.encounter = { ...out.encounter, horde: false, foes: [{ ...f, id, ...(minIv ? { minIv } : {}), ...(node.grotto ? { ha: true } : {}) }], ...(node.radar ? { radar: true } : node.grotto ? { grotto: true } : { call: 'rare' }) }
     }
+    // O Alfa: um selvagem sozinho, maior e mais forte (o sorteio vem da semente e do andar, sem gastar a sequência).
+    const one = out.encounter.kind === 'wild' && !out.encounter.horde && out.encounter.foes.length === 1
+    if (one && !node.radar && !node.grotto && !node.call && out.floor >= ALPHA_FLOOR && followRoll(out, 2654435761) < ALPHA_CHANCE) {
+      const f = out.encounter.foes[0]
+      out.encounter = { ...out.encounter, alpha: true, foes: [{ ...f, alpha: true, level: f.level + ALPHA_LEVELS, boost: round3((f.boost ?? 0) + ALPHA_BOOST), minIv: Math.max(f.minIv ?? 0, ALPHA_IVS) }] }
+    }
     countHunt(data, out)
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
     if (node.plot) out.encounter = { ...out.encounter, plot: node.plot }
@@ -3564,6 +3580,8 @@ export function capturedMon(run, into = null) {
   let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : foe.minIv ?? 0, Boolean(foe.shiny))
   // O do Hidden Grotto: com a habilidade oculta.
   if (foe.ha) mon = { ...mon, ha: true }
+  // O Alfa capturado continua Alfa (maior e mais forte).
+  if (foe.alpha) mon = { ...mon, alpha: true }
   // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
   if (run.pending?.ball) mon = { ...mon, ball: run.pending.ball }
   // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao app.
@@ -5089,6 +5107,7 @@ const shinyBoost = () => Object.fromEntries(STATS.map((s) => [s, SHINY_BOOST]))
 export function boostOf(run, mon) {
   let out = { ...zero(), ...(run.teamBoost ?? {}) }
   if (mon.shiny) out = addStats(out, shinyBoost())
+  if (mon.alpha) out = addStats(out, Object.fromEntries(STATS.map((s) => [s, ALPHA_BOOST])))
   // Nuzlocke sem itens de segurar: os extras também não contam.
   if (!nuzRule(run, 'noHeldItems')) for (const id of mon.extras ?? []) out = addStats(out, HELD_BOOST[id])
   return Object.fromEntries(STATS.map((s) => [s, round3(out[s])]))
@@ -5101,7 +5120,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}), ...(mon.ball ? { ball: mon.ball } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }
@@ -5117,6 +5136,7 @@ export function foeMember(foe, moveList) {
       ...(foe.boost || foe.shiny ? { boost: Object.fromEntries(STATS.map((s) => [s, round3((foe.boost ?? 0) + (foe.shiny ? FOE_SHINY_BOOST : 0))])) } : {}),
       ...(foe.shiny ? { shiny: true } : {}),
       ...(foe.ha ? { ability: 'hidden' } : {}),
+      ...(foe.alpha ? { alpha: true } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),

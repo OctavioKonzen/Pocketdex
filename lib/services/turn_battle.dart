@@ -63,6 +63,9 @@ class BattleMon {
   /// A Poké Ball em que ele foi capturado (Battle Factory): ele sai dela no começo da batalha.
   String? ball;
 
+  /// O Alfa (maior, com o brilho vermelho).
+  bool alpha = false;
+
   /// O gênero ('M', 'F' ou '' sem gênero), do simulador: o ♂/♀ na caixa de vida.
   String gender = '';
 
@@ -144,7 +147,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -2166,7 +2169,8 @@ class TurnBattleSetup {
         ..bonus = m.$2?['bonus'] is Map ? {for (final e in (m.$2!['bonus'] as Map).entries) '${e.key}': (e.value as num).toInt()} : null
         ..boost = m.$2?['boost'] is Map ? {for (final e in (m.$2!['boost'] as Map).entries) '${e.key}': (e.value as num).toDouble()} : null
         ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble()
-        ..ball = m.$2?['ball'] as String?);
+        ..ball = m.$2?['ball'] as String?
+        ..alpha = m.$2?['alpha'] == true);
     }
     return out;
   }
