@@ -4697,6 +4697,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Positioned.fill(
                 child: _BadgeScene(
                   color: getColorForType('${badge['type']}'),
+                  art: FactoryRun.badgeArt('${badge['name']}'),
                   title: '🏅 ${tr('Insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
                   onDone: () {
                     if (mounted) setState(() => _badgeFly = null);
@@ -4704,7 +4705,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 ),
               )
             else if (badge != null)
-              Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14))),
+              Positioned(top: h * 0.08, left: 0, right: 0, child: Center(child: _BadgeShine(color: getColorForType('${badge['type']}'), size: w * 0.14, art: FactoryRun.badgeArt('${badge['name']}')))),
           ]),
       text: [
         if (p['quest'] is Map)
@@ -6951,9 +6952,12 @@ class _CreditsState extends State<_Credits> {
 
 /// A insígnia recebida (como nos jogos): um losango na cor do tipo do ginásio, crescendo e brilhando. Igual ao site.
 class _BadgeShine extends StatelessWidget {
-  const _BadgeShine({required this.color, required this.size});
+  const _BadgeShine({required this.color, required this.size, this.art});
   final Color color;
   final double size;
+
+  /// O desenho oficial da insígnia (sprites/badges); sem ele, o losango na cor do tipo.
+  final int? art;
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
@@ -6961,7 +6965,17 @@ class _BadgeShine extends StatelessWidget {
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(milliseconds: 900),
         curve: Curves.elasticOut,
-        builder: (context, v, _) => Transform.scale(
+        builder: (context, v, _) => art != null
+            ? Transform.scale(
+                scale: v,
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.6 * v.clamp(0, 1)), blurRadius: size * 0.35)]),
+                  child: Image.asset('assets/database/sprites/badges/$art.png', key: const ValueKey('badge-art'), fit: BoxFit.contain),
+                ),
+              )
+            : Transform.scale(
           scale: v,
           child: Transform.rotate(
             angle: pi / 4 + (1 - v) * pi,
@@ -6984,8 +6998,11 @@ class _BadgeShine extends StatelessWidget {
 /// ganha cor até parar grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou
 /// esperar) fecha e ela fica pequena no alto. Igual ao site.
 class _BadgeScene extends StatefulWidget {
-  const _BadgeScene({required this.color, required this.title, required this.onDone});
+  const _BadgeScene({required this.color, required this.title, required this.onDone, this.art});
   final Color color;
+
+  /// O desenho oficial da insígnia (sprites/badges); sem ele, o losango na cor do tipo.
+  final int? art;
   final String title;
   final VoidCallback onDone;
 
@@ -7051,7 +7068,26 @@ class _BadgeSceneState extends State<_BadgeScene> with TickerProviderStateMixin 
             final pulse = ms > 1600 ? 0.5 + 0.5 * sin((ms - 1600) / 1100 * pi) : 0.0;
             final sweep = ((ms - 1700) / 900).clamp(0.0, 1.0);
             final dim = (ms / 350).clamp(0.0, 1.0);
-            final gem = Transform.rotate(
+            // O brilho passando por ela (só por cima do desenho: srcATop).
+            Shader sweepShader(Rect r) => LinearGradient(
+                  colors: const [Color(0x00FFFFFF), Color(0xE6FFFFFF), Color(0x00FFFFFF)],
+                  stops: const [0.4, 0.5, 0.6],
+                  begin: Alignment(-3.6 + 5.2 * sweep, -0.4),
+                  end: Alignment(-1.6 + 5.2 * sweep, 0.4),
+                ).createShader(r);
+            final art = widget.art == null
+                ? null
+                : Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.35 + 0.4 * pulse), blurRadius: 10 + 22 * pulse)]),
+                    child: ShaderMask(
+                      blendMode: BlendMode.srcATop,
+                      shaderCallback: (r) => sweep > 0 && sweep < 1 ? sweepShader(r) : const LinearGradient(colors: [Color(0x00FFFFFF), Color(0x00FFFFFF)]).createShader(r),
+                      child: Image.asset('assets/database/sprites/badges/${widget.art}.png', key: const ValueKey('badge-art'), fit: BoxFit.contain),
+                    ),
+                  );
+            final gem = art ?? Transform.rotate(
               angle: pi / 4,
               child: Container(
                 width: size * 0.76,

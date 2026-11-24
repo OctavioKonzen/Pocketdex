@@ -997,6 +997,12 @@ class FactoryRun {
 
   /// Evoluções especiais (como nos jogos), não só pelo nível: Inkay vira Malamar com a tela de cabeça para baixo
   /// (flip: o botão); Pancham vira Pangoro com um Pokémon Sombrio no time (dark); o Farfetch'd de Galar vira
+  /// O desenho oficial da insígnia de cada líder (sprites/badges, do PokeAPI): Kanto, Johto, Hoenn, Sinnoh, Unova,
+  /// Kalos, Galar, Liga Laranja e Paldea. Sem desenho (Alola, Hisui, os spin-offs), fica o losango na cor do tipo.
+  /// Igual ao site.
+  static const badgeArtOf = <String, int>{'Brock': 1, 'Misty': 2, 'Lt. Surge': 3, 'Erika': 4, 'Koga': 5, 'Janine': 5, 'Sabrina': 6, 'Blaine': 7, 'Giovanni': 8, 'Blue': 8, 'Falkner': 9, 'Bugsy': 10, 'Whitney': 11, 'Morty': 12, 'Chuck': 13, 'Jasmine': 14, 'Pryce': 15, 'Clair': 16, 'Roxanne': 17, 'Brawly': 18, 'Wattson': 19, 'Flannery': 20, 'Norman': 21, 'Winona': 22, 'Tate & Liza': 23, 'Wallace': 24, 'Juan': 24, 'Roark': 25, 'Gardenia': 26, 'Maylene': 27, 'Wake': 28, 'Fantina': 29, 'Byron': 30, 'Candice': 31, 'Volkner': 32, 'Cilan': 33, 'Lenora': 34, 'Cheren': 34, 'Roxie': 35, 'Burgh': 36, 'Elesa': 37, 'Clay': 38, 'Skyla': 39, 'Brycen': 40, 'Drayden': 41, 'Marlon': 42, 'Viola': 43, 'Grant': 44, 'Korrina': 45, 'Ramos': 46, 'Clemont': 47, 'Valerie': 48, 'Olympia': 49, 'Wulfric': 50, 'Milo': 51, 'Nessa': 52, 'Kabu': 53, 'Bea': 54, 'Allister': 55, 'Opal': 56, 'Gordie': 57, 'Melony': 58, 'Piers': 59, 'Raihan': 60, 'Cissy': 66, 'Danny': 67, 'Rudy': 68, 'Luana': 69, 'Katy': 70, 'Brassius': 71, 'Iono': 72, 'Kofu': 73, 'Larry': 74, 'Ryme': 75, 'Tulip': 76, 'Grusha': 77};
+  static int? badgeArt(String? name) => badgeArtOf[name];
+
   /// Sirfetch'd acertando critEvolve golpes críticos numa batalha (crits). Igual ao site.
   static const specialEvos = {687: 'flip', 675: 'dark', 865: 'crits'};
   static const critEvolve = 3;

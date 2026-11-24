@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -1736,6 +1736,11 @@ function stepOf(p) {
  * ela fica pequena no alto. Igual ao app.
  */
 const BADGE_SCENE_MS = 3600
+/** A máscara com o formato da insígnia (o brilho só passa por ela). */
+const badgeMask = (art) => {
+  const url = `url(${spriteUrl(`badges/${art}.png`)})`
+  return { WebkitMaskImage: url, maskImage: url, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }
+}
 const SPARKS = [[18, 30, 0], [78, 26, 0.35], [84, 64, 0.7], [16, 70, 0.5], [50, 12, 0.2], [62, 82, 0.9]]
 function BadgeScene({ badge, onDone }) {
   const done = useRef(onDone)
@@ -1745,14 +1750,23 @@ function BadgeScene({ badge, onDone }) {
     return () => clearTimeout(id)
   }, [])
   const color = typeColor(badge.type)
+  const art = badgeArt(badge.name)
   return (
     <div className="badge-scene absolute inset-0 z-30 flex cursor-pointer flex-col items-center justify-center" onClick={() => done.current()} data-testid="badge-scene">
       <div className="badge-rays absolute" style={{ '--badge': color }} />
       {SPARKS.map(([x, y, d], k) => <span key={k} className="badge-spark absolute" style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${1.5 + d}s` }}>✦</span>)}
       <div className="badge-fly relative w-[22%]" style={{ aspectRatio: '1' }}>
-        <div className="badge-gem absolute inset-[12%] overflow-hidden rounded-[14%] border-[4px] border-white" style={{ background: `linear-gradient(135deg, #fffb, ${color} 45%, #0006)` }}>
-          <span className="badge-sweep absolute" />
-        </div>
+        {art ? (
+          // O desenho oficial; o brilho passa só por cima dele (a máscara é a própria insígnia).
+          <>
+            <img src={spriteUrl(`badges/${art}.png`)} alt="" className="absolute inset-0 h-full w-full object-contain" draggable={false} data-testid="badge-art" />
+            <div className="absolute inset-0 overflow-hidden" style={badgeMask(art)}><span className="badge-sweep absolute" /></div>
+          </>
+        ) : (
+          <div className="badge-gem absolute inset-[12%] overflow-hidden rounded-[14%] border-[4px] border-white" style={{ background: `linear-gradient(135deg, #fffb, ${color} 45%, #0006)` }}>
+            <span className="badge-sweep absolute" />
+          </div>
+        )}
       </div>
       <p className="badge-title relative mt-[2%] rounded-lg px-[2%] py-[0.5%] text-[2.6cqw] font-black text-white" data-no-translate>🏅 {t('Insígnia de {0}!').replace('{0}', badge.name)}</p>
     </div>
@@ -3294,7 +3308,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
         {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
         {p.badge && badgeFly === `${run.floor}-${p.badge.name}` && <BadgeScene badge={p.badge} onDone={() => setBadgeFly(null)} />}
-        {p.badge && badgeFly !== `${run.floor}-${p.badge.name}` && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}><span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} /></span></div>}
+        {p.badge && badgeFly !== `${run.floor}-${p.badge.name}` && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}>{badgeArt(p.badge.name) ? <img src={spriteUrl(`badges/${badgeArt(p.badge.name)}.png`)} alt="" className="h-full w-full object-contain" draggable={false} /> : <span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} />}</span></div>}
       </Field>
     )
     // O chefe vencido fala depois (a história segue): ele aparece no cenário.
