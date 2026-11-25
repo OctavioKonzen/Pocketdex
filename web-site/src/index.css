@@ -712,6 +712,25 @@ body {
 .gimmick-dmax.on { background: conic-gradient(#ef4444, #be185d, #ef4444); box-shadow: 0 0 14px #ef4444cc; }
 .gimmick-tera { border-color: #67e8f9; color: #67e8f9; }
 .gimmick-tera.on { background: conic-gradient(#67e8f9, #a78bfa, #67e8f9); box-shadow: 0 0 14px #67e8f9cc; }
+/* O selvagem aparece como no Black & White (TurnBattlePage.jsx): a silhueta escura e depois a cor. */
+.wild-reveal { animation: wild-reveal 1.2s ease-out forwards; }
+@keyframes wild-reveal { 0%, 50% { filter: brightness(0); } 100% { filter: brightness(1); } }
+/* As partículas da Poké Ball ao abrir (TurnBattlePage.jsx BallBurst): o símbolo e a cor de cada bola. */
+.ball-bit { color: var(--c); text-shadow: 0 0 6px var(--c); opacity: 0; animation: ball-bit 0.9s ease-out forwards; }
+@keyframes ball-bit {
+  from { transform: translate(-50%, -50%) rotate(var(--a)) translateY(0) scale(0.5); opacity: 1; }
+  70% { opacity: 1; }
+  to { transform: translate(-50%, -50%) rotate(var(--a)) translateY(-150%) scale(1.15); opacity: 0; }
+}
+/* A Mega com arco-íris e o símbolo no meio; o Dynamax com a energia vermelha subindo. */
+.morph-mega .morph-ring { background: conic-gradient(#ef4444, #f59e0b, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444) border-box; }
+.morph-symbol { position: absolute; left: 50%; top: 45%; width: 26%; opacity: 0; transform: translate(-50%, -50%) scale(0); filter: drop-shadow(0 0 6px #fff); animation: morph-symbol 1.35s ease-out forwards; }
+@keyframes morph-symbol { 35% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; } 75% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+.morph-dmax::after { content: ''; position: absolute; inset: -15% 18% 0; background: linear-gradient(to top, #ef4444cc, #f472b600); filter: blur(4px); transform-origin: bottom; animation: dmax-rise 1.35s ease-out forwards; }
+@keyframes dmax-rise { 0% { transform: scaleY(0); opacity: 0.9; } 60% { transform: scaleY(1.2); opacity: 0.8; } 100% { transform: scaleY(1.4); opacity: 0; } }
+/* Os atributos do nível novo aparecem um por um (FactoryPanels.jsx). */
+.stat-pop { opacity: 0; animation: stat-pop 0.35s ease-out forwards; }
+@keyframes stat-pop { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 /* O brilho do shiny (TurnBattlePage.jsx Sparkles): as estrelas abrem em círculo e somem. */
 .shiny-star { text-shadow: 0 0 6px #fff; animation: shiny-star 0.9s ease-out forwards; }
 @keyframes shiny-star {
@@ -729,7 +748,7 @@ body {
   background: radial-gradient(circle, #fff 0%, var(--c) 35%, transparent 70%); box-shadow: 0 0 0 4px var(--c);
   animation: move-impact 420ms ease-out forwards; }
 @keyframes move-impact { 60% { opacity: 1; } to { transform: translate(-50%, -50%) scale(1.3); opacity: 0; box-shadow: 0 0 0 1px var(--c); } }
-@media (prefers-reduced-motion: reduce) { .move-impact, .shiny-star, .morph, .morph-ring { animation-duration: 1ms; } }
+@media (prefers-reduced-motion: reduce) { .move-impact, .shiny-star, .morph, .morph-ring, .wild-reveal, .ball-bit, .morph-symbol, .stat-pop { animation-duration: 1ms; } }
 
 /* Títulos no estilo do novo visual. */
 h1, h2, .font-display {

@@ -5134,16 +5134,21 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 padding: EdgeInsets.symmetric(horizontal: w * 0.015, vertical: w * 0.008),
                 decoration: BoxDecoration(color: const Color(0xEB181A1E), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF8B93A1), width: 2)),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  for (final (k, label) in labels)
-                    Row(children: [
-                      Expanded(child: Text(tr(label), style: _portText.copyWith(fontSize: w * 0.024))),
-                      Text(st == null ? '…' : '${st.$2[k]}', style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFFFDE68A))),
-                      SizedBox(
-                        width: w * 0.065,
-                        child: Text(st == null ? '' : '+${st.$2[k]! - st.$1[k]!}', textAlign: TextAlign.right,
-                            style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFF4ADE80))),
-                      ),
-                    ]),
+                  // Um por um, como nos jogos. Igual ao site (stat-pop).
+                  for (final (i, (k, label)) in labels.indexed)
+                    _StatPop(
+                      key: ValueKey(('stat', k, l['index'], l['to'], st != null)),
+                      index: i,
+                      child: Row(children: [
+                        Expanded(child: Text(tr(label), style: _portText.copyWith(fontSize: w * 0.024))),
+                        Text(st == null ? '…' : '${st.$2[k]}', style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFFFDE68A))),
+                        SizedBox(
+                          width: w * 0.065,
+                          child: Text(st == null ? '' : '+${st.$2[k]! - st.$1[k]!}', textAlign: TextAlign.right,
+                              style: _portText.copyWith(fontSize: w * 0.024, color: const Color(0xFF4ADE80))),
+                        ),
+                      ]),
+                    ),
                 ]),
               ),
             ),
@@ -8918,4 +8923,26 @@ class _CardIn extends StatelessWidget {
         ),
         child: child,
       );
+}
+
+/// Uma linha que aparece deslizando, depois das anteriores (index × 220 ms), como os atributos do nível novo nos jogos.
+/// Igual ao site (stat-pop).
+class _StatPop extends StatelessWidget {
+  const _StatPop({super.key, required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final delay = index * 220, total = delay + 350;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: total),
+      builder: (context, t, child) {
+        final p = ((t * total - delay) / 350).clamp(0.0, 1.0);
+        return Opacity(opacity: p, child: Transform.translate(offset: Offset(-8 * (1 - p), 0), child: child));
+      },
+      child: child,
+    );
+  }
 }

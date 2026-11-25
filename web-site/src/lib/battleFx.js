@@ -3023,6 +3023,19 @@ export const STATUS_TEXT_SCENE = { hurtBurn: 'brn', hurtPoison: 'psn', fullPara:
  *   brn psn par slp frz cnf  o status na vez dele (chamas, bolhas, faíscas, Zzz, cristais, estrelas girando)
  * [side] 0 o seu (perto, de costas), 1 o outro. A câmera vai até ele e volta.
  */
+/**
+ * O efeito de cada Poké Ball ao abrir: o símbolo e a cor das partículas (corações na Love Ball, faíscas na Ultra Ball,
+ * sombra na Dusk Ball, bolhas na Dive/Net/Lure Ball, folhas na Nest/Friend Ball, estrelas na Moon/Dream Ball...).
+ * Igual ao app.
+ */
+export const BALL_BITS = {
+  'poke-ball': ['✦', '#fecaca'], 'great-ball': ['✦', '#93c5fd'], 'ultra-ball': ['✦', '#facc15'], 'master-ball': ['✦', '#c084fc'], 'premier-ball': ['✦', '#ffffff'],
+  'love-ball': ['♥', '#f472b6'], 'dusk-ball': ['●', '#6d28d9'], 'dive-ball': ['○', '#38bdf8'], 'net-ball': ['○', '#2dd4bf'], 'lure-ball': ['○', '#22d3ee'],
+  'nest-ball': ['❦', '#84cc16'], 'friend-ball': ['❦', '#22c55e'], 'safari-ball': ['❦', '#65a30d'], 'moon-ball': ['★', '#93c5fd'], 'dream-ball': ['★', '#f9a8d4'],
+  'heal-ball': ['✚', '#f9a8d4'], 'quick-ball': ['➤', '#38bdf8'], 'fast-ball': ['➤', '#fbbf24'], 'timer-ball': ['◷', '#f87171'], 'repeat-ball': ['↻', '#fb923c'],
+  'luxury-ball': ['◆', '#fcd34d'], 'level-ball': ['▲', '#facc15'], 'heavy-ball': ['■', '#94a3b8'], 'beast-ball': ['✦', '#38bdf8'], 'cherish-ball': ['✿', '#f87171'],
+}
+export const ballBits = (ball) => BALL_BITS[ball] ?? BALL_BITS['poke-ball']
 /** A cor de cima de cada Poké Ball (a bola em que o Pokémon foi capturado, na cena em que ele sai dela). */
 export const BALL_TOP = {
   'poke-ball': '#ef4444', 'great-ball': '#2563eb', 'ultra-ball': '#facc15', 'master-ball': '#7e22ce', 'quick-ball': '#38bdf8', 'net-ball': '#14b8a6',

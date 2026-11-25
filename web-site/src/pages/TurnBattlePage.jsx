@@ -13,7 +13,7 @@ import { raidAfterFight, raidDamage, raidMember } from '../lib/raid'
 import { battleHitter, battleMons, leaderTeam, randomTeam } from '../lib/battleSetup'
 import { friendsOnly, useFriends } from '../lib/friends'
 import { getFxAnchors, getGymLeaders, getMoveAnims, getMoveFx, getMoves, getTypes, shinyPath, spriteUrl } from '../lib/data'
-import { FX_SCALE, STATUS_TEXT_SCENE, fxForMove, fxKey, fxScene, fxStage } from '../lib/battleFx'
+import { FX_SCALE, STATUS_TEXT_SCENE, ballBits, fxForMove, fxKey, fxScene, fxStage } from '../lib/battleFx'
 import { HAND_MOVES } from '../lib/battleFxMoves'
 import { canPlayFx, measureStage, runFx } from '../lib/fxRun'
 import { addHallOfFame, badgesNeeded, badgesOf, leagueOpen, leagueOrder, musicOf, regionGyms, regionOf, streakResult, winBadge } from '../lib/gymChallenge'
@@ -777,7 +777,7 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
   // O Alfa: maior e com o brilho vermelho (como em Legends: Arceus). Igual ao app.
   const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : undefined
   return (
-    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
+    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
       <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
         {failed ? (
           <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}${variant ? `-${variant}` : ''}.png`) : `pokemon/${id}${variant ? `-${variant}` : ''}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />
@@ -802,7 +802,7 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
-        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : undefined}
+        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : undefined}
         data-alpha={mon.alpha ? '' : undefined}
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
@@ -1134,6 +1134,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [morph, setMorph] = useState(null)
   // O brilho de quem é shiny ao entrar.
   const [shine, setShine] = useState(null)
+  // As partículas da Poké Ball ao abrir (corações da Love Ball, faíscas da Ultra Ball...) e a silhueta do selvagem.
+  const [burst, setBurst] = useState(null)
+  const [reveal, setReveal] = useState(false)
   // O impacto do golpe (na cor do tipo) e a cor do último golpe que acertou.
   const [impact, setImpact] = useState(null)
   const lastHit = useRef(null)
@@ -1212,7 +1215,10 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     // Sai da Poké Ball: o sprite já existe (escondido pela cena até a bola abrir).
     if (kind === 'sendout') requestAnimationFrame(() => setSide(setPoke, side, ''))
     await done
-    if (kind === 'sendout') await sparkleIfShiny(side)
+    if (kind === 'sendout') {
+      setBurst({ side, ball: ballOf(side), n: Date.now() })
+      await sparkleIfShiny(side)
+    }
     return true
   }
   const release = async (side) => {
@@ -1221,6 +1227,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     await wait(260)
     setSide(setBall, side, null)
     setSide(setPoke, side, 'release')
+    setBurst({ side, ball: ballOf(side), n: Date.now() })
     await wait(420)
     setSide(setPoke, side, '')
     await sparkleIfShiny(side)
@@ -1256,11 +1263,14 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     const mine = battle.sides[0].team[battle.sides[0].active]
     setIntro((i) => ({ ...i, foe: 'out' }))
     if (wild) {
-      // Selvagem: ele já está ali, sem Poké Ball.
+      // Selvagem: ele já está ali, sem Poké Ball. Como no Black & White: primeiro a silhueta escura, depois a cor (com o grito).
+      setReveal(true)
       setSide(setPoke, 1, '')
+      await wait(650)
       say(t(foeMon.alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', foeMon.name), 1)
       await sparkleIfShiny(1)
       await wait(900)
+      setReveal(false)
     } else {
       say(t('{0} enviou {1}!').replace('{0}', foeName || coachRef.current?.name || t('O adversário')).replace('{1}', foeMon.name), 1)
       playSound('throw')
@@ -1855,6 +1865,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
             <>
               {morph?.side === side && <Morph key={morph.n} kind={morph.kind} type={morph.type} />}
               {shine?.side === side && <Sparkles key={shine.n} />}
+              {burst?.side === side && <BallBurst key={burst.n} ball={burst.ball} />}
               {ball[side] && <PokeBall side={side} phase={ball[side]} kind={ballKind[side]} />}
             </>
           )
@@ -1862,7 +1873,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
             return (
               <div key={side} className={side === 1 ? 'absolute right-[11%] w-[26%]' : 'absolute bottom-[22%] left-[1%] w-[58%]'} style={side === 1 ? { bottom: `${foeBottom(scene) * 100}%` } : undefined}>
                 <PlatformBase scene={scene} side={side === 1 ? 'foe' : 'mine'} scale={battleScale(byId?.get(id)?.height)} />
-                <div className={`poke-${poke[side] || 'shown'}`}>
+                <div className={`poke-${poke[side] || 'shown'}${side === 1 && reveal ? ' wild-reveal' : ''}`}>
                   <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} variant={spriteVariant(id, shown.weather)} />
                 </div>
                 {extras}
@@ -1877,7 +1888,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
               {/* A sombra no chão, embaixo dos pés. */}
               <div className="port-shadow pointer-events-none absolute" style={{ left: pct(spot.x - spot.box.w * 0.4, W0), top: pct(spot.y - spot.box.w * 0.08, H0), width: pct(spot.box.w * 0.8, W0), height: pct(spot.box.w * 0.16, H0) }} />
               <div className="absolute" style={{ left: pct(spot.box.left, W0), top: pct(spot.box.top, H0), width: pct(spot.box.w, W0), height: pct(spot.box.h, H0) }} data-testid={`port-${side === 1 ? 'foe' : 'me'}`}>
-                <div className={`poke-${poke[side] || 'shown'} h-full w-full`}>
+                <div className={`poke-${poke[side] || 'shown'} h-full w-full${side === 1 && reveal ? ' wild-reveal' : ''}`}>
                   <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} variant={spriteVariant(id, shown.weather)} />
                 </div>
                 {extras}
@@ -2187,6 +2198,20 @@ function Morph({ kind, type }) {
   return (
     <div className={`morph morph-${kind} pointer-events-none absolute inset-0`} style={kind === 'tera' ? { '--tera': typeColor(type) } : undefined} data-testid="morph">
       <span className="morph-ring" /><span className="morph-ring r2" /><span className="morph-ring r3" />
+      {/* Na Mega, o símbolo (a Key Stone) aparece no meio do arco-íris, como nos jogos. */}
+      {kind === 'mega' && <img src={spriteUrl('items/key-stone.png')} alt="" className="morph-symbol pixelated" draggable={false} />}
+    </div>
+  )
+}
+
+/** As partículas da Poké Ball que abriu: o símbolo e a cor de cada bola (BALL_BITS). Igual ao app. */
+function BallBurst({ ball }) {
+  const [bit, color] = ballBits(ball)
+  return (
+    <div className="pointer-events-none absolute inset-0" data-testid="ball-burst" data-ball={ball}>
+      {Array.from({ length: 10 }, (_, k) => (
+        <span key={k} className="ball-bit absolute left-1/2 top-[60%] text-base" style={{ '--a': `${k * 36}deg`, '--c': color, animationDelay: `${(k % 2) * 60}ms` }}>{bit}</span>
+      ))}
     </div>
   )
 }

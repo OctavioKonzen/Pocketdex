@@ -1455,6 +1455,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   /// O brilho de quem é shiny ao entrar (lado, contador).
   (int, int)? _shine;
   int _shineCount = 0;
+
+  /// As partículas da Poké Ball ao abrir (lado, bola, contador). Igual ao site.
+  (int, String, int)? _burst;
+  int _burstCount = 0;
   int _morphCount = 0;
 
   /// Como nos jogos: a aura envolve o Pokémon, ele muda no meio dela e ela some.
@@ -1636,7 +1640,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       if (kind == 'recall') _poke[side] = 'hidden';
       if (kind == 'faint') _fainted[side] = true;
     });
-    if (kind == 'sendout') await _sparkleIfShiny(side);
+    if (kind == 'sendout') {
+      setState(() => _burst = (side, _ballOf(side), ++_burstCount));
+      await _sparkleIfShiny(side);
+    }
     return true;
   }
 
@@ -1648,6 +1655,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     setState(() {
       _ball[side] = null;
       _poke[side] = 'release';
+      _burst = (side, _ballOf(side), ++_burstCount);
     });
     await _wait(420);
     if (mounted) setState(() => _poke[side] = '');
@@ -1682,15 +1690,20 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     if (!mounted) return;
     final who = widget.foeName.isNotEmpty ? widget.foeName : _coachName ?? tr('O adversário');
     if (widget.wild) {
-      // Selvagem: ele já está ali, sem Poké Ball.
+      // Selvagem: ele já está ali, sem Poké Ball. Como no Black & White: primeiro a silhueta escura, depois a cor (com o grito).
       setState(() {
         _foeGone = true;
-        _poke[1] = '';
+        _poke[1] = 'reveal';
+      });
+      await _wait(650);
+      if (!mounted) return;
+      setState(() {
         _text = tr(_b.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
         _note('text', 1, _text);
       });
       await _sparkleIfShiny(1);
       await _wait(900);
+      if (mounted && _poke[1] == 'reveal') setState(() => _poke[1] = '');
     } else {
       setState(() {
         _text = tr('{0} enviou {1}!').replaceAll('{0}', who).replaceAll('{1}', _b.active(1).name);
@@ -2788,6 +2801,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                 child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1], variant: SpriteVariant.battle(_form[1] ?? foe.id, _weather))),
                             if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
                             if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                            if (_burst?.$1 == 1) Positioned.fill(child: _BallBurst(key: ValueKey(('burst', _burst!.$3)), ball: _burst!.$2)),
                           ])),
                       if (_ball[1] != null)
                         Positioned(right: w * 0.11, bottom: h * foeBottom(scene), width: w * 0.26, height: w * 0.26, child: _Ball(side: 1, phase: _ball[1]!, kind: _ballKind[1])),
@@ -2803,6 +2817,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                 child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0], variant: SpriteVariant.battle(_form[0] ?? me.id, _weather))),
                             if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
                             if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                            if (_burst?.$1 == 0) Positioned.fill(child: _BallBurst(key: ValueKey(('burst', _burst!.$3)), ball: _burst!.$2)),
                           ])),
                       if (_ball[0] != null)
                         Positioned(left: w * 0.01, bottom: h * 0.22, width: w * 0.58, height: w * 0.58, child: _Ball(side: 0, phase: _ball[0]!, kind: _ballKind[0])),
@@ -2842,6 +2857,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                               ),
                               if (_morph?.$1 == side) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: (side == 1 ? foe : me).teraType)),
                               if (_shine?.$1 == side) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
+                              if (_burst?.$1 == side) Positioned.fill(child: _BallBurst(key: ValueKey(('burst', _burst!.$3)), ball: _burst!.$2)),
                               if (_ball[side] != null) Positioned.fill(child: _Ball(side: side, phase: _ball[side]!, kind: _ballKind[side])),
                             ]),
                           ),
@@ -4073,7 +4089,8 @@ class _PortSprite extends StatelessWidget {
       child: AnimatedOpacity(
         opacity: fainted ? 0 : 1,
         duration: const Duration(milliseconds: 500),
-        child: dmax || mon.alpha ? Transform.scale(scale: dmax ? 1.3 : 1.25, alignment: Alignment.bottomCenter, child: img) : img,
+        // No Dynamax, ele cresce aos poucos (como nos jogos).
+        child: AnimatedScale(scale: dmax ? 1.3 : mon.alpha ? 1.25 : 1, alignment: Alignment.bottomCenter, duration: const Duration(milliseconds: 1200), curve: Curves.easeOutBack, child: img),
       ),
     );
   }
@@ -4186,7 +4203,9 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                   (widget.dmax ? (widget.back ? 1.35 : 1.15) : widget.mon.alpha ? 1.25 : 1) *
                   (widget.dmax || widget.id == widget.mon.baseId ? 1 : AnimatedSprites.instance.pixelRatio(widget.mon.baseId, widget.id, shiny: widget.mon.shiny, back: widget.back)),
               alignment: Alignment.bottomCenter,
-              duration: const Duration(milliseconds: 700),
+              // No Dynamax, ele cresce aos poucos (como nos jogos).
+              duration: Duration(milliseconds: widget.dmax ? 1200 : 700),
+              curve: widget.dmax ? Curves.easeOutBack : Curves.linear,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -4254,6 +4273,16 @@ class _PokeOut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state == 'hidden') return Opacity(opacity: 0, child: child);
+    // O selvagem aparecendo: a silhueta escura e depois a cor (como no Black & White). Igual ao site.
+    if (state == 'reveal') {
+      return TweenAnimationBuilder<double>(
+        key: const ValueKey('reveal'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1200),
+        builder: (context, t, child) => ColorFiltered(colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: t < 0.5 ? 1 : (1 - (t - 0.5) / 0.5).clamp(0, 1)), BlendMode.srcATop), child: child),
+        child: child,
+      );
+    }
     if (state != 'release' && state != 'recall') return child;
     final release = state == 'release';
     return TweenAnimationBuilder<double>(
@@ -4578,9 +4607,72 @@ class _Morph extends StatelessWidget {
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
           duration: const Duration(milliseconds: 1350),
-          builder: (context, t, _) => CustomPaint(painter: _MorphPainter(kind, t, kind == 'tera' ? getColorForType(type.isEmpty ? 'normal' : type) : null)),
+          builder: (context, t, _) => Stack(fit: StackFit.expand, children: [
+            CustomPaint(painter: _MorphPainter(kind, t, kind == 'tera' ? getColorForType(type.isEmpty ? 'normal' : type) : null)),
+            // Na Mega, o símbolo (a Key Stone) aparece no meio do arco-íris, como nos jogos. Igual ao site.
+            if (kind == 'mega')
+              Align(
+                alignment: const Alignment(0, -0.1),
+                child: FractionallySizedBox(
+                  widthFactor: 0.26,
+                  child: Opacity(
+                    opacity: t < 0.35 ? t / 0.35 : t < 0.75 ? 1 : ((1 - t) / 0.25).clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: t < 0.35 ? 1.25 * t / 0.35 : t < 0.75 ? 1.25 - 0.25 * (t - 0.35) / 0.4 : 1 + 0.5 * (t - 0.75) / 0.25,
+                      child: Image.asset('assets/database/sprites/items/key-stone.png', filterQuality: FilterQuality.none, fit: BoxFit.contain),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
         ),
       );
+}
+
+/// As partículas da Poké Ball que abriu: o símbolo e a cor de cada bola (corações na Love Ball, faíscas na Ultra Ball,
+/// sombra na Dusk Ball, bolhas na Dive/Net/Lure Ball, folhas na Nest/Friend Ball, estrelas na Moon/Dream Ball...).
+/// Igual ao site (BALL_BITS).
+const ballBits = <String, (String, Color)>{
+  'poke-ball': ('✦', Color(0xFFFECACA)), 'great-ball': ('✦', Color(0xFF93C5FD)), 'ultra-ball': ('✦', Color(0xFFFACC15)), 'master-ball': ('✦', Color(0xFFC084FC)), 'premier-ball': ('✦', Color(0xFFFFFFFF)),
+  'love-ball': ('♥', Color(0xFFF472B6)), 'dusk-ball': ('●', Color(0xFF6D28D9)), 'dive-ball': ('○', Color(0xFF38BDF8)), 'net-ball': ('○', Color(0xFF2DD4BF)), 'lure-ball': ('○', Color(0xFF22D3EE)),
+  'nest-ball': ('❦', Color(0xFF84CC16)), 'friend-ball': ('❦', Color(0xFF22C55E)), 'safari-ball': ('❦', Color(0xFF65A30D)), 'moon-ball': ('★', Color(0xFF93C5FD)), 'dream-ball': ('★', Color(0xFFF9A8D4)),
+  'heal-ball': ('✚', Color(0xFFF9A8D4)), 'quick-ball': ('➤', Color(0xFF38BDF8)), 'fast-ball': ('➤', Color(0xFFFBBF24)), 'timer-ball': ('◷', Color(0xFFF87171)), 'repeat-ball': ('↻', Color(0xFFFB923C)),
+  'luxury-ball': ('◆', Color(0xFFFCD34D)), 'level-ball': ('▲', Color(0xFFFACC15)), 'heavy-ball': ('■', Color(0xFF94A3B8)), 'beast-ball': ('✦', Color(0xFF38BDF8)), 'cherish-ball': ('✿', Color(0xFFF87171)),
+};
+
+class _BallBurst extends StatelessWidget {
+  const _BallBurst({super.key, required this.ball});
+  final String ball;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bit, color) = ballBits[ball] ?? ballBits['poke-ball']!;
+    return IgnorePointer(
+      key: ValueKey('ball-burst-$ball'),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 900),
+        builder: (context, t, _) => LayoutBuilder(builder: (context, box) {
+          final c = Offset(box.maxWidth / 2, box.maxHeight * 0.6);
+          final r = box.maxWidth * 0.45 * t;
+          return Stack(children: [
+            for (var k = 0; k < 10; k++)
+              Positioned(
+                left: c.dx + sin(k / 10 * 2 * pi) * r - 9,
+                top: c.dy - cos(k / 10 * 2 * pi) * r - 9,
+                child: Opacity(
+                  opacity: (t < 0.7 ? 1.0 : (1 - t) / 0.3).clamp(0.0, 1.0),
+                  child: Transform.scale(
+                    scale: 0.5 + 0.65 * t,
+                    child: m.Text(bit, style: TextStyle(fontSize: 16, color: color, shadows: [Shadow(color: color, blurRadius: 6)])),
+                  ),
+                ),
+              ),
+          ]);
+        }),
+      ),
+    );
+  }
 }
 
 class _MorphPainter extends CustomPainter {
@@ -4601,6 +4693,17 @@ class _MorphPainter extends CustomPainter {
       'dmax' => const [Color(0xFFEF4444), Color(0xFFF472B6), Color(0xFFB91C1C), Color(0xFFEF4444)],
       _ => [tint ?? Colors.white, Colors.white, tint ?? Colors.white],
     };
+    // No Dynamax, a energia vermelha subindo do chão. Igual ao site.
+    if (kind == 'dmax') {
+      final rise = t < 0.6 ? t / 0.6 * 1.2 : 1.2 + (t - 0.6) / 0.4 * 0.2;
+      final h = size.height * 1.15 * rise;
+      final rect = Rect.fromLTWH(size.width * 0.18, size.height - h, size.width * 0.64, h);
+      canvas.drawRect(
+          rect,
+          Paint()
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)
+            ..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [const Color(0xFFEF4444).withValues(alpha: 0.8 * (t < 0.6 ? 1 : (1 - t) / 0.4)), const Color(0x00F472B6)]).createShader(rect));
+    }
     // O brilho no meio.
     canvas.drawCircle(
         c,

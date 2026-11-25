@@ -3351,8 +3351,9 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <FieldMon mon={mon} byId={byId} back scene={run.scene} />
         {/* O quadro dos atributos (como nos jogos): o valor novo e quanto subiu. */}
         <div className="absolute right-[3%] top-[10%] z-20 w-[38%] rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-[1.5cqw] py-[0.8cqw] font-['Pixelify_Sans',monospace] text-[2.4cqw] text-white" data-testid="level-stats">
-          {[['hp', 'HP'], ['atk', 'Ataque'], ['def', 'Defesa'], ['spa', 'At. Esp.'], ['spd', 'Def. Esp.'], ['spe', 'Velocidade']].map(([k, label]) => (
-            <p key={k} className="flex items-center"><span className="flex-1">{t(label)}</span><span className="text-amber-200">{st ? st.after[k] : '…'}</span><span className="w-[6.5cqw] text-right text-green-400">{st ? `+${st.after[k] - st.before[k]}` : ''}</span></p>
+          {/* Um por um, como nos jogos (stat-pop). */}
+          {[['hp', 'HP'], ['atk', 'Ataque'], ['def', 'Defesa'], ['spa', 'At. Esp.'], ['spd', 'Def. Esp.'], ['spe', 'Velocidade']].map(([k, label], i) => (
+            <p key={`${k}-${lv.at}-${st ? 1 : 0}`} className="stat-pop flex items-center" style={{ animationDelay: `${i * 220}ms` }}><span className="flex-1">{t(label)}</span><span className="text-amber-200">{st ? st.after[k] : '…'}</span><span className="w-[6.5cqw] text-right text-green-400">{st ? `+${st.after[k] - st.before[k]}` : ''}</span></p>
           ))}
         </div>
       </Field>
