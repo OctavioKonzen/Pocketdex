@@ -969,6 +969,9 @@ function pulse(el, cls, ms) {
   el.classList.add(cls)
   setTimeout(() => el.classList.remove(cls), ms)
 }
+/** A câmera viva (enquanto você escolhe): quanto aproxima e o tempo de uma ida e volta. */
+const IDLE_CAM_ZOOM = 0.03
+const IDLE_CAM_MS = 7000
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, fast(ms)))
 
 /** Altura e largura do campo na tela (para o tamanho dos treinadores). */
@@ -1140,6 +1143,27 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [shine, setShine] = useState(null)
   // As partículas da Poké Ball ao abrir (corações da Love Ball, faíscas da Ultra Ball...) e a silhueta do selvagem.
   const [burst, setBurst] = useState(null)
+  // O HP dos adversários que a barra de XP já contou: ela só enche depois do "ganhou X de XP" (como no Black & White).
+  const [expFoe, setExpFoe] = useState(() => battle.sides[1].team.map((m) => m.hp))
+  // A câmera viva: aproxima e afasta devagar enquanto você escolhe; para (suave) quando a ação começa. Igual ao app.
+  const idleCam = useRef(null)
+  const idleOn = useRef(false)
+  idleOn.current = !busy && battle.winner == null && !intro
+  useEffect(() => {
+    if (!canPlayFx()) return undefined
+    let amp = 0
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (now) => {
+      amp += ((idleOn.current ? 1 : 0) - amp) * (idleOn.current ? 0.03 : 0.15)
+      const s = (1 - Math.cos(((now - t0) / IDLE_CAM_MS) * 2 * Math.PI)) / 2
+      const el = idleCam.current
+      if (el) el.style.transform = amp < 0.002 ? '' : `translate(${(-1.2 * amp * s).toFixed(3)}%, ${(0.8 * amp * s).toFixed(3)}%) scale(${(1 + IDLE_CAM_ZOOM * amp * s).toFixed(4)})`
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
   const [reveal, setReveal] = useState(false)
   // O impacto do golpe (na cor do tipo) e a cor do último golpe que acertou.
   const [impact, setImpact] = useState(null)
@@ -1430,6 +1454,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
         }
         const line = format(e, wild)
         if (!line) continue
+        // "Fulano ganhou X de XP!": a barra enche com o som subindo, depois do texto aparecer (como no Black & White).
+        if (e.key === 'gainExp' && who === 0) {
+          const counted = [...shownRef.current.hp[1]]
+          setTimeout(() => {
+            if (!live.current) return
+            setExpFoe(counted)
+            playSound('exp', 0.45)
+          }, fast(300))
+        }
         addLog({ kind: 'text', side: who, text: line })
         // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
         for (const page of dialogPages(line, dialogRef.current)) {
@@ -1855,6 +1888,8 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
       >
         {/* Como no Black & White: o adversário lá atrás à direita (menor), o seu de costas na frente à esquerda (grande, cortado pela caixa do texto). */}
         {/* O mundo da batalha (fundo, clima, bases, Pokémon, treinadores): a câmera dos golpes move tudo junto. */}
+        {/* A câmera viva do Black & White 2: enquanto você escolhe, ela aproxima e afasta devagar (idleCam). */}
+        <div ref={idleCam} className="absolute inset-0" style={{ transformOrigin: '50% 60%' }} data-testid="idle-cam">
         <div ref={world} className="absolute inset-0 origin-top-left" data-testid="battle-world">
         <BattleBackground weather={shown.weather} scene={scene} layout="bw" bleed />
         {/* Clima, terreno e efeito do lugar fazem parte do cenário: atrás dos Pokémon e das caixas. */}
@@ -1918,6 +1953,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
           </div>
         )}
         </div>
+        </div>
         {/* Os efeitos dos golpes, desenhados por cima do mundo (fxRun.js). */}
         <canvas ref={fxCanvas} className="pointer-events-none absolute inset-0 z-[15] h-full w-full" aria-hidden="true" />
         {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
@@ -1943,7 +1979,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
         <div className={`absolute z-20 right-[1.25%] bottom-[24%] w-[31.5%] transition-[opacity,translate] duration-300 ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''} ${shown.fainted[0] ? 'translate-x-[110%] opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
             <PortHp mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
-              exp={expBarOf(battle, shown.active[0], shown.hp[1])} />
+              exp={expBarOf(battle, shown.active[0], expFoe)} />
           </button>
         </div>
         {/* A mensagem dentro da tela, embaixo, como nos jogos (tocar passa o texto). */}

@@ -647,6 +647,9 @@ function eventsFor(game, lines) {
     else if (kind === 'win') say(actor === game.battle.sides[0].name ? 'win' : 'lose');
     else if (kind === 'tie') say('draw');
   }
+  // Como no Black & White: o XP (e a subida de nível) vem antes de "Você venceu a batalha!".
+  const end = events.findIndex(e => e.t === 'text' && ['win', 'lose', 'draw'].includes(e.key));
+  if (end >= 0 && end < events.length - 1) events.push(...events.splice(end, 1));
   return events;
 }
 

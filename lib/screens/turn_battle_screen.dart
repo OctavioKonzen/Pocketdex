@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math';
 import 'dart:ui' show ImageFilter;
 
@@ -1432,6 +1433,16 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   String? _gimmickPick;
   int? _gimmickMon;
   late final _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+
+  /// A câmera viva do Black & White 2: enquanto você escolhe, ela aproxima e afasta devagar; para (suave) quando a
+  /// ação começa. Nos testes, parada. Igual ao site (idleCam).
+  static final bool _idleCamOff = Platform.environment.containsKey('FLUTTER_TEST');
+  static const _idleCamZoom = 0.03;
+  late final _idleCam = AnimationController(vsync: this, duration: const Duration(milliseconds: 7000));
+  double _idleAmp = 0;
+
+  /// O HP dos adversários que a barra de XP já contou: ela só enche no "ganhou X de XP" (como no Black & White).
+  late List<int> _expFoe = [for (final m in widget.battle.teams[1]) m.hp];
   // A animação nova de cada golpe (como no port de Black & White): o plano dele e o tempo correndo.
   MoveFxPlan? _fxPlan;
   late final _fxCtl = AnimationController(vsync: this, duration: const Duration(seconds: 1));
@@ -1788,6 +1799,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       t.cancel();
     }
     _shake.dispose();
+    _idleCam.dispose();
     _fxCtl.dispose();
     BattleSounds.routes.unsubscribe(this);
     BattleSounds.stopMusic(this);
@@ -2131,6 +2143,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
           final line = _format(e);
           if (line.isEmpty) continue;
           _note('text', who, line);
+          // "Fulano ganhou X de XP!": a barra enche com o som subindo, junto com o texto (como no Black & White). Igual ao site.
+          if (e.key == 'gainExp' && who == 0) {
+            setState(() => _expFoe = [..._hp[1]]);
+            BattleSounds.play('exp', volume: 0.45);
+          }
           // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
           for (final page in dialogPages(line, _dialogSize, _dialogScale)) {
             if (!mounted) return;
@@ -2777,6 +2794,21 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                       // O mundo da batalha (fundo, clima, Pokémon, treinadores): a câmera dos golpes move tudo junto.
                       Positioned.fill(
                         child: AnimatedBuilder(
+                          animation: _idleCam,
+                          builder: (context, child) {
+                            if (_idleCamOff) return child!;
+                            if (!_idleCam.isAnimating) _idleCam.repeat();
+                            final on = !_busy && _b.winner == null && _fxPlan == null;
+                            _idleAmp += ((on ? 1 : 0) - _idleAmp) * (on ? 0.03 : 0.15);
+                            if (_idleAmp < 0.002) return child!;
+                            final k = _idleAmp * (1 - cos(_idleCam.value * 2 * pi)) / 2;
+                            return Transform(
+                              alignment: const Alignment(0, 0.2),
+                              transform: Matrix4.translationValues(-0.012 * k * w, 0.008 * k * h, 0)..scaleByDouble(1 + _idleCamZoom * k, 1 + _idleCamZoom * k, 1, 1),
+                              child: child,
+                            );
+                          },
+                          child: AnimatedBuilder(
                           animation: _fxCtl,
                           builder: (context, child) => _fxPlan == null ? child! : Transform(transform: fxCameraMatrix(_fxPlan!, _fxMs, Size(w, h)), child: child),
                           child: Stack(clipBehavior: Clip.none, children: [
@@ -2910,6 +2942,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                         ),
                           ]),
                         ),
+                        ),
                       ),
                       // Os efeitos dos golpes, desenhados por cima do mundo (battle_fx_painter.dart).
                       if (_fxPlan != null)
@@ -2952,7 +2985,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                               child: GestureDetector(
                                   key: const ValueKey('inspect-me'),
                                   onTap: () => _inspect(0),
-                                  child: _PortHp(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true, w: w, exp: expBarOf(_b, _active[0], _hp[1]))))))),
+                                  child: _PortHp(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true, w: w, exp: expBarOf(_b, _active[0], _expFoe))))))),
                       // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
                       if (_ability != null)
                         Positioned(
