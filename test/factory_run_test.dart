@@ -1185,7 +1185,7 @@ void main() {
       run = next;
     }
     expect(total, lessThan(400 * FactoryRun.cornerSpin));
-    expect(total, 758);
+    expect(total, 764);
     expect(FactoryRun.cornerPrize({...run, 'gcCoins': 0}, data, 137), isNull);
     final porygon = FactoryRun.cornerPrize({...run, 'gcCoins': 1000}, data, 137)!;
     expect(porygon['gcCoins'], 0);

@@ -2479,6 +2479,8 @@ describe('o que acontece em cada lugar: lendários, bloqueios, presentes, Game C
     }
     // Na média, o caça-níqueis perde um pouco (como nos jogos).
     expect(total).toBeLessThan(400 * CORNER_SPIN)
+    // O mesmo sorteio do app.
+    expect(total).toBe(764)
     expect(cornerPrize({ ...run, gcCoins: 0 }, data, 137)).toBe(null)
     const porygon = cornerPrize({ ...run, gcCoins: 1000 }, data, 137)
     expect(porygon.gcCoins).toBe(0)
