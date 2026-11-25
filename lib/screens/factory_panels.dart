@@ -3074,6 +3074,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
                 for (final k in (run['keyItems'] as List? ?? const [])) Text(_keyInfo[k]?.$1 ?? '', key: ValueKey('factory-key-$k'), style: style),
                 if (((run['gcCoins'] as num?) ?? 0) > 0) Text('🎰 ${run['gcCoins']}', key: const ValueKey('factory-coins'), style: style),
+                if (((run['gimmiCoins'] as num?) ?? 0) > 0) Text('🪙 ${run['gimmiCoins']}/${FactoryRun.gimmiCoins}', key: const ValueKey('factory-gimmi'), style: style),
                 if (run['honey'] != null)
                   Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
                 if (FactoryRun.repelOn(run)) Text('🧴${FactoryRun.repelLeft(run)}', key: const ValueKey('factory-repel-on'), style: style),
@@ -4760,6 +4761,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
+        // As moedas de Gimmighoul achadas depois da vitória. Igual ao site.
+        if (_int(p['coins']) > 0)
+          Text('🪙 ${tr('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replaceAll('{0}', '${p['coins']}').replaceAll('{1}', '${run['gimmiCoins'] ?? 0}').replaceAll('{2}', '${FactoryRun.gimmiCoins}')}',
+              key: const ValueKey('factory-gimmi-found'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFCD34D))),
         // O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao site.
         if (p['raid'] is Map)
           Text(

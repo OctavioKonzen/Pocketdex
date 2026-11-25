@@ -879,7 +879,16 @@ export const FAIRY_MOVES = ['baby-doll-eyes', 'charm', 'disarming-voice', 'drain
  * (flip: no celular, virando ele; no computador, o botão); Pancham vira Pangoro com um Pokémon Sombrio no time
  * (dark); o Farfetch'd de Galar vira Sirfetch'd acertando CRIT_EVOLVE golpes críticos numa batalha (crits). Igual ao app.
  */
-export const SPECIAL_EVOS = { 687: 'flip', 675: 'dark', 865: 'crits' }
+export const SPECIAL_EVOS = { 687: 'flip', 675: 'dark', 865: 'crits', 1000: 'coins' }
+/**
+ * As moedas de Gimmighoul (como em Scarlet/Violet): depois de cada vitória, às vezes você acha COIN_MIN a COIN_MAX
+ * moedas (com um Gimmighoul no time, o dobro de chance). Com GIMMI_COINS na corrida, o Gimmighoul vira Gholdengo
+ * (e gasta as moedas). Igual ao app.
+ */
+export const GIMMI_COINS = 99
+export const COIN_CHANCE = 0.3
+export const COIN_MIN = 1
+export const COIN_MAX = 5
 export const CRIT_EVOLVE = 3
 /** A evolução especial que ele faz agora (crits: os críticos dele nesta batalha), ou null. */
 export function specialEvolution(data, run, mon, crits = 0, region = null) {
@@ -888,6 +897,7 @@ export function specialEvolution(data, run, mon, crits = 0, region = null) {
   const [to, at] = evo
   const how = SPECIAL_EVOS[to]
   const ok = how === 'crits' ? crits >= CRIT_EVOLVE
+    : how === 'coins' ? (run.gimmiCoins ?? 0) >= GIMMI_COINS
     : mon.level >= (at ?? 1) && (how === 'flip' ? Boolean(run.flip) : run.team.some((o) => o !== mon && (speciesOf(data, o.id)?.[4] ?? []).includes('dark')))
   return ok ? evolvedForm(data, mon, to, region) : null
 }
@@ -3380,6 +3390,10 @@ export function winFloor(run, data, after = {}) {
     levels.push({ index, from: m.level, to: m.level, evolved: id, friend: true })
     return { ...m, id, friendship }
   })
+  // As moedas de Gimmighoul (o sorteio vem da semente e do andar).
+  const coinRate = COIN_CHANCE * (out.team.some((m) => m.id === 999) ? 2 : 1)
+  const coins = !fled && followRoll(run, 4093082899) < coinRate ? COIN_MIN + Math.floor(followRoll(run, 3332679573) * (COIN_MAX - COIN_MIN + 1)) : 0
+  if (coins) out.gimmiCoins = (run.gimmiCoins ?? 0) + coins
   // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
   out.team = out.team.map((m, index) => {
     const id = timeEvolve(m.id, after.night, after.dusk)
@@ -3394,6 +3408,8 @@ export function winFloor(run, data, after = {}) {
     const id = specialEvolution(data, out, m, after.crits?.[index] ?? 0, regionOf(data, run))
     if (id == null) return m
     if (evolutionsOf(data, m, regionOf(data, run)).some(([to]) => SPECIAL_EVOS[to] === 'flip')) flipped = true
+    // O Gholdengo gasta as moedas.
+    if (SPECIAL_EVOS[id] === 'coins') out.gimmiCoins = (out.gimmiCoins ?? 0) - GIMMI_COINS
     const at = levels.findIndex((l) => l.index === index && !l.friend)
     if (at >= 0) levels[at] = { ...levels[at], evolved: id }
     else levels.push({ index, from: m.level, to: m.level, evolved: id })
@@ -3607,6 +3623,7 @@ export function winFloor(run, data, after = {}) {
     // O capturado ou o ovo que chocou (a mesma tela).
     // No reide, vencendo, o chefe é seu (sem jogar bola).
     capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
+    ...(coins ? { coins } : {}),
     ...(run.encounter.raid ? { raid: { kind: run.encounter.raid, stars: run.encounter.stars ?? 1, ...(raidShards(run) ? { shards: raidShards(run), type: foes[0]?.tera } : {}) } } : {}),
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),

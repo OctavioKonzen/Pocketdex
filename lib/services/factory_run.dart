@@ -1042,7 +1042,13 @@ class FactoryRun {
   static int? badgeArt(String? name) => badgeArtOf[name];
 
   /// Sirfetch'd acertando critEvolve golpes críticos numa batalha (crits). Igual ao site.
-  static const specialEvos = {687: 'flip', 675: 'dark', 865: 'crits'};
+  static const specialEvos = {687: 'flip', 675: 'dark', 865: 'crits', 1000: 'coins'};
+
+  /// As moedas de Gimmighoul (como em Scarlet/Violet): depois de cada vitória, às vezes você acha coinMin a coinMax
+  /// moedas (com um Gimmighoul no time, o dobro de chance). Com gimmiCoins na corrida, o Gimmighoul vira Gholdengo
+  /// (e gasta as moedas). Igual ao site.
+  static const gimmiCoins = 99, coinMin = 1, coinMax = 5;
+  static const coinChance = 0.3;
   static const critEvolve = 3;
 
   /// A evolução especial que ele faz agora (crits: os críticos dele nesta batalha), ou null.
@@ -1054,6 +1060,8 @@ class FactoryRun {
     final how = specialEvos[to];
     final ok = how == 'crits'
         ? crits >= critEvolve
+        : how == 'coins'
+        ? _int(run['gimmiCoins'] ?? 0) >= gimmiCoins
         : _int(mon['level']) >= at &&
             (how == 'flip'
                 ? run['flip'] == true
@@ -3443,6 +3451,10 @@ class FactoryRun {
       levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
       team[i] = {...m, 'id': id, 'friendship': friendship};
     }
+    // As moedas de Gimmighoul (o sorteio vem da semente e do andar).
+    final coinRate = coinChance * (team.any((m) => _int(m['id']) == 999) ? 2 : 1);
+    final coins = !fled && followRoll(run, 4093082899) < coinRate ? coinMin + (followRoll(run, 3332679573) * (coinMax - coinMin + 1)).floor() : 0;
+    if (coins > 0) out['gimmiCoins'] = _int(run['gimmiCoins'] ?? 0) + coins;
     // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
     for (var i = 0; i < team.length; i++) {
       final from = _int(team[i]['id']);
@@ -3462,6 +3474,8 @@ class FactoryRun {
       final id = specialEvolution(data, now, m, crits != null && i < crits.length ? crits[i] : 0, regionOf(data, run));
       if (id == null) continue;
       if (evolutionsOf(data, m, regionOf(data, run)).any((e) => specialEvos[e[0]] == 'flip')) flipped = true;
+      // O Gholdengo gasta as moedas.
+      if (specialEvos[id] == 'coins') now['gimmiCoins'] = out['gimmiCoins'] = _int(out['gimmiCoins'] ?? 0) - gimmiCoins;
       final at = levels.indexWhere((l) => l['index'] == i && l['friend'] != true);
       if (at >= 0) {
         levels[at] = {...levels[at], 'evolved': id};
@@ -3762,6 +3776,7 @@ class FactoryRun {
       'capture': run['encounter']?['raid'] != null && foes.isNotEmpty
           ? _raidPrize(foes.first as Map)
           : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
+      if (coins > 0) 'coins': coins,
       if (run['encounter']?['raid'] != null)
         'raid': {
           'kind': run['encounter']['raid'],

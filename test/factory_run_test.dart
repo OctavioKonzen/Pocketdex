@@ -808,6 +808,18 @@ void main() {
         }()
     ];
     expect(norm(raid), expected['raid']);
+    // As moedas de Gimmighoul (igual ao site).
+    final coins = [
+      for (var k = 0; k < 20; k++)
+        () {
+          final team0 = (rt['team'] as List).first as Map;
+          final gim = {...team0, 'id': 999, 'level': 20, 'friendship': 0};
+          final r = {...rt, 'seed': 600 + k, 'floor': 10 + k, 'gimmiCoins': k >= 15 ? FactoryRun.gimmiCoins - 1 : 0, 'team': [k.isOdd ? gim : team0], 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}};
+          final won = FactoryRun.winFloor(r, data, hp: [1]);
+          return [FactoryRun.pendingOf(won)!['coins'], won['gimmiCoins'], FactoryRun.teamOf(won).first['id']];
+        }()
+    ];
+    expect(norm(coins), expected['coins']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

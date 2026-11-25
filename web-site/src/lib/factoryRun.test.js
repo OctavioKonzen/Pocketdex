@@ -2206,7 +2206,14 @@ function round14Trace(F) {
     const tera = won.teraShards ? F.setTera({ ...won, pending: null }, 0, Object.keys(won.teraShards)[0]) : null
     return [met.encounter.raid ?? null, met.encounter.stars ?? null, met.encounter.foes.map((f) => [f.id, f.level, f.gimmick ?? null, f.tera ?? null, f.raidHp ?? null]), F.captureFor(met, data), won.pending.raid ?? null, won.teraShards ?? null, mon ? [mon.id, mon.tera ?? null] : null, tera ? [tera.team[0].tera, tera.teraShards] : null, met.raidLeg ?? null]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid }
+  // As moedas de Gimmighoul: as achadas depois da vitória e o Gholdengo com GIMMI_COINS (o mesmo no app).
+  const coins = Array.from({ length: 20 }, (_, k) => {
+    const gim = { ...route.team[0], id: 999, level: 20, friendship: 0 }
+    const r = { ...route, seed: 600 + k, floor: 10 + k, gimmiCoins: k >= 15 ? F.GIMMI_COINS - 1 : 0, team: k % 2 ? [gim] : [route.team[0]], encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    const won = F.winFloor(r, data, { hp: [1] })
+    return [won.pending.coins ?? null, won.gimmiCoins ?? null, won.team[0].id]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid, coins }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

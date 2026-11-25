@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, setTera, TERA_SHARD_COST, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, GIMMI_COINS, setTera, TERA_SHARD_COST, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -2924,6 +2924,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
+            {(run.gimmiCoins ?? 0) > 0 && <span title={t('Moedas de Gimmighoul: com {0}, o Gimmighoul vira Gholdengo').replace('{0}', GIMMI_COINS)} data-testid="factory-gimmi">🪙 {run.gimmiCoins}/{GIMMI_COINS}</span>}
             {repelOn(run) && <span title={t('Repelente')} data-testid="factory-repel-on">🧴{repelLeft(run)}</span>}
             {SEASON_EVENTS[run.event] && <span title={`${t(SEASON_EVENTS[run.event].label)}: ${t(SEASON_EVENTS[run.event].help)}`} data-testid="factory-event">{SEASON_EVENTS[run.event].icon}</span>}
             {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
@@ -3419,6 +3420,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <>
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
+        {/* As moedas de Gimmighoul achadas depois da vitória. Igual ao app. */}
+        {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
         {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
         {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}

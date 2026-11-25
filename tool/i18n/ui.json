@@ -15556,5 +15556,17 @@
   "fr": "Le bouclier d'énergie s'est brisé !",
   "es": "¡El escudo de energía se rompió!",
   "pt": "O escudo de energia quebrou!"
+ },
+ "Moedas de Gimmighoul: com {0}, o Gimmighoul vira Gholdengo": {
+  "en": "Gimmighoul Coins: with {0}, Gimmighoul becomes Gholdengo",
+  "fr": "Pièces de Mordudor : avec {0}, Mordudor devient Gromago",
+  "es": "Monedas de Gimmighoul: con {0}, Gimmighoul se convierte en Gholdengo",
+  "pt": "Moedas de Gimmighoul: com {0}, o Gimmighoul vira Gholdengo"
+ },
+ "Você achou {0} moedas de Gimmighoul! ({1}/{2})": {
+  "en": "You found {0} Gimmighoul Coins! ({1}/{2})",
+  "fr": "Vous avez trouvé {0} pièces de Mordudor ! ({1}/{2})",
+  "es": "¡Encontraste {0} monedas de Gimmighoul! ({1}/{2})",
+  "pt": "Você achou {0} moedas de Gimmighoul! ({1}/{2})"
  }
 }
