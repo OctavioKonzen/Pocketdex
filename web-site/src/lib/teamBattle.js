@@ -19,8 +19,16 @@ export function duelResult(d) {
   return d.faster ? 1 : -1
 }
 
-/** A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto) vira a habilidade oculta da forma. Igual ao app. */
-export const setAbility = (set, form) => (set?.ability === 'hidden' ? form?.abilities?.find((x) => x[1])?.[0] ?? form?.abilities?.[0]?.[0] ?? '' : set?.ability ?? '')
+/**
+ * A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto, o Ability Patch) vira a habilidade oculta da forma;
+ * 'second' (a Ability Capsule), a segunda habilidade normal (sem ela, a primeira). Igual ao app.
+ */
+export const setAbility = (set, form) => {
+  const list = form?.abilities ?? []
+  if (set?.ability === 'hidden') return list.find((x) => x[1])?.[0] ?? list[0]?.[0] ?? ''
+  if (set?.ability === 'second') return list.filter((x) => !x[1])[1]?.[0] ?? list[0]?.[0] ?? ''
+  return set?.ability ?? ''
+}
 export async function fighter(calc, byId, { id, set }) {
   const entry = byId.get(id)
   if (!entry) return null

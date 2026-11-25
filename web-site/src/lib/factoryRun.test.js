@@ -931,7 +931,7 @@ describe('mapa da corrida', () => {
     expect(f.run.bag['poke-ball']).toBe(START_BALLS + 7)
   })
 
-  it('história: rival com o inicial oficial dele, lendário da região, missão da rota e escolhas', () => {
+  it('história: rival com o inicial da geração dele que vence o seu, lendário da região, missão da rota e escolhas', () => {
     expect(starterLine(data, 1)).toEqual([1, 2, 3])
     // O rival fica com o inicial oficial dele (o Blue com o Squirtle), não o que tem vantagem sobre o seu.
     expect(data.bosses.find((b) => b.game === 'Red/Blue').leaders.find((l) => l.kind === 'rival').team).toContain(7)
@@ -960,10 +960,14 @@ describe('mapa da corrida', () => {
     const red = data.bosses.findIndex((b) => b.game === 'Red/Blue')
     const step = (kind) => ({ region: red, step: data.bosses[red].leaders.findIndex((l) => l.kind === kind) })
     expect(newMission({ ...base, boss: step('villain'), dungeon: { place: 'base', scene: 'base-rocket', start: 1 } }, data, () => 0.5).kind).toBe('grunts')
-    // O rival leva o inicial oficial dele (o Blue com o Squirtle), mesmo com o seu sendo o Bulbasaur.
+    // O rival leva o inicial que vence o seu (como nos jogos): com o Bulbasaur, o Blue vem com o Charmander.
     const rival = chooseNode({ ...base, boss: step('rival'), floor: 9, route: { floor: 9, biome: 'grass', options: [{ kind: 'boss' }] } }, data, 0)
-    expect(rival.encounter.foes.some((f) => [7, 8, 9].includes(f.id))).toBe(true)
-    expect(rival.encounter.foes.some((f) => [4, 5, 6].includes(f.id))).toBe(false)
+    expect(rival.encounter.foes.some((f) => [4, 5, 6].includes(f.id))).toBe(true)
+    expect(rival.encounter.foes.some((f) => [7, 8, 9].includes(f.id))).toBe(false)
+    // Sempre um inicial da geração dele: com o Squirtle, o Bulbasaur; com o Pikachu, não o Squirtle (fraco contra ele),
+    // o Bulbasaur; com o Geodude (Pedra/Terra), o Squirtle (empata com o Bulbasaur: fica o oficial); com o Rattata, o oficial.
+    const vs = (starter) => chooseNode({ ...base, starter, boss: step('rival'), floor: 9, route: { floor: 9, biome: 'grass', options: [{ kind: 'boss' }] } }, data, 0).encounter.foes.map((f) => f.id)
+    expect([vs(7), vs(25), vs(74), vs(19)]).toEqual([[1], [1], [7], [7]])
     // Missão: o terceiro Normal derrotado completa (dinheiro e item).
     const run = { ...base, money: 0, mission: { leg: 1, kind: 'defeat', type: 'normal', need: 3, done: 2 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
     const won = winFloor(run, data, { bag: { potion: 1 } })
@@ -2213,7 +2217,31 @@ function round14Trace(F) {
     const won = F.winFloor(r, data, { hp: [1] })
     return [won.pending.coins ?? null, won.gimmiCoins ?? null, won.team[0].id]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid, coins }
+  // Mints, Ability Capsule e Ability Patch (o mesmo no app).
+  const shopIds = ['adamant-mint', 'timid-mint', 'ability-capsule', 'ability-patch']
+  const items = shopIds.flatMap((id) => [0, 1].map((twice) => {
+    let r = { ...route, money: 99999, pending: { shop: shopIds } }
+    r = F.buyItem(r, id, 0, data)
+    const again = twice && r ? F.buyItem({ ...r, pending: { shop: shopIds } }, id, 0, data) : r
+    const m = again?.team[0]
+    return [F.shopPrice(route, id), m ? [m.nature, m.ab ?? null, m.ha ?? null] : null]
+  }))
+  // O rival com o inicial que vence o seu (o mesmo no app).
+  const rival = [1, 4, 7, 25, 155, 258, 393, 495, 656, 722, 813, 909].flatMap((starter) => data.bosses.map((game, g) => {
+    const step = game.leaders.findIndex((l) => l.kind === 'rival' && !l.guest)
+    if (step < 0) return null
+    const r = { ...route, starter, boss: { region: g, step: step + 1 } }
+    return [F.bossOf(data, { ...r, boss: { region: g, step } }).team, F.rivalBoss(data, r)?.team ?? null]
+  }))
+  // Os fósseis achados e revividos (o mesmo no app).
+  const fossil = Array.from({ length: 60 }, (_, k) => {
+    const r = { ...route, seed: 700 + k, floor: 10 + k, scene: k % 3 ? 'cave' : 'grass', boss: { region: k % data.bosses.length, step: 0 }, encounter: { kind: 'wild', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+    const won = F.winFloor(r, data, { hp: [1] })
+    const town = { ...won, pending: null, encounter: null, town: { leg: 1 } }
+    const back = F.reviveFossil(town, data)
+    return [won.pending.fossil ?? null, won.fossils ?? null, F.fossilReady(data, town), back ? [back.team.map((m) => m.id), back.fossils, back.revived] : null]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid, coins, items, rival, fossil }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {
@@ -2413,6 +2441,8 @@ describe('o que acontece em cada lugar: lendários, bloqueios, presentes, Game C
     expect(gifts.map((g) => g.id)).toEqual([133])
     const got = takeGift(celadon, data, 0)
     expect(got.team.at(-1)).toMatchObject({ id: 133, level: Math.max(5, foeLevelAt(celadon.floor)) })
+    // O mesmo sorteio do app (IVs iguais).
+    expect(got.team.at(-1).ivs).toEqual({ hp: 17, atk: 29, def: 23, spa: 28, spd: 20, spe: 22 })
     expect(townGifts(data, got)).toEqual([])
     expect(takeGift(got, data, 0)).toBe(null)
     // Saffron: o Lapras só depois da Silph Co.; no Dojo, escolhe um dos dois.

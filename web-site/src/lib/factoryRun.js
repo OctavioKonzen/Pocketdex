@@ -221,6 +221,17 @@ const eggOf = (m) => (m.item === 'lucky-egg' ? LUCKY_EGG.held : (m.extras ?? [])
 export const VITAMINS = { 'hp-up': 'hp', protein: 'atk', iron: 'def', calcium: 'spa', zinc: 'spd', carbos: 'spe' }
 export const VITAMIN_EVS = 24
 export const BOTTLE_CAP_IVS = 3
+/** Mints (como no Sword/Shield): trocam a Nature (o efeito nos atributos). '<nature>-mint' → Nature. Igual ao app. */
+export const MINTS = Object.fromEntries(['Lonely', 'Adamant', 'Naughty', 'Brave', 'Bold', 'Impish', 'Lax', 'Relaxed', 'Modest', 'Mild', 'Rash', 'Quiet', 'Calm', 'Gentle', 'Careful', 'Sassy', 'Timid', 'Hasty', 'Jolly', 'Naive', 'Serious'].map((n) => [`${n.toLowerCase()}-mint`, n]))
+export const MINT_PRICE = 300
+/** Chance de uma Mint na loja (uma só, sorteada). */
+export const MINT_CHANCE = 0.4
+/**
+ * Ability Capsule: troca para a outra habilidade normal (se a espécie tiver duas). Ability Patch: liga ou desliga a
+ * habilidade oculta. Igual ao app.
+ */
+export const ABILITY_CAPSULE = 'ability-capsule'
+export const ABILITY_PATCH = 'ability-patch'
 /** Preço no 1º andar (priceScale aumenta com o andar). */
 export const SHOP = {
   'poke-ball': 50, 'great-ball': 120, 'ultra-ball': 250, 'quick-ball': 200, 'net-ball': 150, 'dusk-ball': 150, 'timer-ball': 150,
@@ -230,6 +241,7 @@ export const SHOP = {
   'rare-candy': 120,
   ...Object.fromEntries(Object.keys(VITAMINS).map((k) => [k, 90])),
   'bottle-cap': 200,
+  [ABILITY_CAPSULE]: 600, [ABILITY_PATCH]: 1500,
   ...Object.fromEntries(Object.keys(HELD_BOOST).map((k) => [k, 250])),
   // Serviços e chaves das mecânicas.
   'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
@@ -1083,7 +1095,7 @@ function gainExp(mon, exp, data, rand, region = null, night = null) {
 /** O chefe da vez: o jogo sorteado no começo, na ordem da história (líderes com rival e vilões no meio, Elite dos Quatro, Campeão). */
 export function bossOf(data, run) {
   const game = data.bosses[run.boss.region]
-  return { region: game.region, game: game.game, ...game.leaders[run.boss.step] }
+  return withRivalStarter(data, run, { region: game.region, game: game.game, ...game.leaders[run.boss.step] })
 }
 
 /**
@@ -1462,6 +1474,43 @@ export function mysteryEgg(data, run) {
   if (townRoll(run, 2891336453) >= MYSTERY_EGG_CHANCE) return null
   const pool = MYSTERY_EGGS.filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t))))
   return pool.length ? pool[Math.floor(townRoll(run, 1181783497) * pool.length)] : null
+}
+/**
+ * Fósseis (como nos jogos): vencendo numa caverna, montanha, deserto ou ruína, às vezes (FOSSIL_CHANCE) você acha um
+ * fóssil da região. O laboratório da próxima cidade revive (nível do andar). Igual ao app.
+ */
+export const FOSSIL_CHANCE = 0.12
+export const FOSSIL_SCENES = ['cave', 'mountain', 'desert', 'dunes', 'crystal', 'ruins', 'seacave', 'lavacave', 'beach']
+export const FOSSILS = { 'helix-fossil': 138, 'dome-fossil': 140, 'old-amber': 142, 'root-fossil': 345, 'claw-fossil': 347, 'skull-fossil': 408, 'armor-fossil': 410, 'cover-fossil': 564, 'plume-fossil': 566, 'jaw-fossil': 696, 'sail-fossil': 698 }
+export const FOSSIL_REGIONS = { Kanto: ['helix-fossil', 'dome-fossil', 'old-amber'], Johto: ['old-amber'], Hoenn: ['root-fossil', 'claw-fossil'], Sinnoh: ['skull-fossil', 'armor-fossil'], Unova: ['cover-fossil', 'plume-fossil'], Kalos: ['jaw-fossil', 'sail-fossil'] }
+/** Os fósseis da região da corrida (fora das regiões com fósseis próprios, todos). No monotipo, só os do tipo. */
+export function fossilsOf(data, run) {
+  const all = (FOSSIL_REGIONS[regionOf(data, run)] ?? Object.keys(FOSSILS)).filter((f) => data.species[FOSSILS[f]])
+  const fit = run.mono ? all.filter((f) => (speciesOf(data, FOSSILS[f])?.[4] ?? []).some((t) => run.mono.includes(t))) : all
+  return fit.length ? fit : []
+}
+/** O fóssil que o laboratório desta cidade pode reviver agora (o primeiro guardado). null se não tem. */
+export function fossilReady(data, run) {
+  if (!run.town || run.encounter || run.pending || inLeague(data, run) || !run.fossils?.length) return null
+  return run.fossils[0]
+}
+/** Revive o primeiro fóssil: vai para o time (sem vaga, para o PC). null se não dá. */
+export function reviveFossil(run, data) {
+  const f = fossilReady(data, run)
+  const id = FOSSILS[f]
+  if (id == null) return null
+  const out = { ...run, team: [...run.team], fossils: run.fossils.slice(1) }
+  const rand = dice(out)
+  const mon = newMon(id, Math.max(START_LEVEL, foeLevelAt(run.floor)), rand, 15, rand() < SHINY_CHANCE * (run.shinyRate ?? 1))
+  if (out.team.length < teamRoom(out)) out.team.push(mon)
+  else {
+    const pc = pcPut(run, mon)
+    if (!pc) return null
+    out.pc = pc
+  }
+  addDex(out, id)
+  out.revived = (run.revived ?? 0) + 1
+  return out
 }
 /** Aceita o ovo misterioso. */
 export function takeMysteryEgg(run, data) {
@@ -3394,6 +3443,9 @@ export function winFloor(run, data, after = {}) {
   const coinRate = COIN_CHANCE * (out.team.some((m) => m.id === 999) ? 2 : 1)
   const coins = !fled && followRoll(run, 4093082899) < coinRate ? COIN_MIN + Math.floor(followRoll(run, 3332679573) * (COIN_MAX - COIN_MIN + 1)) : 0
   if (coins) out.gimmiCoins = (run.gimmiCoins ?? 0) + coins
+  // O fóssil achado (na caverna, na montanha, no deserto...): o laboratório da próxima cidade revive.
+  const fossilFound = !fled && FOSSIL_SCENES.includes(sceneBase(run.scene ?? '')) && followRoll(run, 2246822519) < FOSSIL_CHANCE ? fossilsOf(data, run)[Math.floor(followRoll(run, 3266489917) * fossilsOf(data, run).length)] : null
+  if (fossilFound) out.fossils = [...(run.fossils ?? []), fossilFound]
   // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
   out.team = out.team.map((m, index) => {
     const id = timeEvolve(m.id, after.night, after.dusk)
@@ -3624,6 +3676,7 @@ export function winFloor(run, data, after = {}) {
     // No reide, vencendo, o chefe é seu (sem jogar bola).
     capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
     ...(coins ? { coins } : {}),
+    ...(fossilFound ? { fossil: fossilFound } : {}),
     ...(run.encounter.raid ? { raid: { kind: run.encounter.raid, stars: run.encounter.stars ?? 1, ...(raidShards(run) ? { shards: raidShards(run), type: foes[0]?.tera } : {}) } } : {}),
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
@@ -3703,6 +3756,7 @@ function pickShop(rand, data, floor, size = 8, hasMap = false) {
   // TM e pedra de evolução, às vezes.
   if (data.tms?.length && rand() < 0.6) out.push(`tm:${pickOne(data.tms, rand)}`)
   if (data.stones?.length && rand() < 0.45) out.push(`evo:${pickOne(data.stones, rand)}`)
+  if (rand() < MINT_CHANCE) out.push(pickOne(Object.keys(MINTS), rand))
   while (out.length < size) {
     const id = pickOne(ids, rand)
     if (!out.includes(id)) out.push(id)
@@ -3997,7 +4051,7 @@ export function rivalBoss(data, run) {
   const rivals = game.leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'rival' && !l.guest)
   if (!rivals.length) return null
   const met = rivals.filter(([, k]) => k < run.boss.step)
-  return { region: game.region, game: game.game, ...(met.length ? met[met.length - 1] : rivals[0])[0] }
+  return withRivalStarter(data, run, { region: game.region, game: game.game, ...(met.length ? met[met.length - 1] : rivals[0])[0] })
 }
 
 export function rematchBoss(data, run) {
@@ -4464,6 +4518,30 @@ export function regionLegend(data, run) {
 }
 
 /** A linha evolutiva de um inicial: [ele, a 1ª evolução, a 2ª]. */
+/**
+ * O inicial do rival contra o seu (como nos jogos): sempre um dos três iniciais da geração dele, no mesmo estágio, o
+ * que leva mais vantagem de tipo sobre o seu (golpes super efetivos a favor menos os contra). Empatado com o oficial,
+ * fica o oficial. Igual ao app.
+ */
+export function rivalStarter(data, run, id) {
+  const mine = speciesOf(data, run?.starter)?.[4] ?? []
+  if (!mine.length) return id
+  const k = data.starters.findIndex((s) => starterLine(data, s).includes(id))
+  if (k < 0) return id
+  const stage = starterLine(data, data.starters[k]).indexOf(id)
+  const hits = (atk, def) => atk.reduce((n, a) => n + def.filter((d) => SUPER_EFFECTIVE[a]?.includes(d)).length, 0)
+  const score = (s) => { const t = speciesOf(data, s)?.[4] ?? []; return hits(t, mine) - hits(mine, t) }
+  const trio = data.starters.slice(k - (k % 3), k - (k % 3) + 3)
+  const best = Math.max(...trio.map(score))
+  const pick = score(data.starters[k]) === best ? data.starters[k] : trio.find((s) => score(s) === best)
+  return starterLine(data, pick)[stage] ?? id
+}
+/** O rival do jogo (não o convidado) com o inicial que vence o seu, no time e no resto do que ele usa. */
+export function withRivalStarter(data, run, boss) {
+  if (boss.kind !== 'rival' || boss.guest) return boss
+  const swap = (ids) => ids.map((id) => rivalStarter(data, run, id))
+  return { ...boss, team: swap(boss.team), ...(boss.pool ? { pool: swap(boss.pool) } : {}) }
+}
 export function starterLine(data, id) {
   const line = [id]
   for (let k = 0; k < 2; k++) {
@@ -4721,7 +4799,7 @@ export function shopPrice(run, id) {
   // O Rare Candy sobe com o nível do time (e não com o tamanho dos times dos treinadores).
   const candy = id === 'rare-candy'
   const top = candy ? Math.max(START_LEVEL, ...run.team.map((m) => m.level)) : START_LEVEL
-  const base = id.startsWith('tm:') ? TM_PRICE : id.startsWith('evo:') ? EVO_PRICE : SHOP[id] ?? 0
+  const base = id.startsWith('tm:') ? TM_PRICE : id.startsWith('evo:') ? EVO_PRICE : MINTS[id] ? MINT_PRICE : SHOP[id] ?? 0
   const scale = candy ? 1 + (run.floor - 1) / 20 : priceScale(run.floor)
   return Math.max(1, Math.round(base * scale * (top / START_LEVEL) * run.mult.shop))
 }
@@ -4774,6 +4852,17 @@ export function buyItem(run, id, index, data) {
     out.team[index] = { ...mon, evs: addStats(mon.evs, { [VITAMINS[id]]: VITAMIN_EVS }) }
   } else if (id === 'bottle-cap') {
     out.team[index] = { ...mon, ivs: addStats(mon.ivs, Object.fromEntries(STATS.map((s) => [s, BOTTLE_CAP_IVS]))) }
+  } else if (MINTS[id]) {
+    if (mon.nature === MINTS[id]) return null
+    out.team[index] = { ...mon, nature: MINTS[id] }
+  } else if (id === ABILITY_CAPSULE) {
+    // Com a oculta, a Capsule não serve (como nos jogos).
+    if (mon.ha) return null
+    const { ab, ...rest } = mon
+    out.team[index] = ab ? rest : { ...rest, ab: 1 }
+  } else if (id === ABILITY_PATCH) {
+    const { ha, ...rest } = mon
+    out.team[index] = ha ? rest : { ...rest, ha: true }
   } else if (HELD_BOOST[id]) {
     // Sem item: vira o segurado; já com um: entra nos extras (sem limite de itens).
     out.team[index] = mon.item ? { ...mon, extras: [...mon.extras, id] } : { ...mon, item: id }
@@ -5294,7 +5383,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : mon.ab ? { ability: 'second' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }

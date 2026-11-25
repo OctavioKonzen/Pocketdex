@@ -15568,5 +15568,41 @@
   "fr": "Vous avez trouvé {0} pièces de Mordudor ! ({1}/{2})",
   "es": "¡Encontraste {0} monedas de Gimmighoul! ({1}/{2})",
   "pt": "Você achou {0} moedas de Gimmighoul! ({1}/{2})"
+ },
+ "Troca a Nature para {0}": {
+  "en": "Changes the Nature to {0}",
+  "fr": "Change la nature en {0}",
+  "es": "Cambia la naturaleza a {0}",
+  "pt": "Troca a Nature para {0}"
+ },
+ "Troca para a outra habilidade normal (se a espécie tiver duas)": {
+  "en": "Switches to the other regular Ability (if the species has two)",
+  "fr": "Passe à l'autre talent normal (si l'espèce en a deux)",
+  "es": "Cambia a la otra habilidad normal (si la especie tiene dos)",
+  "pt": "Troca para a outra habilidade normal (se a espécie tiver duas)"
+ },
+ "Liga ou desliga a habilidade oculta": {
+  "en": "Turns the Hidden Ability on or off",
+  "fr": "Active ou désactive le talent caché",
+  "es": "Activa o desactiva la habilidad oculta",
+  "pt": "Liga ou desliga a habilidade oculta"
+ },
+ "Você achou um {0}! O laboratório da próxima cidade revive.": {
+  "en": "You found a {0}! The lab in the next city will revive it.",
+  "fr": "Vous avez trouvé un {0} ! Le labo de la prochaine ville le ressuscitera.",
+  "es": "¡Encontraste un {0}! El laboratorio de la próxima ciudad lo revive.",
+  "pt": "Você achou um {0}! O laboratório da próxima cidade revive."
+ },
+ "REVIVER O FÓSSIL": {
+  "en": "REVIVE THE FOSSIL",
+  "fr": "RESSUSCITER LE FOSSILE",
+  "es": "REVIVIR EL FÓSIL",
+  "pt": "REVIVER O FÓSSIL"
+ },
+ "O laboratório revive o {0}: vem {1}.": {
+  "en": "The lab revives the {0}: out comes {1}.",
+  "fr": "Le labo ressuscite le {0} : voici {1}.",
+  "es": "El laboratorio revive el {0}: sale {1}.",
+  "pt": "O laboratório revive o {0}: vem {1}."
  }
 }

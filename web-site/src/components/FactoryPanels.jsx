@@ -29,7 +29,7 @@ import {
   boostOf, memberOf, learnMove, movesLearnedBetween,
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
-  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
+  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, MINTS, ABILITY_CAPSULE, ABILITY_PATCH, fossilReady, reviveFossil, FOSSILS, LEAGUE_FLAWLESS,
   expAt,
 } from '../lib/factoryRun'
 import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
@@ -3421,6 +3421,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
         {/* As moedas de Gimmighoul achadas depois da vitória. Igual ao app. */}
+        {p.fossil && <p className="text-sm font-semibold text-amber-200" data-testid="factory-fossil-found">🦴 {t('Você achou um {0}! O laboratório da próxima cidade revive.').replace('{0}', prettySlug(p.fossil))}</p>}
         {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
         {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
         {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
@@ -4082,6 +4083,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             )}
           </div>
         )}
+        {/* O fóssil achado na rota: o laboratório da cidade revive. */}
+        {town && fossilReady(data, run) && (
+          <MenuButton testid="town-fossil" disabled={busy} onClick={() => save(reviveFossil(run, data) ?? run)} sub={t('O laboratório revive o {0}: vem {1}.').replace('{0}', prettySlug(fossilReady(data, run))).replace('{1}', name(FOSSILS[fossilReady(data, run)]))}>
+            🦴 {t('REVIVER O FÓSSIL')}
+          </MenuButton>
+        )}
         {/* O ovo misterioso: um morador te dá um ovo sem dizer de quem é. */}
         {town && mysteryEgg(data, run) != null && (
           <MenuButton testid="town-mystery-egg" disabled={busy} onClick={() => save(takeMysteryEgg(run, data))} sub={t('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES)}>
@@ -4345,6 +4352,9 @@ function itemHelp(id) {
   if (id === 'rare-candy') return t('+1 nível')
   if (VITAMINS[id]) return t('+{0} EVs em {1}, sem limite').replace('{0}', VITAMIN_EVS).replace('{1}', STAT_LABEL[VITAMINS[id]])
   if (id === 'bottle-cap') return t('+{0} IVs em todos os atributos, sem limite').replace('{0}', BOTTLE_CAP_IVS)
+  if (MINTS[id]) return t('Troca a Nature para {0}').replace('{0}', MINTS[id])
+  if (id === ABILITY_CAPSULE) return t('Troca para a outra habilidade normal (se a espécie tiver duas)')
+  if (id === ABILITY_PATCH) return t('Liga ou desliga a habilidade oculta')
   if (HELD_BOOST[id]) {
     const boost = Object.entries(HELD_BOOST[id]).map(([s, v]) => `+${Math.round(v * 100)}% ${STAT_LABEL[s]}`).join(', ')
     const extra = t('Segura o item; se já tem um, vira extra ({0})').replace('{0}', boost)

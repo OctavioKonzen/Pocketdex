@@ -48,10 +48,15 @@ class TeamBattle {
 
 
   /// O Pokémon da calculadora com o set (Nature, EVs, IVs, item, habilidade).
-  /// A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto) vira a habilidade oculta da forma. Igual ao site.
+  /// A habilidade do set: 'hidden' (o Pokémon do Hidden Grotto, o Ability Patch) vira a habilidade oculta da forma;
+  /// 'second' (a Ability Capsule), a segunda habilidade normal (sem ela, a primeira). Igual ao site.
   static String setAbility(Map? set, Map row) {
     final list = [for (final a in (row['abilities'] as List?) ?? const []) a as List];
     if (set?['ability'] == 'hidden') return '${(list.where((a) => a.length > 1 && a[1] == true).firstOrNull ?? list.firstOrNull)?.first ?? ''}';
+    if (set?['ability'] == 'second') {
+      final normal = list.where((a) => !(a.length > 1 && a[1] == true)).toList();
+      return '${(normal.length > 1 ? normal[1] : list.firstOrNull)?.first ?? ''}';
+    }
     return '${set?['ability'] ?? ''}';
   }
 

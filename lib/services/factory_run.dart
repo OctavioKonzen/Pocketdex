@@ -330,6 +330,19 @@ class FactoryRun {
   static const vitamins = {'hp-up': 'hp', 'protein': 'atk', 'iron': 'def', 'calcium': 'spa', 'zinc': 'spd', 'carbos': 'spe'};
   static const vitaminEvs = 24, bottleCapIvs = 3;
 
+  /// Mints (como no Sword/Shield): trocam a Nature (o efeito nos atributos). '<nature>-mint' → Nature. Igual ao site.
+  static final mints = <String, String>{
+    for (final n in ['Lonely', 'Adamant', 'Naughty', 'Brave', 'Bold', 'Impish', 'Lax', 'Relaxed', 'Modest', 'Mild', 'Rash', 'Quiet', 'Calm', 'Gentle', 'Careful', 'Sassy', 'Timid', 'Hasty', 'Jolly', 'Naive', 'Serious']) '${n.toLowerCase()}-mint': n,
+  };
+  static const mintPrice = 300;
+
+  /// Chance de uma Mint na loja (uma só, sorteada).
+  static const mintChance = 0.4;
+
+  /// Ability Capsule: troca para a outra habilidade normal (se a espécie tiver duas). Ability Patch: liga ou desliga a
+  /// habilidade oculta. Igual ao site.
+  static const abilityCapsule = 'ability-capsule', abilityPatch = 'ability-patch';
+
   /// Preço no 1º andar (priceScale aumenta com o andar). A ordem é a do site.
   static final shop = <String, int>{
     'poke-ball': 50, 'great-ball': 120, 'ultra-ball': 250, 'quick-ball': 200, 'net-ball': 150, 'dusk-ball': 150, 'timer-ball': 150,
@@ -339,6 +352,7 @@ class FactoryRun {
     'rare-candy': 120,
     for (final k in vitamins.keys) k: 90,
     'bottle-cap': 200,
+    abilityCapsule: 600, abilityPatch: 1500,
     for (final k in heldBoost.keys) k: 250,
     // Serviços e chaves das mecânicas.
     'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
@@ -1377,7 +1391,7 @@ class FactoryRun {
   /// O chefe da vez: o jogo sorteado no começo, na ordem da história (líderes com rival e vilões no meio, Elite dos Quatro, Campeão).
   static Json bossOf(FactoryData data, Json run) {
     final game = data.bosses[_int(run['boss']['region'])];
-    return {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from((game['leaders'] as List)[_int(run['boss']['step'])] as Map)};
+    return withRivalStarter(data, run, {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from((game['leaders'] as List)[_int(run['boss']['step'])] as Map)});
   }
 
   /// O time do chefe: o da batalha do jogo e, conforme os andares sobem, completado com os outros que ele usa (até 6). Igual ao site.
@@ -1695,6 +1709,48 @@ class FactoryRun {
     if (_townRoll(run, 2891336453) >= mysteryEggChance) return null;
     final pool = [for (final id in mysteryEggs) if (data.species[id] != null && _monoOk(run, data, id)) id];
     return pool.isEmpty ? null : pool[(_townRoll(run, 1181783497) * pool.length).floor()];
+  }
+
+  /// Fósseis (como nos jogos): vencendo numa caverna, montanha, deserto ou ruína, às vezes (fossilChance) você acha um
+  /// fóssil da região. O laboratório da próxima cidade revive (nível do andar). Igual ao site.
+  static const fossilChance = 0.12;
+  static const fossilScenes = ['cave', 'mountain', 'desert', 'dunes', 'crystal', 'ruins', 'seacave', 'lavacave', 'beach'];
+  static const fossils = {'helix-fossil': 138, 'dome-fossil': 140, 'old-amber': 142, 'root-fossil': 345, 'claw-fossil': 347, 'skull-fossil': 408, 'armor-fossil': 410, 'cover-fossil': 564, 'plume-fossil': 566, 'jaw-fossil': 696, 'sail-fossil': 698};
+  static const fossilRegions = {
+    'Kanto': ['helix-fossil', 'dome-fossil', 'old-amber'], 'Johto': ['old-amber'], 'Hoenn': ['root-fossil', 'claw-fossil'], 'Sinnoh': ['skull-fossil', 'armor-fossil'],
+    'Unova': ['cover-fossil', 'plume-fossil'], 'Kalos': ['jaw-fossil', 'sail-fossil'],
+  };
+
+  /// Os fósseis da região da corrida (fora das regiões com fósseis próprios, todos). No monotipo, só os do tipo.
+  static List<String> fossilsOf(FactoryData data, Json run) =>
+      [for (final f in fossilRegions[regionOf(data, run)] ?? fossils.keys.toList()) if (data.species[fossils[f]] != null && _monoOk(run, data, fossils[f]!)) f];
+
+  /// O fóssil que o laboratório desta cidade pode reviver agora (o primeiro guardado). null se não tem.
+  static String? fossilReady(FactoryData data, Json run) {
+    final list = run['fossils'] as List?;
+    if (run['town'] == null || run['encounter'] != null || run['pending'] != null || _inLeague(data, run) || list == null || list.isEmpty) return null;
+    return '${list.first}';
+  }
+
+  /// Revive o primeiro fóssil: vai para o time (sem vaga, para o PC). null se não dá.
+  static Json? reviveFossil(Json run, FactoryData data) {
+    final id = fossils[fossilReady(data, run)];
+    if (id == null) return null;
+    final out = _copy(run);
+    out['fossils'] = (run['fossils'] as List).sublist(1);
+    final rand = _dice(out);
+    final level = math.max(startLevel, foeLevelAt(_int(run['floor'])));
+    final mon = newMon(id, level, rand, 15, rand() < shinyChance * ((run['shinyRate'] as num?) ?? 1));
+    if ((out['team'] as List).length < teamRoom(out)) {
+      (out['team'] as List).add(mon);
+    } else {
+      final pc = pcPut(run, mon);
+      if (pc == null) return null;
+      out['pc'] = pc;
+    }
+    _addDex(out, id);
+    out['revived'] = _n(run, 'revived') + 1;
+    return out;
   }
 
   /// Aceita o ovo misterioso.
@@ -2551,6 +2607,31 @@ class FactoryRun {
   static int? regionLegend(FactoryData data, Json run) {
     final list = regionLegends['${data.bosses[_int(run['boss']['region'])]['region']}'] ?? const <int>[];
     return list.isEmpty ? null : list[((_int(run['seed']) & 0xFFFFFFFF) + _int(run['boss']['region'])) % list.length];
+  }
+
+  /// O inicial do rival contra o seu (como nos jogos): sempre um dos três iniciais da geração dele, no mesmo estágio, o
+  /// que leva mais vantagem de tipo sobre o seu (golpes super efetivos a favor menos os contra). Empatado com o oficial,
+  /// fica o oficial. Igual ao site.
+  static int rivalStarter(FactoryData data, Map? run, int id) {
+    List<String> typesOf(Object? x) => x == null ? const [] : [for (final t in (data.speciesOf(_int(x))?.elementAtOrNull(4) as List?) ?? const []) '$t'];
+    final mine = typesOf(run?['starter']);
+    if (mine.isEmpty) return id;
+    final k = data.starters.indexWhere((s) => starterLine(data, s).contains(id));
+    if (k < 0) return id;
+    final stage = starterLine(data, data.starters[k]).indexOf(id);
+    int hits(List<String> atk, List<String> def) => atk.fold(0, (n, a) => n + def.where((d) => superEffective[a]?.contains(d) ?? false).length);
+    int score(int s) { final t = typesOf(s); return hits(t, mine) - hits(mine, t); }
+    final trio = data.starters.sublist(k - k % 3, k - k % 3 + 3);
+    final best = trio.map(score).reduce(math.max);
+    final pick = score(data.starters[k]) == best ? data.starters[k] : trio.firstWhere((s) => score(s) == best);
+    return starterLine(data, pick).elementAtOrNull(stage) ?? id;
+  }
+
+  /// O rival do jogo (não o convidado) com o inicial que vence o seu, no time e no resto do que ele usa. Igual ao site.
+  static Json withRivalStarter(FactoryData data, Map? run, Json boss) {
+    if (boss['kind'] != 'rival' || boss['guest'] == true) return boss;
+    List<int> swap(List ids) => [for (final id in ids) rivalStarter(data, run, _int(id))];
+    return {...boss, 'team': swap(boss['team'] as List), if (boss['pool'] != null) 'pool': swap(boss['pool'] as List)};
   }
 
   /// A linha evolutiva de um inicial: [ele, a 1ª evolução, a 2ª].
@@ -3455,6 +3536,10 @@ class FactoryRun {
     final coinRate = coinChance * (team.any((m) => _int(m['id']) == 999) ? 2 : 1);
     final coins = !fled && followRoll(run, 4093082899) < coinRate ? coinMin + (followRoll(run, 3332679573) * (coinMax - coinMin + 1)).floor() : 0;
     if (coins > 0) out['gimmiCoins'] = _int(run['gimmiCoins'] ?? 0) + coins;
+    // O fóssil achado (na caverna, na montanha, no deserto...): o laboratório da próxima cidade revive.
+    final fossilList = fossilsOf(data, run);
+    final String? fossilFound = !fled && fossilScenes.contains(_sceneBase('${run['scene'] ?? ''}')) && followRoll(run, 2246822519) < fossilChance && fossilList.isNotEmpty ? fossilList[(followRoll(run, 3266489917) * fossilList.length).floor()] : null;
+    if (fossilFound != null) out['fossils'] = [...((run['fossils'] as List?) ?? const []), fossilFound];
     // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
     for (var i = 0; i < team.length; i++) {
       final from = _int(team[i]['id']);
@@ -3777,6 +3862,7 @@ class FactoryRun {
           ? _raidPrize(foes.first as Map)
           : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
       if (coins > 0) 'coins': coins,
+      if (fossilFound != null) 'fossil': fossilFound,
       if (run['encounter']?['raid'] != null)
         'raid': {
           'kind': run['encounter']['raid'],
@@ -3888,6 +3974,7 @@ class FactoryRun {
     // TM e pedra de evolução, às vezes.
     if (data.tms.isNotEmpty && rand() < 0.6) out.add('tm:${_pick(data.tms, rand)}');
     if (data.stones.isNotEmpty && rand() < 0.45) out.add('evo:${_pick(data.stones, rand)}');
+    if (rand() < mintChance) out.add(_pick(mints.keys.toList(), rand));
     while (out.length < size) {
       final id = _pick(ids, rand);
       if (!out.contains(id)) out.add(id);
@@ -5412,7 +5499,7 @@ class FactoryRun {
     final rivals = [for (var k = 0; k < leaders.length; k++) if (leaders[k]['kind'] == 'rival' && leaders[k]['guest'] != true) k];
     if (rivals.isEmpty) return null;
     final met = rivals.where((k) => k < step).toList();
-    return {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from(leaders[met.isNotEmpty ? met.last : rivals.first])};
+    return withRivalStarter(data, run, {'region': game['region'], 'game': game['game'], ...Map<String, dynamic>.from(leaders[met.isNotEmpty ? met.last : rivals.first])});
   }
 
   static Json rematchBoss(FactoryData data, Json run) {
@@ -6158,7 +6245,7 @@ class FactoryRun {
     // O Rare Candy sobe com o nível do time (e não com o tamanho dos times dos treinadores).
     final candy = id == 'rare-candy';
     final top = candy ? teamOf(run).fold(startLevel, (int a, m) => math.max(a, _int(m['level']))) : startLevel;
-    final base = id.startsWith('tm:') ? tmPrice : id.startsWith('evo:') ? evoPrice : shop[id] ?? 0;
+    final base = id.startsWith('tm:') ? tmPrice : id.startsWith('evo:') ? evoPrice : mints.containsKey(id) ? mintPrice : shop[id] ?? 0;
     final scale = candy ? 1 + (_int(run['floor']) - 1) / 20 : priceScale(_int(run['floor']));
     return math.max(1, (base * scale * (top / startLevel) * _mult(run, 'shop')).round());
   }
@@ -6173,7 +6260,7 @@ class FactoryRun {
 
   /// Compra um item da loja (index: o Pokémon que recebe; itens da Bolsa e Poké Ball não precisam). null se não dá.
   static Json? buyItem(Json run, String id, int index, FactoryData data) {
-    if (!shop.containsKey(id) && !id.startsWith('tm:') && !id.startsWith('evo:')) return null;
+    if (!shop.containsKey(id) && !mints.containsKey(id) && !id.startsWith('tm:') && !id.startsWith('evo:')) return null;
     final price = shopPrice(run, id);
     if (!((pendingOf(run)?['shop'] as List?)?.contains(id) ?? false) || (run['money'] as num) < price || shopOwned(run, id)) return null;
     final out = _copy(run);
@@ -6218,6 +6305,17 @@ class FactoryRun {
       team[index] = {...mon, 'evs': _add(mon['evs'] as Map?, {vitamins[id]!: vitaminEvs})};
     } else if (id == 'bottle-cap') {
       team[index] = {...mon, 'ivs': _add(mon['ivs'] as Map?, {for (final s in stats) s: bottleCapIvs})};
+    } else if (mints.containsKey(id)) {
+      if (mon['nature'] == mints[id]) return null;
+      team[index] = {...mon, 'nature': mints[id]};
+    } else if (id == abilityCapsule) {
+      // Com a oculta, a Capsule não serve (como nos jogos).
+      if (mon['ha'] == true) return null;
+      team[index] = {...mon}..remove('ab');
+      if (mon['ab'] == null || mon['ab'] == 0) team[index]['ab'] = 1;
+    } else if (id == abilityPatch) {
+      team[index] = {...mon}..remove('ha');
+      if (mon['ha'] != true) team[index]['ha'] = true;
     } else if (heldBoost.containsKey(id)) {
       // Sem item: vira o segurado; já com um: entra nos extras (sem limite de itens).
       team[index] = mon['item'] != null ? {...mon, 'extras': [...((mon['extras'] as List?) ?? const []), id]} : {...mon, 'item': id};
@@ -6742,7 +6840,7 @@ class FactoryRun {
           'level': mon['level'], 'levelCap': 'none', 'nature': mon['nature'], 'ivs': _cap(mon['ivs'] as Map?, 31), 'evs': _cap(mon['evs'] as Map?, 252),
           'item': nuzRule(run, 'noHeldItems') ? '' : mon['item'] ?? '', 'moves': own.isNotEmpty ? own : moveList, 'lockMoves': true, 'shiny': mon['shiny'] == true,
           if (gimmick.isNotEmpty) 'gimmick': gimmick,
-          if (mon['ha'] == true) 'ability': 'hidden',
+          if (mon['ha'] == true) 'ability': 'hidden' else if (mon['ab'] != null && mon['ab'] != 0) 'ability': 'second',
           if (mon['ball'] != null) 'ball': mon['ball'],
           if (mon['alpha'] == true) 'alpha': true,
           if (mon['tera'] != null) 'tera': mon['tera'],

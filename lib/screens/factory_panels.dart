@@ -2961,6 +2961,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
       return tr('+{0} EVs em {1}, sem limite').replaceAll('{0}', '${FactoryRun.vitaminEvs}').replaceAll('{1}', _statLabel[vitamin]!);
     }
     if (id == 'bottle-cap') return tr('+{0} IVs em todos os atributos, sem limite').replaceAll('{0}', '${FactoryRun.bottleCapIvs}');
+    if (FactoryRun.mints.containsKey(id)) return tr('Troca a Nature para {0}').replaceAll('{0}', FactoryRun.mints[id]!);
+    if (id == FactoryRun.abilityCapsule) return tr('Troca para a outra habilidade normal (se a espécie tiver duas)');
+    if (id == FactoryRun.abilityPatch) return tr('Liga ou desliga a habilidade oculta');
     final boost = FactoryRun.heldBoost[id];
     if (boost != null) {
       final extra = tr('Segura o item; se já tem um, vira extra ({0})')
@@ -4761,6 +4764,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
+        // O fóssil achado na rota (o laboratório da próxima cidade revive). Igual ao site.
+        if (p['fossil'] != null)
+          Text('🦴 ${tr('Você achou um {0}! O laboratório da próxima cidade revive.').replaceAll('{0}', prettySlug('${p['fossil']}'))}',
+              key: const ValueKey('factory-fossil-found'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A))),
         // As moedas de Gimmighoul achadas depois da vitória. Igual ao site.
         if (_int(p['coins']) > 0)
           Text('🪙 ${tr('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replaceAll('{0}', '${p['coins']}').replaceAll('{1}', '${run['gimmiCoins'] ?? 0}').replaceAll('{2}', '${FactoryRun.gimmiCoins}')}',
@@ -6506,6 +6513,11 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   '💭 Move Reminder${(run['town'] as Map?)?['reminded'] == true ? ' ✓' : FactoryRun.reminderCost(data, run) > 0 ? (_int(run['scales'] ?? 0) > 0 ? ' · 💗 Heart Scale' : ' · 💰${FactoryRun.reminderCost(data, run)}') : ''}',
                   widget.busy || FactoryRun.townReminder(run, data) == null ? null : () => _save(FactoryRun.townReminder(run, data)),
                   key: const ValueKey('town-reminder')),
+            // O fóssil achado na rota: o laboratório da cidade revive.
+            if (FactoryRun.fossilReady(data, run) case final fossil?)
+              _menuButton('🦴 ${tr('REVIVER O FÓSSIL')}', widget.busy ? null : () => _save(FactoryRun.reviveFossil(run, data) ?? run),
+                  sub: tr('O laboratório revive o {0}: vem {1}.').replaceAll('{0}', prettySlug(fossil)).replaceAll('{1}', _name(FactoryRun.fossils[fossil])),
+                  key: const ValueKey('town-fossil')),
             // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.
             if (FactoryRun.mysteryEgg(data, run) != null)
               _menuButton('❔ ${tr('RECEBER O OVO MISTERIOSO')}', widget.busy ? null : () => _save(FactoryRun.takeMysteryEgg(run, data)),

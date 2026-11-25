@@ -820,6 +820,44 @@ void main() {
         }()
     ];
     expect(norm(coins), expected['coins']);
+    // Mints, Ability Capsule e Ability Patch (igual ao site).
+    const shopIds = ['adamant-mint', 'timid-mint', 'ability-capsule', 'ability-patch'];
+    final items = [
+      for (final id in shopIds)
+        for (final twice in [0, 1])
+          () {
+            final r = FactoryRun.buyItem({...rt, 'money': 99999, 'pending': {'shop': shopIds}}, id, 0, data);
+            final again = twice == 1 && r != null ? FactoryRun.buyItem({...r, 'pending': {'shop': shopIds}}, id, 0, data) : r;
+            final m = again == null ? null : FactoryRun.teamOf(again).first;
+            return [FactoryRun.shopPrice(rt, id), m == null ? null : [m['nature'], m['ab'], m['ha']]];
+          }()
+    ];
+    expect(norm(items), expected['items']);
+    // O rival com o inicial da geração dele que vence o seu (igual ao site).
+    final rival = [
+      for (final starter in [1, 4, 7, 25, 155, 258, 393, 495, 656, 722, 813, 909])
+        for (var g = 0; g < data.bosses.length; g++)
+          () {
+            final leaders = (data.bosses[g]['leaders'] as List).cast<Map>();
+            final step = leaders.indexWhere((l) => l['kind'] == 'rival' && l['guest'] != true);
+            if (step < 0) return null;
+            final r = {...rt, 'starter': starter, 'boss': {'region': g, 'step': step + 1}};
+            return [FactoryRun.bossOf(data, {...r, 'boss': {'region': g, 'step': step}})['team'], FactoryRun.rivalBoss(data, r)?['team']];
+          }()
+    ];
+    expect(norm(rival), expected['rival']);
+    // Os fósseis achados e revividos (igual ao site).
+    final fossil = [
+      for (var k = 0; k < 60; k++)
+        () {
+          final r = {...rt, 'seed': 700 + k, 'floor': 10 + k, 'scene': k % 3 != 0 ? 'cave' : 'grass', 'boss': {'region': k % data.bosses.length, 'step': 0}, 'encounter': {'kind': 'wild', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}};
+          final won = FactoryRun.winFloor(r, data, hp: [1]);
+          final town = {...won, 'pending': null, 'encounter': null, 'town': {'leg': 1}};
+          final back = FactoryRun.reviveFossil(town, data);
+          return [FactoryRun.pendingOf(won)!['fossil'], won['fossils'], FactoryRun.fossilReady(data, town), back == null ? null : [[for (final m in FactoryRun.teamOf(back)) m['id']], back['fossils'], back['revived']]];
+        }()
+    ];
+    expect(norm(fossil), expected['fossil']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {
@@ -1119,7 +1157,7 @@ void main() {
     final eevee = FactoryRun.teamOf(got).last;
     expect([eevee['id'], eevee['level']], [133, max(5, FactoryRun.foeLevelAt(celadon['floor'] as int))]);
     // O mesmo sorteio do site (IVs e natureza iguais).
-    expect(eevee['ivs'], {'hp': 28, 'atk': 24, 'def': 15, 'spa': 17, 'spd': 29, 'spe': 23});
+    expect(eevee['ivs'], {'hp': 17, 'atk': 29, 'def': 23, 'spa': 28, 'spd': 20, 'spe': 22});
     expect(FactoryRun.townGifts(data, got), isEmpty);
     expect(FactoryRun.takeGift(got, data, 0), isNull);
     final saffron = inTown(red, 'Saffron City');
@@ -1451,9 +1489,9 @@ void main() {
     }
   });
 
-  test('história: rival com o inicial oficial dele, lendário da região, missão da rota e escolhas (igual ao site)', () {
+  test('história: rival com o inicial da geração dele que vence o seu, lendário da região, missão da rota e escolhas (igual ao site)', () {
     expect(FactoryRun.starterLine(data, 1), [1, 2, 3]);
-    // O rival fica com o inicial oficial dele (o Blue com o Squirtle), não o que tem vantagem sobre o seu.
+    // O inicial oficial do rival no jogo (o Blue com o Squirtle): a geração de onde sai o inicial dele.
     expect(((data.bosses.firstWhere((b) => b['game'] == 'Red/Blue')['leaders'] as List).firstWhere((l) => l['kind'] == 'rival')['team'] as List), contains(7));
     // Depois do Campeão, o pós-jogo (o Red no Mt. Silver): não é o rival, então não aparece de surpresa (igual ao site).
     final hgss = data.bosses.indexWhere((b) => b['game'] == 'HeartGold/SoulSilver');
@@ -1482,9 +1520,15 @@ void main() {
       'floor': 9,
       'route': {'floor': 9, 'biome': 'grass', 'options': [{'kind': 'boss'}]},
     }, data, 0);
-    // O rival leva o inicial oficial dele (o Blue com o Squirtle), mesmo com o seu sendo o Bulbasaur.
-    expect((rival['encounter']['foes'] as List).any((f) => [7, 8, 9].contains(f['id'])), isTrue);
-    expect((rival['encounter']['foes'] as List).any((f) => [4, 5, 6].contains(f['id'])), isFalse);
+    // O rival leva o inicial que vence o seu (como nos jogos): com o Bulbasaur, o Blue vem com o Charmander.
+    expect((rival['encounter']['foes'] as List).any((f) => [4, 5, 6].contains(f['id'])), isTrue);
+    expect((rival['encounter']['foes'] as List).any((f) => [7, 8, 9].contains(f['id'])), isFalse);
+    // Sempre um inicial da geração dele: com o Squirtle, o Bulbasaur; com o Pikachu, não o Squirtle (fraco contra ele),
+    // o Bulbasaur; com o Geodude (Pedra/Terra), o Squirtle (empata com o Bulbasaur: fica o oficial); com o Rattata, o oficial.
+    List vs(int starter) => [
+          for (final f in _choose({...base, 'starter': starter, 'boss': step('rival'), 'floor': 9, 'route': {'floor': 9, 'biome': 'grass', 'options': [{'kind': 'boss'}]}}, data, 0)['encounter']['foes'] as List) f['id']
+        ];
+    expect([vs(7), vs(25), vs(74), vs(19)], [[1], [1], [7], [7]]);
     final run = {
       ...base,
       'money': 0,
