@@ -480,9 +480,10 @@ function eventsFor(game, lines) {
       say(side ? 'foeSent' : 'go', label(side));
     } else if (kind === 'move') {
       const m = PocketDexSim.move(value);
+      // Como no Black & White: primeiro "Fulano usou X!" e depois a animação do golpe.
+      say('used', label(side), value);
       if (m) events.push({t: 'attack', side, type: m.type, category: m.category, slug: m.slug, ...at});
       game.lastMover = {side, index: actorIndex};
-      say('used', label(side), value);
     } else if (kind === '-damage' || kind === '-heal') {
       const index = Number(actor.split(': ')[1]?.slice(2));
       // Por que o HP mudou: item, habilidade, status, clima, armadilha... (o texto vem antes da barra mexer).

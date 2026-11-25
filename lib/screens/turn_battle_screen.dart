@@ -1588,6 +1588,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     if (_introOn) {
       _poke.setAll(0, [widget.keepMine ? '' : 'hidden', 'hidden']);
       if (widget.keepMine) _meGone = true;
+      // No selvagem, a caixa fica vazia até ele aparecer (como no Black & White, o texto vem junto com ele). Igual ao site.
+      if (widget.wild) _text = '';
       _busy = true;
       _runIntro().then((_) {
         if (!mounted) return;
@@ -1987,8 +1989,13 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
 
   TurnBattle get _b => widget.battle;
 
+  /// No selvagem, como no Black & White: "Fulano selvagem desmaiou!" (não "inimigo"). Igual ao site.
+  static const _wildLines = {'fainted': '{0} selvagem desmaiou!'};
+
   String _format(BattleEvent e) {
-    final (line, args) = TurnBattle.lineOf(e);
+    final (base, args) = TurnBattle.lineOf(e);
+    final first = e.args.firstOrNull;
+    final line = widget.wild && first is (int, String) && first.$1 == 1 && _wildLines.containsKey(e.key) ? _wildLines[e.key]! : base;
     var text = tr(line);
     for (var i = 0; i < args.length; i++) {
       // Nomes dos atributos (Ataque, Defesa...) também são traduzidos.
@@ -2920,24 +2927,32 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                           left: w * 0.0125,
                           top: h * 0.019,
                           width: w * 0.315,
-                          child: _fxHud(AnimatedOpacity(
-                              opacity: _introOn && _poke[1] == 'hidden' ? 0 : 1,
+                          // Desmaiou: a caixa dele sai deslizando (como no Black & White). Igual ao site.
+                          child: _fxHud(AnimatedSlide(
+                            offset: Offset(_fainted[1] ? -1.1 : 0, 0),
+                            duration: const Duration(milliseconds: 300),
+                            child: AnimatedOpacity(
+                              opacity: (_introOn && _poke[1] == 'hidden') || _fainted[1] ? 0 : 1,
                               duration: const Duration(milliseconds: 200),
                               child: GestureDetector(
                                   key: const ValueKey('inspect-foe'),
                                   onTap: () => _inspect(1),
-                                  child: _PortHp(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], w: w))))),
+                                  child: _PortHp(mon: foe, hp: _hp[1][_active[1]], status: _status[1][_active[1]], dmax: _dmax[1], w: w)))))),
                       Positioned(
                           right: w * 0.0125,
                           bottom: h * 0.24,
                           width: w * 0.315,
-                          child: _fxHud(AnimatedOpacity(
-                              opacity: _introOn && _poke[0] == 'hidden' ? 0 : 1,
+                          // Desmaiou: a caixa dele sai deslizando (como no Black & White). Igual ao site.
+                          child: _fxHud(AnimatedSlide(
+                            offset: Offset(_fainted[0] ? 1.1 : 0, 0),
+                            duration: const Duration(milliseconds: 300),
+                            child: AnimatedOpacity(
+                              opacity: (_introOn && _poke[0] == 'hidden') || _fainted[0] ? 0 : 1,
                               duration: const Duration(milliseconds: 200),
                               child: GestureDetector(
                                   key: const ValueKey('inspect-me'),
                                   onTap: () => _inspect(0),
-                                  child: _PortHp(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true, w: w, exp: expBarOf(_b, _active[0], _hp[1])))))),
+                                  child: _PortHp(mon: me, hp: _hp[0][_active[0]], status: _status[0][_active[0]], dmax: _dmax[0], mine: true, w: w, exp: expBarOf(_b, _active[0], _hp[1]))))))),
                       // A habilidade em ação: a faixa sai do lado do Pokémon (o adversário à direita, o seu à esquerda).
                       if (_ability != null)
                         Positioned(

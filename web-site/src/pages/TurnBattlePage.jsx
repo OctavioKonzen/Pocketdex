@@ -81,8 +81,11 @@ function StatusBurst({ emoji }) {
 }
 
 const STAT_LABELS = new Set(Object.values(STAT_NAMES))
-const format = (event) => {
-  const [line, args] = lineOf(event)
+/** No selvagem, como no Black & White: "Fulano selvagem desmaiou!" (não "inimigo"). Igual ao app. */
+const WILD_LINES = { fainted: '{0} selvagem desmaiou!' }
+const format = (event, wild = false) => {
+  const [base, args] = lineOf(event)
+  const line = wild && event.args?.[0]?.side === 1 && WILD_LINES[event.key] ? WILD_LINES[event.key] : base
   // Nomes dos atributos (Ataque, Defesa...) também são traduzidos.
   return args.reduce((text, arg, i) => text.replace(`{${i}}`, STAT_LABELS.has(arg) ? t(arg) : arg), t(line))
 }
@@ -1086,7 +1089,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     boosts: battle.sides.map((s) => boostsOf(s.team[s.active])),
     tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
-  const [text, setText] = useState(() => (wild ? t(active(battle, 1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
+  // No selvagem, a caixa fica vazia até ele aparecer (como no Black & White, o texto vem junto com ele).
+  const [text, setText] = useState(() => (wild ? (!online && battle.turn <= 1 ? '' : t(active(battle, 1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name)) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   // O registro da batalha ao lado dela (no PC): os turnos, cada texto inteiro e o HP que cada um perdeu ou recuperou.
   const [log, setLog] = useState(() => [{ kind: 'text', text }])
   // Contra o computador: depois de derrubar o Pokémon dele, pergunta se quer trocar (estilo "Troca";
@@ -1424,7 +1428,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
           await wait(900)
           continue
         }
-        const line = format(e)
+        const line = format(e, wild)
         if (!line) continue
         addLog({ kind: 'text', side: who, text: line })
         // Não cabe na caixa: em partes, uma depois da outra (como nos jogos; a caixa não aumenta).
@@ -1919,7 +1923,8 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
         {/* O clima e o terreno com os turnos que faltam (como no registro), no alto do campo. */}
         <FieldChip weather={shown.weather} terrain={shown.terrain} weatherTurns={battle.weatherTurns ?? 0} terrainTurns={battle.terrainTurns ?? 0} />
         {vsOn && <VsSplash me={myTrainer} coach={coach} vs={vsInfo} myName={myName} foeMon={wild ? active(battle, 1) : null} onSkip={() => vsDone.current?.()} />}
-        <div className={`absolute z-20 top-[1.9%] left-[1.25%] w-[31.5%] transition-opacity ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+        {/* Desmaiou: a caixa dele sai deslizando (como no Black & White). */}
+        <div className={`absolute z-20 top-[1.9%] left-[1.25%] w-[31.5%] transition-[opacity,translate] duration-300 ${intro && poke[1] === 'hidden' ? 'opacity-0' : ''} ${shown.fainted[1] ? '-translate-x-[110%] opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(1)} aria-label={t('Ver detalhes do adversário')} data-testid="inspect-foe">
             {/* Quantos o treinador tem: a Poké Ball acesa está de pé; apagada, desmaiou (como nos jogos). */}
             <PortHp mon={foe} hp={shown.hp[1][shown.active[1]]} status={shown.status[1][shown.active[1]]} dmax={shown.dmax[1]} hpTestId={online ? "online-hp-" + (1 - online.side) : undefined} />
@@ -1935,7 +1940,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
         {effect && <MoveFx key={effect.key} plan={effect.plan} color={effect.color} />}
         {impact && <span key={impact.n} className="move-impact pointer-events-none absolute z-20" style={{ left: `${impact.x}%`, top: `${impact.y}%`, '--c': impact.color }} data-testid="move-impact" />}
         {flash > 0 && <div key={`flash-${flash}`} className="battle-flash pointer-events-none absolute inset-0 bg-white" />}
-        <div className={`absolute z-20 right-[1.25%] bottom-[24%] w-[31.5%] transition-opacity ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''}`} data-fx-hud>
+        <div className={`absolute z-20 right-[1.25%] bottom-[24%] w-[31.5%] transition-[opacity,translate] duration-300 ${intro && poke[0] === 'hidden' ? 'opacity-0' : ''} ${shown.fainted[0] ? 'translate-x-[110%] opacity-0' : ''}`} data-fx-hud>
           <button type="button" className="block w-full cursor-pointer text-left" onClick={() => setInspect(0)} aria-label={t('Ver detalhes do seu Pokémon')} data-testid="inspect-me">
             <PortHp mon={me} hp={shown.hp[0][shown.active[0]]} status={shown.status[0][shown.active[0]]} dmax={shown.dmax[0]} mine hpTestId={online ? "online-hp-" + online.side : undefined}
               exp={expBarOf(battle, shown.active[0], shown.hp[1])} />

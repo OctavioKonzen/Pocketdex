@@ -15610,5 +15610,11 @@
   "fr": "{1} ! Le {0} sauvage s'enfuit !",
   "es": "¡{1}! ¡El {0} salvaje huyó!",
   "pt": "{1}! {0} selvagem fugiu!"
+ },
+ "{0} selvagem desmaiou!": {
+  "en": "The wild {0} fainted!",
+  "fr": "Le {0} sauvage est K.O. !",
+  "es": "¡El {0} salvaje se debilitó!",
+  "pt": "{0} selvagem desmaiou!"
  }
 }
