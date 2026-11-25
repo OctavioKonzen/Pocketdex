@@ -3036,7 +3036,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
                   onTap: () => setState(() => _panel = _panel == 'dex' ? null : 'dex'),
                   child: Text('📖 ${FactoryRun.dexOf(run).length}', key: const ValueKey('factory-dex'), style: style),
                 ),
-                if (_data != null) _badges(_data!, run),
+                // Tocar abre o estojo de insígnias (como no Black & White). Igual ao site.
+                if (_data != null) GestureDetector(onTap: () => setState(() => _panel = _panel == 'badges' ? null : 'badges'), child: _badges(_data!, run)),
                 for (final hm in (run['hms'] as List? ?? const [])) Text(_hmInfo[hm]?.$2 ?? '', style: style),
                 for (final k in (run['keyItems'] as List? ?? const [])) Text(_keyInfo[k]?.$1 ?? '', key: ValueKey('factory-key-$k'), style: style),
                 if (((run['gcCoins'] as num?) ?? 0) > 0) Text('🎰 ${run['gcCoins']}', key: const ValueKey('factory-coins'), style: style),
@@ -3994,7 +3995,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               return FittedBox(
                 fit: BoxFit.contain,
                 alignment: Alignment.topCenter,
-                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy', 'dex', 'bag'}.contains(_panel) || (_panel ?? '').startsWith('contest') ? panel : SingleChildScrollView(child: panel)),
+                child: SizedBox(width: vw, height: vh, child: const {'team', 'pc', 'region', 'help', 'buy', 'dex', 'bag', 'badges'}.contains(_panel) || (_panel ?? '').startsWith('contest') ? panel : SingleChildScrollView(child: panel)),
               );
             }),
           ),
@@ -4306,6 +4307,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
     void close() => setState(() => _panel = null);
     _framePanel = _panel == 'dex'
         ? _dexPanel(run, data, close)
+        : _panel == 'badges'
+        ? _BadgeCase(key: const ValueKey('badge-case'), data: data, run: run, header: _overlayHeader, onClose: close)
         : _panel == 'region'
         ? _regionMap(run, data, close)
         : _panel == 'help'
@@ -7010,6 +7013,171 @@ class _BadgeShine extends StatelessWidget {
 /// A cena da insígnia (como no Black & White): o campo escurece, ela vem de longe girando como moeda (em 3D), cinza, e
 /// ganha cor até parar grande no meio; atrás, os raios girando; o brilho passa por ela e as estrelinhas piscam. Tocar (ou
 /// esperar) fecha e ela fica pequena no alto. Igual ao site.
+/// O estojo de insígnias (como no Black & White): as da região, cada uma girando como moeda; as que faltam, só a
+/// silhueta. Tocar numa mostra o líder e o andar da vitória e dá polimento (ela brilha mais a cada toque). Igual ao site.
+class _BadgeCase extends StatefulWidget {
+  const _BadgeCase({super.key, required this.data, required this.run, required this.header, required this.onClose});
+  final FactoryData data;
+  final Json run;
+  final Widget Function(String, VoidCallback) header;
+  final VoidCallback onClose;
+  static const polishMax = 3;
+
+  @override
+  State<_BadgeCase> createState() => _BadgeCaseState();
+}
+
+class _BadgeCaseState extends State<_BadgeCase> with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+  int? _pick;
+  int _rub = 0;
+  final Map<int, int> _shine = {};
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final run = widget.run;
+    final leaders = (widget.data.bosses[(run['boss']['region'] as num).toInt()]['leaders'] as List).cast<Map>();
+    final step = (run['boss']['step'] as num).toInt();
+    final gyms = [for (var k = 0; k < leaders.length; k++) if (leaders[k]['kind'] == 'gym') k];
+    bool won(int k) => k < step;
+    final leader = _pick == null ? null : leaders[_pick!];
+    final floor = leader == null
+        ? null
+        : [for (final d in (run['diary'] as List?) ?? const []) if (d is List && d.length > 2 && d[0] == 'b' && d[2] == leader['name']) d[1]].firstOrNull;
+    final coach = leader == null ? null : Trainers.byId('${leader['trainer'] ?? ''}') ?? speakerTrainer(Trainers.list, '${leader['name']}');
+    Widget badge(int k, int i) {
+      final l = leaders[k];
+      final art = FactoryRun.badgeArt('${l['name']}');
+      final on = won(k);
+      final shine = _shine[k] ?? 0;
+      Widget img = art != null
+          ? Image.asset('assets/database/sprites/badges/$art.png', fit: BoxFit.contain, color: on ? null : const Color(0x59000000), colorBlendMode: on ? null : BlendMode.srcIn)
+          : Transform.rotate(
+              angle: pi / 4,
+              child: FractionallySizedBox(
+                widthFactor: 0.64,
+                heightFactor: 0.64,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: on ? getColorForType(FactoryRun.leaderType(widget.data, l)) : const Color(0x59000000),
+                    border: Border.all(color: Colors.white, width: 3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            );
+      if (on && _pick == k) {
+        // O brilho passando por ela ao polir (só por cima do desenho).
+        img = TweenAnimationBuilder<double>(
+          key: ValueKey('rub-$_rub'),
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          builder: (context, v, child) => ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (r) => LinearGradient(
+              colors: const [Color(0x00FFFFFF), Color(0xE6FFFFFF), Color(0x00FFFFFF)],
+              stops: const [0.4, 0.5, 0.6],
+              begin: Alignment(-3.6 + 5.2 * v, -0.4),
+              end: Alignment(-1.6 + 5.2 * v, 0.4),
+            ).createShader(r),
+            child: child,
+          ),
+          child: img,
+        );
+      }
+      return GestureDetector(
+        key: ValueKey(on ? 'case-badge-$i' : 'case-empty-$i'),
+        onTap: () {
+          if (!on) return;
+          setState(() {
+            if (_pick == k) _shine[k] = min(_BadgeCase.polishMax, shine + 1);
+            _pick = k;
+            _rub++;
+          });
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: _pick == k ? const Color(0x22FFFFFF) : const Color(0x33000000),
+            borderRadius: BorderRadius.circular(8),
+            border: _pick == k ? Border.all(color: const Color(0xFFFDE047), width: 2) : null,
+          ),
+          padding: const EdgeInsets.all(6),
+          child: AnimatedBuilder(
+            animation: _spin,
+            builder: (context, child) => Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.003)
+                ..rotateY(on ? ((_spin.value + i * 0.0875) % 1) * 2 * pi : 0),
+              child: child,
+            ),
+            child: Container(
+              decoration: shine > 0 ? BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 4.0 + shine * 5)]) : null,
+              child: img,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4A5466), Color(0xFF2C333F)])),
+      padding: const EdgeInsets.all(8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        widget.header('🏅 ${tr('Estojo de insígnias')} · ${gyms.where(won).length}/${gyms.length}', widget.onClose),
+        const SizedBox(height: 6),
+        Expanded(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(
+              flex: 3,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFF262C37), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFA8B3C7), width: 3)),
+                child: LayoutBuilder(builder: (context, box) {
+                  const cols = 4;
+                  final rows = max(1, (gyms.length / cols).ceil());
+                  return GridView.count(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: (box.maxWidth / cols) / max(1.0, (box.maxHeight - 6 * (rows - 1)) / rows),
+                    children: [for (var i = 0; i < gyms.length; i++) badge(gyms[i], i)],
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: Container(
+                key: const ValueKey('case-info'),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFF1C2029), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFA8B3C7), width: 3)),
+                child: leader == null
+                    ? Center(child: Text(tr('Toque numa insígnia para ver o líder e polir ela.'), textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12)))
+                    : Column(children: [
+                        Expanded(child: Align(alignment: Alignment.bottomCenter, child: coach == null ? const SizedBox.shrink() : LayoutBuilder(builder: (context, b) => TrainerSprite(coach, height: min(110.0, b.maxHeight))))),
+                        Text('${leader['name']}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
+                        Text('🏅 ${tr('Insígnia de {0}').replaceAll('{0}', '${leader['name']}')}', style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12)),
+                        if (floor != null) Text(tr('Vencido no andar {0}').replaceAll('{0}', '$floor'), style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+                        Text((_shine[_pick] ?? 0) > 0 ? '✨' * (_shine[_pick] ?? 0) : tr('Toque de novo para polir!'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                      ]),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
 class _BadgeScene extends StatefulWidget {
   const _BadgeScene({required this.color, required this.onDone, this.art, this.trainer});
   final Color color;

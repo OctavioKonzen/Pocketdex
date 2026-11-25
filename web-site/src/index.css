@@ -938,6 +938,11 @@ h1, h2, .font-display {
 .badge-spark { color: #fff; font-size: 2.4cqw; text-shadow: 0 0 6px #fff, 0 0 12px #fde047; opacity: 0; animation: badge-spark 1.2s ease-in-out infinite; }
 @keyframes badge-spark { 0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); } 50% { opacity: 1; transform: scale(1.25) rotate(90deg); } }
 
+/* O estojo de insígnias (como no Black & White): cada uma girando como moeda; o brilho passa ao polir. Igual ao app. */
+.case-spin { animation: case-spin 4s linear infinite; }
+@keyframes case-spin { from { transform: perspective(300px) rotateY(0deg); } to { transform: perspective(300px) rotateY(360deg); } }
+.case-sweep { animation-delay: 0s; }
+
 /* O status na dupla/tripla: o símbolo sobe e some. Igual ao app. */
 .status-rise { animation: status-rise 1s ease-out both; }
 @keyframes status-rise { from { transform: translateY(0); opacity: 1; } 70% { opacity: 1; } to { transform: translateY(-160%); opacity: 0; } }

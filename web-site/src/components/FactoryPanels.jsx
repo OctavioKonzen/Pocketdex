@@ -2785,12 +2785,12 @@ function OverlayClose({ title, onClose }) {
  * As insígnias da região de agora: uma por líder de ginásio, na cor do tipo
  * dele; as ganhas acesas, as que faltam apagadas. Igual ao app.
  */
-function Badges({ data, run }) {
+function Badges({ data, run, onClick = null }) {
   const leaders = data.bosses[run.boss.region]?.leaders ?? []
   const gyms = leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym')
   if (!gyms.length) return null
   return (
-    <span className="flex items-center gap-0.5 rounded bg-slate-900/50 px-1 py-0.5" data-testid="factory-badges" title={t('Insígnias')}>
+    <span className={`flex items-center gap-0.5 rounded bg-slate-900/50 px-1 py-0.5 ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick ?? undefined} data-testid="factory-badges" title={t('Insígnias')}>
       {gyms.map(([l, k]) => {
         const won = k < run.boss.step
         return (
@@ -2803,8 +2803,74 @@ function Badges({ data, run }) {
   )
 }
 
+/**
+ * O estojo de insígnias (como no Black & White): as da região, cada uma girando como moeda; as que faltam, só a
+ * silhueta. Tocar numa mostra o líder e o andar da vitória e dá polimento (ela brilha mais a cada toque). Igual ao app.
+ */
+export const POLISH_MAX = 3
+function BadgeCase({ data, run, trainers, onClose }) {
+  const leaders = data?.bosses?.[run.boss.region]?.leaders ?? []
+  const gyms = leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym')
+  const [pick, setPick] = useState(null)
+  const [shine, setShine] = useState({})
+  const [rub, setRub] = useState(0)
+  const won = (k) => k < run.boss.step
+  const chosen = gyms.find(([, k]) => k === pick)
+  const leader = chosen?.[0]
+  const floor = leader ? (run.diary ?? []).find(([kind, , who]) => kind === 'b' && who === leader.name)?.[1] : null
+  const coach = leader ? trainers?.find((x) => x.id === leader.trainer) ?? speakerTrainer(trainers, leader.name) : null
+  const tap = (l, k) => {
+    if (!won(k)) return
+    setPick(k)
+    // Polir: cada toque deixa ela mais brilhante (até POLISH_MAX) e o brilho passa de novo.
+    if (pick === k) setShine((s) => ({ ...s, [k]: Math.min(POLISH_MAX, (s[k] ?? 0) + 1) }))
+    setRub((n) => n + 1)
+  }
+  return (
+    <div className="flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size', background: 'linear-gradient(#4a5466, #2c333f)' }} data-testid="badge-case">
+      <OverlayClose onClose={onClose} title={`🏅 ${t('Estojo de insígnias')} · ${gyms.filter(([, k]) => won(k)).length}/${gyms.length}`} />
+      <div className="flex min-h-0 flex-1 gap-[1.2cqw]">
+        <div className="grid flex-[3] grid-cols-4 grid-rows-2 gap-[1cqw] rounded-[1cqw] border-[3px] border-[#a8b3c7] p-[1.2cqw]" style={{ background: 'repeating-linear-gradient(0deg, #fff1 0 1px, transparent 1px 4px), #262c37' }}>
+          {gyms.map(([l, k], i) => {
+            const art = badgeArt(l.name)
+            const on = won(k)
+            return (
+              <button key={k} type="button" onClick={() => tap(l, k)} data-testid={on ? `case-badge-${i}` : `case-empty-${i}`}
+                className={`relative flex items-center justify-center rounded-[0.8cqw] ${pick === k ? 'bg-[#ffffff22] ring-2 ring-yellow-300' : 'bg-[#0003]'} ${on ? 'cursor-pointer' : 'cursor-default'}`}>
+                <span className={`relative block h-[78%] w-[78%] ${on ? 'case-spin' : ''}`} style={on ? { animationDelay: `${i * 0.35}s`, filter: shine[k] ? `drop-shadow(0 0 ${4 + shine[k] * 5}px #fff)` : undefined } : undefined}>
+                  {art ? (
+                    <>
+                      <img src={spriteUrl(`badges/${art}.png`)} alt="" draggable={false} className="h-full w-full object-contain" style={on ? undefined : { filter: 'brightness(0)', opacity: 0.35 }} />
+                      {on && pick === k && <span key={rub} className="absolute inset-0 overflow-hidden" style={badgeMask(art)}><span className="badge-sweep case-sweep absolute" /></span>}
+                    </>
+                  ) : (
+                    <span className="absolute inset-[18%] rotate-45 rounded-[14%] border-[3px] border-white" style={{ background: on ? `linear-gradient(135deg, #fffb, ${typeColor(leaderType(data, l))} 45%, #0006)` : '#0006', opacity: on ? 1 : 0.35 }} />
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex flex-[2] flex-col items-center justify-end rounded-[1cqw] border-[3px] border-[#a8b3c7] bg-[#1c2029] p-[1.2cqw] text-center" data-testid="case-info">
+          {leader ? (
+            <>
+              <div className="flex min-h-0 flex-1 items-end justify-center">{coach && <TrainerSprite trainer={coach} height={110} />}</div>
+              <p className="text-[2.2cqw] font-black" data-no-translate>{leader.name}</p>
+              <p className="text-[1.7cqw] text-amber-200">🏅 {t('Insígnia de {0}').replace('{0}', leader.name)}</p>
+              {floor != null && <p className="text-[1.6cqw] text-slate-300">{t('Vencido no andar {0}').replace('{0}', floor)}</p>}
+              <p className="mt-1 text-[1.4cqw] text-slate-400">{'✨'.repeat(shine[pick] ?? 0) || t('Toque de novo para polir!')}</p>
+            </>
+          ) : (
+            <p className="my-auto text-[1.7cqw] text-slate-300">{t('Toque numa insígnia para ver o líder e polir ela.')}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
-function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, hideHp = false, menuWait = true, cast = false }) {
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, onBadges = null, hideHp = false, menuWait = true, cast = false }) {
   // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
   // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
   // Como nos jogos: as escolhas só aparecem depois de toda a fala aparecer.
@@ -2842,7 +2908,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
             {(run.eggs ?? []).map((e, i) => <span key={i} title={t(e.mystery ? 'Ovo misterioso: choca em {0} vitórias' : 'Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">{e.mystery ? '❔' : '🥚'}{e.left}</span>)}
             <span title={t('Pokédex da corrida')} className={onDex ? 'cursor-pointer' : ''} onClick={onDex ?? undefined} data-testid="factory-dex">📖 {dexOf(run).length}</span>
-            {data && <Badges data={data} run={run} />}
+            {data && <Badges data={data} run={run} onClick={onBadges} />}
             {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
@@ -3003,7 +3069,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
   const leadInfo = lead && byId?.get(lead.id)
   const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
   const contestAt = String(panel ?? '').startsWith('contest:') ? Number(String(panel).slice(8)) : null
-  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex' || (String(panel ?? '').startsWith('contest') && contestOpen(run))) && (
+  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex' || panel === 'badges' || (String(panel ?? '').startsWith('contest') && contestOpen(run))) && (
     String(panel ?? '').startsWith('contest') ? (
       // O Concurso Pokémon: primeiro quem se apresenta (a tela do time), depois a categoria. Igual ao app.
       contestAt == null || !run.team[contestAt] ? (
@@ -3022,6 +3088,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       )
     ) : panel === 'dex' ? (
       <DexPanel factory={factory} data={data} run={run} name={name} onClose={() => setPanel(null)} />
+    ) : panel === 'badges' ? (
+      <BadgeCase data={data} run={run} trainers={trainers} onClose={() => setPanel(null)} />
     ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
@@ -4188,7 +4256,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
 
   return (
     <section data-testid="factory-screen">
-      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} cast={cast} tools={toolRow ? tools : null} panel={below || extras || null}
+      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} onBadges={() => setPanel(panel === 'badges' ? null : 'badges')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} cast={cast} tools={toolRow ? tools : null} panel={below || extras || null}
         text={<>
           {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
           {note && <p data-testid="factory-note">{note}</p>}

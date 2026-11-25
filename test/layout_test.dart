@@ -265,6 +265,12 @@ final screens = <String, Widget Function()>{
             },
         ],
       }),
+  // O estojo de insígnias (como no Black & White): as ganhas girando, as que faltam em silhueta; tocar mostra o líder.
+  'Battle Factory (estojo de insígnias)': () => _factory(null, {'floor': 30, 'biome': 'grass', 'options': [{'kind': 'trainer'}, {'kind': 'wild', 'biome': 'grass'}]}, {
+        'boss': {'region': 0, 'step': 4},
+        'badges': 3,
+        'diary': [['b', 8, 'Brock'], ['b', 16, 'Misty'], ['b', 24, 'Lt. Surge']],
+      }),
   'Battle Factory (mapa da região)': () => _factory(null, {'floor': 24, 'biome': 'grass', 'options': [{'kind': 'wild', 'biome': 'grass'}]}, {'leg': 21, 'boss': {'region': 0, 'step': 1}}),
   'Battle Factory (plano atrapalhado)': () => _factory({'exp': 0, 'money': 420, 'levels': [], 'joy': false, 'capture': null, 'cards': null, 'shop': null, 'plot': {'chapter': 1, 'team': 'rocket', 'item': 'ultra-ball'}, 'flawless': 'master-ball'}),
   // A história em cenas: ao chegar na cidade, antes da luta e depois de vencer (Kanto).
@@ -756,6 +762,25 @@ final Map<String, Future<void> Function(WidgetTester)> actions = {
       }
     }
     expect(find.byKey(const ValueKey('speaker-plate')), findsOneWidget);
+  },
+  'Battle Factory (estojo de insígnias)': (tester) async {
+    await tester.ensureVisible(find.byKey(const ValueKey('factory-badges')));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.tap(find.byKey(const ValueKey('factory-badges')));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    await tester.tap(find.byKey(const ValueKey('case-badge-1')));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    // As imagens das insígnias carregam de verdade (fora do relógio do teste).
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const ValueKey('case-info')), findsOneWidget);
+    expect(find.textContaining('16'), findsWidgets);
   },
   'Battle Factory (time, opções)': (tester) async {
     await actions['Battle Factory (time, dados)']!(tester);

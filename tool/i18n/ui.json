@@ -15448,5 +15448,29 @@
   "fr": "Badge de {0} !",
   "es": "¡Medalla de {0}!",
   "pt": "Insígnia de {0}!"
+ },
+ "Estojo de insígnias": {
+  "en": "Badge Case",
+  "fr": "Boîte à Badges",
+  "es": "Estuche de medallas",
+  "pt": "Estojo de insígnias"
+ },
+ "Vencido no andar {0}": {
+  "en": "Beaten on floor {0}",
+  "fr": "Battu à l'étage {0}",
+  "es": "Vencido en el piso {0}",
+  "pt": "Vencido no andar {0}"
+ },
+ "Toque de novo para polir!": {
+  "en": "Tap again to polish it!",
+  "fr": "Touchez encore pour le polir !",
+  "es": "¡Toca otra vez para pulirla!",
+  "pt": "Toque de novo para polir!"
+ },
+ "Toque numa insígnia para ver o líder e polir ela.": {
+  "en": "Tap a badge to see the Leader and polish it.",
+  "fr": "Touchez un badge pour voir le Champion et le polir.",
+  "es": "Toca una medalla para ver al Líder y pulirla.",
+  "pt": "Toque numa insígnia para ver o líder e polir ela."
  }
 }
