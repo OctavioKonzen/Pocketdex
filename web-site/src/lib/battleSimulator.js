@@ -10,7 +10,7 @@ export function simulatorInput(mon) {
 }
 export function initializeSimulator(battle) {
   const seed = Array.from({length: 4}, () => Math.floor(battle.random() * 65536))
-  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {}), ...(battle.startExp ? {exp: battle.startExp} : {})})
+  const created = engine().create({teams: battle.sides.map(s => s.team.map(simulatorInput)), seed, mode: battle.mode, controllers: battle.controllers, rules: battle.rules ?? [], ...(battle.startBags ? {bags: battle.startBags} : {}), ...(battle.healPct ? {healPct: true} : {}), ...(battle.capture ? {capture: battle.capture} : {}), ...(battle.startWeather ? {weather: battle.startWeather} : {}), ...(battle.startField ? {field: battle.startField} : {}), ...(battle.startExp ? {exp: battle.startExp} : {}), ...(battle.rotation ? {rotation: true} : {})})
   battle.simulator = {handle: created.handle, state: created.state, opening: created.events}
   syncSimulator(battle, created)
 }
@@ -28,6 +28,8 @@ export function syncSimulator(battle, result) {
   battle.terrain = state.terrain
   battle.weather = weatherIds[state.weather] ?? ''
   battle.weatherTurns = state.weatherTurns ?? 0
+  // Batalha de Rotação: os 3 da roda de cada lado (posições no time).
+  if (state.rotation) battle.rotationTrio = state.rotation
   battle.terrainTurns = state.terrainTurns ?? 0
   battle.terrain = terrainIds[state.terrain] ?? ''
   battle.place = (state.pseudoWeather ?? []).find((id) => id.startsWith('pocketdex'))?.slice(9) ?? ''

@@ -1110,7 +1110,9 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const turnNo = useRef(1)
   const [busy, setBusy] = useState(false)
   const [ability, setAbility] = useState(null) // a faixa da habilidade em ação ({side, name, ability})
-  const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag
+  const [menu, setMenu] = useState(() => battle.needSwitch ? 'party' : 'main') // main | fight | party | bag | rotate
+  // Batalha de Rotação: quem vai girar para a frente (os golpes dele aparecem e ele ataca no mesmo turno).
+  const [rotatePick, setRotatePick] = useState(null)
   // Segurando um golpe: a janela dele (MoveInfo).
   const [moveInfo, setMoveInfo] = useState(null)
   const actionBusy = useRef(false)
@@ -1637,6 +1639,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   lowHpAlarm(battle.winner == null && me?.maxHp > 0 && myHp > 0 && myHp / me.maxHp <= 0.2)
   const scene = battleScene(battle.scene, battle.seed ?? battle.turn)
   const current = active(battle, 0)
+  // Na Rotação, quem vai girar para a frente mostra os golpes dele.
+  const mover = rotatePick != null && battle.sides[0].team[rotatePick] ? battle.sides[0].team[rotatePick] : current
   const usable = usableMoves(current)
   const waiting = !busy && !online?.locked && battle.winner == null
   // Golpe em sequência (Outrage, recarga, 2º turno de Solar Beam...): sem escolha, sai sozinho.
@@ -1702,11 +1706,15 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const fight = (i) => {
     if (actionBusy.current || busy || battle.needSwitch || online?.locked) return
     const before = [active(battle, 0).id, active(battle, 1).id]
-    const gimmick = selected
+    const gimmick = rotatePick != null ? 'none' : selected
+    const rotate = rotatePick
     setGimmickPick(null)
+    setRotatePick(null)
     if (online) return online.onAction({ kind: 'move', index: i, gimmick })
-    act(() => playTurn(battle, { move: i, gimmick }, hit), before)
+    act(() => playTurn(battle, { move: i, gimmick, ...(rotate != null ? { rotate } : {}) }, hit), before)
   }
+  // Os outros da roda que podem girar para a frente (de pé).
+  const rotateOptions = battle.rotation && battle.rotationTrio ? battle.rotationTrio[0].filter((i) => i !== battle.sides[0].active && battle.sides[0].team[i]?.hp > 0) : []
   const maxed = current.dmax > 0 || selected === 'dmax'
   const choose = (i) => {
     if (actionBusy.current || busy || online?.locked) return
@@ -1754,12 +1762,21 @@ waiting && online?.waitForSwitch
                 <MenuButton onClick={() => (usable.length ? setMenu('fight') : fight(-1))}>LUTAR</MenuButton>
                 <MenuButton disabled={Boolean(online)} onClick={() => setMenu('bag')}>BOLSA</MenuButton>
                 <MenuButton onClick={() => (setItem(null), setPartyPick(null), setSummary(null), setMenu('party'))}>POKÉMON</MenuButton>
-                <MenuButton onClick={run}>FUGIR</MenuButton>
+                {battle.rotation
+                  ? <MenuButton testId="battle-rotate" disabled={!rotateOptions.length} onClick={() => setMenu('rotate')}>🔄 GIRAR</MenuButton>
+                  : <MenuButton onClick={run}>FUGIR</MenuButton>}
               </MenuGrid>
+            : waiting && !locked && menu === 'rotate'
+              ? <MenuGrid>
+                  {rotateOptions.map((i) => {
+                    const m = battle.sides[0].team[i]
+                    return <MenuButton key={i} testId={`rotate-${i}`} onClick={() => { setRotatePick(i); setMenu('fight') }}>🔄 {m.name}</MenuButton>
+                  })}
+                </MenuGrid>
             : waiting && !locked && menu === 'fight'
               ? <div className="relative grid h-full grid-cols-2 grid-rows-2 gap-1.5" data-testid="moves">
-            {current.moves.map((m, i) => {
-              const eff = moveEffect(hit, current, rival, m)
+            {mover.moves.map((m, i) => {
+              const eff = moveEffect(hit, mover, rival, m)
               const z = selected === 'z' && canGimmick(battle, 0, 'z', i)
               const max = maxed && m.category !== 'status'
               return (
@@ -1769,7 +1786,7 @@ waiting && online?.waitForSwitch
                   testId={`battle-single-move-${i}`}
                   disabled={m.pp <= 0 || m.disabled}
                   onClick={() => fight(i)}
-                  onHold={() => setMoveInfo({ move: m, foe: rival.name, damage: damageRange(hit, current, rival, m, shown.weather), crit: critChance(current, m), eff })}
+                  onHold={() => setMoveInfo({ move: m, foe: rival.name, damage: damageRange(hit, mover, rival, m, shown.weather), crit: critChance(mover, m), eff })}
                   color={typeColor(m.type)}
                   kind={t(m.type.charAt(0).toUpperCase() + m.type.slice(1)).toUpperCase()}
                   label={z ? Z_MOVES[m.type] : max ? MAX_MOVES[m.type] : m.name}
@@ -1777,9 +1794,9 @@ waiting && online?.waitForSwitch
                 >
                     <span className="opacity-90">{`PP ${m.pp}/${m.maxPp}`}</span>
                     {/* A chance de crítico (dano 1,5×). */}
-                    {!z && !max && critChance(current, m) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')} data-testid="crit-chance">💥{critChance(current, m)}%</span>}
+                    {!z && !max && critChance(mover, m) != null && <span className="tabular-nums opacity-90" title={t('Chance de crítico')} data-testid="crit-chance">💥{critChance(mover, m)}%</span>}
                     {(() => {
-                      const range = !z && !max ? damageRange(hit, current, rival, m, shown.weather) : null
+                      const range = !z && !max ? damageRange(hit, mover, rival, m, shown.weather) : null
                       return range && <span className="tabular-nums opacity-95" data-testid="damage-range">{range[0] === range[1] ? `${range[0]}%` : `${range[0]}–${range[1]}%`}</span>
                     })()}
                     <EffectTag eff={eff} />
@@ -1787,7 +1804,7 @@ waiting && online?.waitForSwitch
               )
             })}
             {/* A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque. */}
-            {options.map(([kind, label]) => (
+            {(rotatePick != null ? [] : options).map(([kind, label]) => (
               <button
                 key={kind}
                 type="button"
@@ -1804,7 +1821,7 @@ waiting && online?.waitForSwitch
               : null
   )
   const controlsFooter = (
-waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('main')} className="h-full w-full text-sm">Voltar</MenuButton>
+waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onClick={() => { setRotatePick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
           : waiting && menu === 'bag'
             ? <MenuButton testId="bag-close" onClick={() => { setBagPick(null); setMenu('main') }} className="h-full w-full text-sm">Voltar</MenuButton>
           : null
@@ -1925,7 +1942,8 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
               ? t('O adversário vai mandar {0}. Quer trocar de Pokémon?').replace('{0}', `${battle.sides[1].team[battle.shiftNext].name} (${(battle.sides[1].team[battle.shiftNext].types ?? []).map((ty) => t(ty.charAt(0).toUpperCase() + ty.slice(1))).join('/')})`)
               : t('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
             // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
-            : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${current.name} ${t('vai fazer?')}`
+            : waiting && !locked && menu === 'rotate' ? t('Quem gira para a frente?')
+            : waiting && !locked && (menu === 'main' || menu === 'fight') && !battle.needSwitch ? `${t('O que')} ${mover.name} ${t('vai fazer?')}`
             // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
             : !busy && battle.winner != null && (endNote || (persona && battle.winner === 0)) ? `${text}${persona && battle.winner === 0 ? ` 💬 ${persona.name}: “${t(persona.beat)}”` : ''}${endNote ? ` ${endNote}` : ''}` : text} />
         {controlsGrid && <div className="port-controls absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]" data-testid="battle-bottom-grid">{controlsGrid}</div>}

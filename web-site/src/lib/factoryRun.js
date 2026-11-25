@@ -71,6 +71,13 @@ export const ALPHA_CHANCE = 0.05
 export const ALPHA_LEVELS = 5
 export const ALPHA_BOOST = 0.1
 export const ALPHA_IVS = 20
+/**
+ * Batalha de Rotação (como no Black & White): em Unova, a partir do andar ROTATION_FLOOR, alguns treinadores (com 3 ou
+ * mais Pokémon) lutam em Rotação: 3 na roda, girar não gasta o turno. Igual ao app.
+ */
+export const ROTATION_FLOOR = 8
+export const ROTATION_CHANCE = 0.25
+export const ROTATION_REGIONS = ['Unova']
 export const BOSS_EVERY = 10
 /** Nos andares 5, 15, 25...: chance de um chefe sem treinador (Mega, Gigantamax ou lendário). */
 export const WILD_BOSS_CHANCE = 0.4
@@ -2767,6 +2774,11 @@ export function chooseNode(run, data, index, clock = null) {
     if (one && !node.radar && !node.grotto && !node.call && out.floor >= ALPHA_FLOOR && followRoll(out, 2654435761) < ALPHA_CHANCE) {
       const f = out.encounter.foes[0]
       out.encounter = { ...out.encounter, alpha: true, foes: [{ ...f, alpha: true, level: f.level + ALPHA_LEVELS, boost: round3((f.boost ?? 0) + ALPHA_BOOST), minIv: Math.max(f.minIv ?? 0, ALPHA_IVS) }] }
+    }
+    // A Rotação: um treinador de Unova (o sorteio vem da semente e do andar).
+    const enc = out.encounter
+    if (enc.kind === 'trainer' && (enc.foes?.length ?? 0) >= 3 && ROTATION_REGIONS.includes(regionOf(data, out)) && out.floor >= ROTATION_FLOOR && followRoll(out, 1103515245) < ROTATION_CHANCE) {
+      out.encounter = { ...enc, rotation: true }
     }
     countHunt(data, out)
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).

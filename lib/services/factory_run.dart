@@ -156,6 +156,11 @@ class FactoryRun {
   static const alphaFloor = 10, alphaLevels = 5, alphaIvs = 20;
   static const alphaChance = 0.05, alphaBoost = 0.1;
 
+  /// Batalha de Rotação (como no Black & White): em Unova, a partir do andar rotationFloor, alguns treinadores (com 3
+  /// ou mais Pokémon) lutam em Rotação: 3 na roda, girar não gasta o turno. Igual ao site.
+  static const rotationFloor = 8, rotationChance = 0.25;
+  static const rotationRegions = ['Unova'];
+
   /// Nos andares 5, 15, 25...: chance de um chefe sem treinador (Mega, Gigantamax ou lendário).
   static const wildBossChance = 0.4;
 
@@ -2712,6 +2717,15 @@ class FactoryRun {
             {...f, 'alpha': true, 'level': _int(f['level']) + alphaLevels, 'boost': _round3(((f['boost'] as num?) ?? 0).toDouble() + alphaBoost), 'minIv': math.max(_int(f['minIv'] ?? 0), alphaIvs)}
           ],
         };
+      }
+      // A Rotação: um treinador de Unova (o sorteio vem da semente e do andar).
+      final rotEnc = out['encounter'] as Map;
+      if (rotEnc['kind'] == 'trainer' &&
+          ((rotEnc['foes'] as List?)?.length ?? 0) >= 3 &&
+          rotationRegions.contains(regionOf(data, out)) &&
+          _int(out['floor']) >= rotationFloor &&
+          followRoll(out, 1103515245) < rotationChance) {
+        out['encounter'] = {...Map<String, dynamic>.from(rotEnc), 'rotation': true};
       }
       _countHunt(data, out);
       // O capanga do plano da equipe vilã (vencendo, o plano atrasa).

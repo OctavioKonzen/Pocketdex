@@ -471,6 +471,22 @@ test('Battle Factory: counts the critical hits of each of your Pokémon (exp.cri
   } finally {sim.dispose(game.handle);}
 });
 
+test('Rotation battle: rotating is free (same turn attack) and the CPU rotates to a type advantage', () => {
+  const game = sim.create({teams: [[mon('Charizard', ['flamethrower']), mon('Blastoise', ['surf']), mon('Venusaur', ['gigadrain'])], [mon('Golem', ['earthquake']), mon('Starmie', ['surf']), mon('Snorlax', ['bodyslam'])]], seed: [1, 2, 3, 4], rotation: true});
+  try {
+    assert.deepEqual(sim.inspect(game.handle).state.rotation, [[0, 1, 2], [0, 1, 2]]);
+    // O computador: o Golem (Earthquake não pega no Charizard) gira para o Starmie (Surf é super eficaz).
+    const first = sim.choose(game.handle, [move(0), move(0)]);
+    assert.equal(first.state.sides[1].active, 1);
+    assert.ok(first.log.some(l => l.startsWith('|move|p2a: pd1|Surf')));
+    // Você: gira para o Venusaur e ataca no mesmo turno.
+    const next = sim.choose(game.handle, [{...move(0), rotate: 2}, move(0)]);
+    assert.equal(next.state.sides[0].active, 2);
+    assert.ok(next.log.some(l => l.startsWith('|move|p1a: pd2|Giga Drain')));
+    assert.throws(() => sim.choose(game.handle, [{...move(0), rotate: 5}, move(0)]));
+  } finally {sim.dispose(game.handle);}
+});
+
 test('Battle Factory: a failed throw spends the ball and the turn; balls only work on wild battles', () => {
   const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Mewtwo', ['splash'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'poke-ball': 1}, null]});
   try {

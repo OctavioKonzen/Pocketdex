@@ -181,6 +181,8 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
       startBags: FactoryRun.bagsFor(run),
       healPct: true,
       capture: FactoryRun.captureFor(run, data),
+      // A Rotação (Unova): só na única, com 3 ou mais de cada lado de pé. Igual ao site.
+      rotation: !doubles && run['encounter']?['rotation'] == true && a.length >= 3 && b.length >= 3,
       startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data).isNotEmpty
           ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data)
           : (place == 'wind' ? 'wind' : ''),

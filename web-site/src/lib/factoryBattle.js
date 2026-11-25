@@ -52,7 +52,9 @@ export async function factoryBattle(run) {
   }
   // Dupla de treinadores a partir do andar DOUBLE_FLOOR: batalha dupla (2 contra 2).
   const doubles = isDoubleBattle(run)
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar,
+  // A Rotação (Unova): só na única, com 3 ou mais de cada lado de pé.
+  const rotation = !doubles && Boolean(run.encounter.rotation) && a.length >= 3 && b.length >= 3
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar, ...(rotation ? { rotation: true } : {}),
     ...(doubles ? { mode: 'doubles', controllers: [['me', 'me'], ['npc1', 'npc2']] } : {}) })
   battle.members = { mine, theirs }
   battle.scene = scene

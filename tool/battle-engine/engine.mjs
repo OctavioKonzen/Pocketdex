@@ -399,6 +399,8 @@ function snapshot(game) {
     mode: b.gameType,
     bags: game.bags,
     captured: game.captured ?? null,
+    // Batalha de Rotação: os 3 da roda de cada lado (posições no time).
+    ...(game.rotation ? {rotation: game.rotation} : {}),
     capturedBall: game.capturedBall ?? null,
     // Battle Factory: o XP de cada um (nível e XP de agora, quanto ganhou) e quem lutou contra cada adversário.
     // crits: quantos golpes críticos cada um seu acertou (o Farfetch'd de Galar evolui com 3 numa batalha).
@@ -647,6 +649,48 @@ function eventsFor(game, lines) {
   return events;
 }
 
+/** Batalha de Rotação: gira a roda (o da posição index entra, sem gastar o turno). */
+function rotateTo(game, sideIndex, index) {
+  const side = game.battle.sides[sideIndex];
+  if (!game.rotation?.[sideIndex]?.includes(index)) throw new Error('Esse não está na roda');
+  const target = side.pokemon.find(p => originalIndex(p) === index);
+  if (!target || target.fainted) throw new Error('Esse não pode girar');
+  if (target.isActive) return;
+  if (side.active[0]?.volatiles?.partiallytrapped || side.active[0]?.trapped) throw new Error('Preso: não dá para girar');
+  game.battle.add('message', `${sideIndex === 0 ? 'Você' : side.name} girou a roda!`);
+  game.battle.actions.switchIn(target, 0);
+  game.rotated = [...(game.rotated ?? []), sideIndex];
+}
+/** Quanto o golpe ajuda contra foe: a eficácia (imune: bem ruim) e o bônus do mesmo tipo. */
+function moveScore(game, p, slot, foe) {
+  const move = game.battle.dex.moves.get(slot.id);
+  if (!move.basePower || slot.pp <= 0 || slot.disabled) return 0;
+  return game.battle.dex.getEffectiveness(move.type, foe) + (game.battle.dex.getImmunity(move.type, foe) ? 0 : -9) + (p.hasType(move.type) ? 0.5 : 0);
+}
+/** O melhor golpe de quem está em campo (posição na lista de golpes). */
+function bestMove(game, sideIndex) {
+  const p = game.battle.sides[sideIndex].active[0], foe = game.battle.sides[1 - sideIndex].active[0];
+  let at = 0, top = -Infinity;
+  p.moveSlots.forEach((slot, k) => { const v = moveScore(game, p, slot, foe); if (v > top) { top = v; at = k; } });
+  return at;
+}
+/** O computador na Rotação: gira para o da roda com o golpe mais eficaz contra quem está do outro lado (se for melhor). */
+function rotationPick(game, sideIndex) {
+  const side = game.battle.sides[sideIndex], foe = game.battle.sides[1 - sideIndex].active[0];
+  const now = side.active[0];
+  if (!foe || !now || now.volatiles?.partiallytrapped || now.trapped) return null;
+  const best = (p) => Math.max(0, ...p.moveSlots.map((slot) => moveScore(game, p, slot, foe)));
+  const here = best(now);
+  let pick = null, top = here + 1;
+  for (const index of game.rotation[sideIndex]) {
+    const p = side.pokemon.find(x => originalIndex(x) === index);
+    if (!p || p.fainted || p.isActive) continue;
+    const v = best(p);
+    if (v >= top) { top = v; pick = index; }
+  }
+  return pick;
+}
+
 function command(game, sideIndex, action, slot = 0) {
   const side = game.battle.sides[sideIndex];
   if (side.activeRequest?.wait) {
@@ -787,7 +831,7 @@ export const PocketDexSim = {
     // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
     const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
     const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
-    const game = {battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
+    const game = {rotation: input.rotation && mode === 'singles' ? input.teams.map((team) => team.slice(0, 3).map((_, i) => i)) : null, battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
     // O clima do lugar (Battle Factory: sol no deserto, chuva no mar, neve na caverna de gelo...): já começa assim e fica até
@@ -829,6 +873,19 @@ export const PocketDexSim = {
       return result(game);
     }
     if (actions.length !== game.teams.length) throw new Error('Faltam ações dos jogadores');
+    // Batalha de Rotação: girar a roda antes de atacar (não gasta o turno); o computador gira sozinho quando um da
+    // roda tem vantagem de tipo, e ataca com o golpe que o motor recomenda para ele.
+    if (game.rotation) {
+      actions = actions.map((action, side) => {
+        if (!action || Array.isArray(action) || action.kind !== 'move') return action;
+        if (action.rotate != null) { rotateTo(game, side, action.rotate); return {...action, rotate: undefined}; }
+        if (side === 1 && action.cpu !== false) {
+          const to = rotationPick(game, 1);
+          if (to != null) { rotateTo(game, 1, to); return {kind: 'move', index: bestMove(game, 1), gimmick: ''}; }
+        }
+        return action;
+      });
+    }
     const commands = actions.map((action, side) => {
       const choices = Array.isArray(action) ? action : [action];
       if (game.battle.sides[side].activeRequest?.wait) return command(game, side, choices[0]);

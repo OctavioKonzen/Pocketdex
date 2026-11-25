@@ -2188,7 +2188,14 @@ function round14Trace(F) {
     const mon = F.capturedMon(won)
     return [true, foes, mon.alpha ?? null, mon.ivs, F.memberOf(won, mon, ['tackle']).set.boost, F.foeMember(next.encounter.foes[0], ['tackle']).set.alpha ?? null]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha }
+  // A Batalha de Rotação: treinadores de Unova com 3+ Pokémon, a partir do andar ROTATION_FLOOR (o mesmo no app).
+  const unova = data.bosses.findIndex((b) => b.game === 'Black/White')
+  const rotation = Array.from({ length: 60 }, (_, k) => {
+    const r = { ...route, seed: 300 + k, floor: 8 + (k % 10), boss: { region: k < 50 ? unova : 0, step: 0 }, route: { floor: 8 + (k % 10), biome: 'grass', options: [{ kind: 'trainer' }] } }
+    const next = F.chooseNode(r, data, 0)
+    return [next.encounter.kind, next.encounter.foes.length, next.encounter.rotation ?? null]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

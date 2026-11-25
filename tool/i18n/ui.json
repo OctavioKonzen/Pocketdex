@@ -15472,5 +15472,29 @@
   "fr": "Touchez un badge pour voir le Champion et le polir.",
   "es": "Toca una medalla para ver al Líder y pulirla.",
   "pt": "Toque numa insígnia para ver o líder e polir ela."
+ },
+ "GIRAR": {
+  "en": "ROTATE",
+  "fr": "ROTATION",
+  "es": "ROTAR",
+  "pt": "GIRAR"
+ },
+ "Quem gira para a frente?": {
+  "en": "Who rotates to the front?",
+  "fr": "Qui passe devant ?",
+  "es": "¿Quién rota al frente?",
+  "pt": "Quem gira para a frente?"
+ },
+ "🔄 GIRAR": {
+  "en": "🔄 ROTATE",
+  "fr": "🔄 ROTATION",
+  "es": "🔄 ROTAR",
+  "pt": "🔄 GIRAR"
+ },
+ "Você girou a roda!": {
+  "en": "You rotated the wheel!",
+  "fr": "Vous avez fait tourner la roue !",
+  "es": "¡Giraste la rueda!",
+  "pt": "Você girou a roda!"
  }
 }

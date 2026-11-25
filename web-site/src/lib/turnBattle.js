@@ -134,6 +134,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     healPct: Boolean(options.healPct),
     // Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
     capture: options.capture ?? null,
+    // Batalha de Rotação (como no Black & White): 3 na roda; girar não gasta o turno.
+    rotation: Boolean(options.rotation),
     captured: null,
     // Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...).
     startWeather: options.weather || '',
@@ -898,7 +900,7 @@ function turnOf(battle, action, hit) {
   if (battle.simulator) {
     battle.lastHit = hit
     const plan = cpuPlan(battle, hit)
-    const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick}
+    const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick, ...(action.rotate != null ? {rotate: action.rotate} : {})}
     const theirs = battle.simulator.state.sides[1].wait ? {kind: 'wait'} : plan.kind === 'item' ? {kind: 'item', item: plan.item, index: plan.target} : plan.kind === 'switch' ? plan : {kind: 'move', index: plan.index, gimmick: cpuGimmick(battle, plan.index)}
     let events
     try {

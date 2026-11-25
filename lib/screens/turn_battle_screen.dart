@@ -1414,7 +1414,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
 
   late String _text = widget.wild ? tr(widget.battle.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
-  String _menu = 'main'; // main | fight | party | bag
+  String _menu = 'main'; // main | fight | party | bag | rotate
+
+  /// Batalha de Rotação: quem vai girar para a frente (os golpes dele aparecem e ele ataca no mesmo turno).
+  int? _rotatePick;
   String? _item; // item da Bolsa escolhido (falta escolher em quem)
   int? _summary; // os dados de quem (na tela do time)
 
@@ -2386,13 +2389,14 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
   void _fight(int i) {
     if (_busy || widget.online?.locked == true || _b.needSwitch || _b.winner != null) return;
     final before = [_b.active(0).id, _b.active(1).id];
-    final gimmick = _selectedGimmick;
-    setState(() { _gimmickPick = null; _gimmickMon = null; });
+    final gimmick = _rotatePick != null ? 'none' : _selectedGimmick;
+    final rotate = _rotatePick;
+    setState(() { _gimmickPick = null; _gimmickMon = null; _rotatePick = null; });
     if (widget.online != null) {
       widget.online!.onAction({'kind': 'move', 'index': i, 'gimmick': gimmick});
       return;
     }
-    _act(() => _b.playTurn(widget.hit, move: i, gimmick: gimmick), before);
+    _act(() => _b.playTurn(widget.hit, move: i, gimmick: gimmick, rotate: rotate), before);
   }
   void _choose(int i) {
     if (_busy || widget.online?.locked == true || _b.winner != null) return;
@@ -2456,6 +2460,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     final me = _b.teams[0][_active[0]];
     final foe = _b.teams[1][_active[1]];
     final current = _b.active(0);
+    // Na Rotação, quem vai girar para a frente mostra os golpes dele; e os outros da roda que podem girar (de pé).
+    final mover = _rotatePick != null && _rotatePick! < _b.teams[0].length ? _b.teams[0][_rotatePick!] : current;
+    final rotateOptions = _b.rotation && _b.rotationTrio != null
+        ? [for (final i in _b.rotationTrio![0]) if (i != _b.activeIndex[0] && i < _b.teams[0].length && _b.teams[0][i].hp > 0) i]
+        : const <int>[];
     // O alarme de vida baixa (como nos jogos): toca enquanto o seu está no vermelho, até a batalha acabar.
     final lowHp = _b.winner == null && me.maxHp > 0 && _hp[0][_active[0]] > 0 && _hp[0][_active[0]] / me.maxHp <= 0.2;
     if (lowHp != _lowHpOn) {
@@ -2621,8 +2630,20 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                     _summary = null;
                                     _partyPick = null;
                                   })),
-                          _MenuButton('FUGIR', _run),
+                          // Na Rotação (contra treinador), no lugar de FUGIR: girar a roda. Igual ao site.
+                          if (_b.rotation)
+                            _MenuButton(key: const ValueKey('battle-rotate'), '🔄 ${tr('GIRAR')}', rotateOptions.isEmpty ? null : () => setState(() => _menu = 'rotate'))
+                          else
+                            _MenuButton('FUGIR', _run),
                         ])
+                      : _menu == 'rotate'
+                          ? _menuGrid([
+                              for (final i in rotateOptions)
+                                _MenuButton(key: ValueKey('rotate-$i'), '🔄 ${_b.teams[0][i].name}', () => setState(() {
+                                      _rotatePick = i;
+                                      _menu = 'fight';
+                                    })),
+                            ])
                       : _menu == 'bag' && bagPicked != null
                           // Tocou num item: USAR (ou JOGAR) e CANCELAR nos botões fixos.
                           ? _menuGrid([
@@ -2636,7 +2657,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                           // A mecânica (Mega, Z, Dynamax, Tera): o botão redondo no meio dos 4 golpes; ligado, ativa no ataque.
                           ? Stack(alignment: Alignment.center, children: [
                   moveGrid(context, [
-                    for (final (i, mv) in current.moves.indexed)
+                    for (final (i, mv) in mover.moves.indexed)
                       _MoveButton(
                         inkKey: ValueKey('battle-single-move-$i'),
                         color: getColorForType(mv.type),
@@ -2644,9 +2665,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                         onTap: mv.pp > 0 && !mv.disabled ? () => _fight(i) : null,
                         onLongPress: () => showMoveInfo(context, mv,
                             foe: rival.name,
-                            damage: TurnBattle.damageRange(widget.hit, current, rival, mv, _weather),
-                            crit: TurnBattle.critChance(current, mv),
-                            eff: TurnBattle.moveEffect(widget.hit, current, rival, mv)),
+                            damage: TurnBattle.damageRange(widget.hit, mover, rival, mv, _weather),
+                            crit: TurnBattle.critChance(mover, mv),
+                            eff: TurnBattle.moveEffect(widget.hit, mover, rival, mv)),
                         // Com Z-Move / Dinamax: o nome do golpe especial (o poder dele no lugar do PP).
                         label: mv.category == 'status'
                             ? mv.name
@@ -2663,7 +2684,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                       style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   // A chance de crítico (dano 1,5×).
                                   if (!maxed && !(selected == 'z' && _b.canGimmick(0, 'z', i)))
-                                    if (TurnBattle.critChance(current, mv) case final c?)
+                                    if (TurnBattle.critChance(mover, mv) case final c?)
                                       Padding(
                                         padding: const EdgeInsets.only(left: 6),
                                         child: m.Text('💥${c == c.roundToDouble() ? c.toInt() : c}%',
@@ -2671,25 +2692,28 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                       ),
                                   // Dano estimado (em % da vida do adversário).
                                   if (!maxed && !(selected == 'z' && _b.canGimmick(0, 'z', i)))
-                                    if (TurnBattle.damageRange(widget.hit, current, rival, mv, _weather) case final r?)
+                                    if (TurnBattle.damageRange(widget.hit, mover, rival, mv, _weather) case final r?)
                                       Padding(
                                         padding: const EdgeInsets.only(left: 6),
                                         child: m.Text(r.low == r.high ? '${r.low}%' : '${r.low}–${r.high}%',
                                             key: ValueKey('damage-range-$i'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                                       ),
                         ],
-                        effect: _EffectTag(TurnBattle.moveEffect(widget.hit, current, rival, mv)),
+                        effect: _EffectTag(TurnBattle.moveEffect(widget.hit, mover, rival, mv)),
                       ),
                   ]),
-                  for (final option in _gimmickOptions) _GimmickButton(key: ValueKey(option.$1), kind: option.$1, label: tr(option.$2), on: selected == option.$1,
+                  for (final option in _rotatePick != null ? const <(String, String)>[] : _gimmickOptions) _GimmickButton(key: ValueKey(option.$1), kind: option.$1, label: tr(option.$2), on: selected == option.$1,
                       onTap: () => setState(() {
                             _gimmickPick = selected == option.$1 ? null : option.$1;
                             _gimmickMon = current.id;
                           })),
                 ])
                           : null;
-    final Widget? controlsFooter = waiting && _menu == 'fight'
-              ? _MenuButton('Voltar', () => setState(() => _menu = 'main'))
+    final Widget? controlsFooter = waiting && (_menu == 'fight' || _menu == 'rotate')
+              ? _MenuButton('Voltar', () => setState(() {
+                    _menu = 'main';
+                    _rotatePick = null;
+                  }))
               : waiting && _menu == 'bag'
                   ? _MenuButton(key: const ValueKey('bag-close'), 'Voltar', () => setState(() {
                         _menu = 'main';
@@ -2966,8 +2990,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                       ? tr('O adversário vai mandar {0}. Quer trocar de Pokémon?').replaceAll('{0}', '${_b.teams[1][_b.shiftNext!].name} (${_b.teams[1][_b.shiftNext!].types.map((t) => tr('${t[0].toUpperCase()}${t.substring(1)}')).join('/')})')
                                       : tr('O adversário vai mandar outro Pokémon. Quer trocar de Pokémon?'))
                               // Hora de escolher (como no jogo e na dupla): "O que Charizard vai fazer?".
+                              : waiting && _menu == 'rotate'
+                                  ? tr('Quem gira para a frente?')
                               : waiting && (_menu == 'main' || _menu == 'fight') && !_b.needSwitch
-                                  ? '${tr('O que')} ${current.name} ${tr('vai fazer?')}'
+                                  ? '${tr('O que')} ${(_rotatePick != null && _rotatePick! < _b.teams[0].length ? _b.teams[0][_rotatePick!] : current).name} ${tr('vai fazer?')}'
                                   // No fim, o recado do resultado também vem na caixa (em partes, se precisar).
                                   : !_busy && _b.winner != null && (widget.endNote.isNotEmpty || (_persona != null && _b.winner == 0))
                                       ? '$_text${_persona != null && _b.winner == 0 ? ' 💬 ${_persona.name}: “${tr(_persona.beat)}”' : ''}${widget.endNote.isNotEmpty ? ' ${widget.endNote}' : ''}'

@@ -773,6 +773,17 @@ void main() {
         }()
     ];
     expect(norm(alpha), expected['alpha']);
+    // A Batalha de Rotação (igual ao site).
+    final unova = data.bosses.indexWhere((b) => b['game'] == 'Black/White');
+    final rotation = [
+      for (var k = 0; k < 60; k++)
+        () {
+          final r = {...rt, 'seed': 300 + k, 'floor': 8 + (k % 10), 'boss': {'region': k < 50 ? unova : 0, 'step': 0}, 'route': {'floor': 8 + (k % 10), 'biome': 'grass', 'options': [{'kind': 'trainer'}]}};
+          final enc = FactoryRun.chooseNode(r, data, 0)['encounter'] as Map;
+          return [enc['kind'], (enc['foes'] as List).length, enc['rotation']];
+        }()
+    ];
+    expect(norm(rotation), expected['rotation']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

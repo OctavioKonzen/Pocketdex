@@ -414,7 +414,7 @@ BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).fir
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
-      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = '', this.startExp})
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = '', this.startExp, this.rotation = false})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -438,6 +438,7 @@ class TurnBattle {
         if (startBags != null) 'bags': startBags,
         if (healPct) 'healPct': true,
         if (capture != null) 'capture': capture,
+        if (rotation) 'rotation': true,
         if (startWeather.isNotEmpty) 'weather': startWeather,
         if (startField.isNotEmpty) 'field': startField,
         if (startExp != null) 'exp': startExp,
@@ -482,6 +483,12 @@ class TurnBattle {
 
   /// Battle Factory, selvagem: dá para jogar Poké Balls ({rates, dusk}; o motor faz a conta). captured: pegou.
   final Map<String, dynamic>? capture;
+
+  /// Batalha de Rotação (como no Black & White): 3 na roda; girar não gasta o turno. Igual ao site.
+  final bool rotation;
+
+  /// Os 3 da roda de cada lado (posições no time), do motor.
+  List<List<int>>? rotationTrio;
   int? captured;
   final List<List<String>>? controllers;
   Map<String, dynamic>? get simulatorState => _simState;
@@ -538,6 +545,7 @@ class TurnBattle {
     turn = state['turn'] as int;
     winner = state['winner'] as int?;
     captured = state['captured'] as int?;
+    if (state['rotation'] is List) rotationTrio = [for (final side in state['rotation'] as List) [for (final i in side as List) (i as num).toInt()]];
     capturedBall = state['capturedBall'] as String?;
     // Battle Factory: o XP de agora (o motor dá na hora) e quem lutou contra cada adversário.
     if (state['exp'] != null) {
@@ -672,7 +680,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '', startExp = null;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '', startExp = null, rotation = false;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);
@@ -1576,21 +1584,21 @@ class TurnBattle {
     if (!list.contains(activeIndex[0])) list.add(activeIndex[0]);
   }
 
-  List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) => _logTurn(
+  List<BattleEvent> playTurn(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target, int? rotate}) => _logTurn(
       switchTo != null
           ? {'switch': switchTo}
           : item != null
               ? {'item': item, 'target': target}
               : {'move': move, 'gimmick': gimmick},
-      _turnOf(hit, move: move, gimmick: gimmick, switchTo: switchTo, item: item, target: target));
+      _turnOf(hit, move: move, gimmick: gimmick, switchTo: switchTo, item: item, target: target, rotate: rotate));
 
-  List<BattleEvent> _turnOf(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target}) {
+  List<BattleEvent> _turnOf(BattleHit hit, {int? move, String? gimmick, int? switchTo, String? item, int? target, int? rotate}) {
     if (_simHandle != null) {
       _lastHit = hit;
       final plan = cpuPlan(hit);
       final mine = switchTo != null ? {'kind': 'switch', 'index': switchTo}
         : item != null ? {'kind': 'item', 'item': item, 'index': target ?? activeIndex[0]}
-        : {'kind': 'move', 'index': move, 'gimmick': gimmick};
+        : {'kind': 'move', 'index': move, 'gimmick': gimmick, if (rotate != null) 'rotate': rotate};
       final theirs = _simState!['sides'][1]['wait'] == true ? <String, dynamic>{'kind': 'wait'}
         : plan.kind == 'item' ? {'kind': 'item', 'item': plan.item, 'index': plan.target}
         : plan.kind == 'switch' ? {'kind': 'switch', 'index': plan.index}
