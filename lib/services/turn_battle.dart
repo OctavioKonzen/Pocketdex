@@ -414,7 +414,7 @@ BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).fir
 
 class TurnBattle {
   TurnBattle(List<BattleMon> mine, List<BattleMon> theirs, this.random,
-      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = '', this.startExp, this.rotation = false})
+      {this.mode = 'singles', this.controllers, this.rules = const [], this.startBags, this.healPct = false, this.capture, this.startWeather = '', this.startField = '', this.startExp, this.rotation = false, this.raid})
       : teams = [mine, theirs] {
     for (final mon in [...mine, ...theirs]) {
       mon
@@ -439,6 +439,7 @@ class TurnBattle {
         if (healPct) 'healPct': true,
         if (capture != null) 'capture': capture,
         if (rotation) 'rotation': true,
+        if (raid != null) 'raid': raid,
         if (startWeather.isNotEmpty) 'weather': startWeather,
         if (startField.isNotEmpty) 'field': startField,
         if (startExp != null) 'exp': startExp,
@@ -486,6 +487,9 @@ class TurnBattle {
 
   /// Batalha de Rotação (como no Black & White): 3 na roda; girar não gasta o turno. Igual ao site.
   final bool rotation;
+
+  /// O reide (Dynamax ou Tera): os aliados e o escudo do chefe ({allies, shield}). Igual ao site.
+  final Map<String, dynamic>? raid;
 
   /// Os 3 da roda de cada lado (posições no time), do motor.
   List<List<int>>? rotationTrio;
@@ -680,7 +684,7 @@ class TurnBattle {
   }
 
   // Visão da partida sem restaurar HP, formas ou status.
-  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '', startExp = null, rotation = false;
+  TurnBattle._view(this.teams, this.random) : mode = 'singles', controllers = null, rules = const [], startBags = null, healPct = false, capture = null, startWeather = '', startField = '', startExp = null, rotation = false, raid = null;
   TurnBattle viewFor(int side) {
     final order = [side, 1 - side];
     final view = TurnBattle._view([for (final s in order) teams[s]], random);

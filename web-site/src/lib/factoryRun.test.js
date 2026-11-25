@@ -2195,7 +2195,18 @@ function round14Trace(F) {
     const next = F.chooseNode(r, data, 0)
     return [next.encounter.kind, next.encounter.foes.length, next.encounter.rotation ?? null]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation }
+  // Os reides (Galar: Dynamax; Paldea: Tera): o chefe, a vitória, as Tera Shards e o Tera Type (o mesmo no app).
+  const galar = data.bosses.findIndex((b) => b.game === 'Sword/Shield'), paldea = data.bosses.findIndex((b) => b.game === 'Scarlet/Violet')
+  const raid = Array.from({ length: 6 }, (_, k) => {
+    const node = { kind: 'wildboss', raid: k % 2 ? 'tera' : 'max', stars: 1 + (k % 5) }
+    const r = { ...route, seed: 400 + k, floor: 20 + k, boss: { region: k % 2 ? paldea : galar, step: 0 }, route: { floor: 20 + k, biome: 'grass', options: [node] } }
+    const met = F.chooseNode(r, data, 0)
+    const won = F.winFloor(met, data, { hp: [0.5] })
+    const mon = F.capturedMon(won)
+    const tera = won.teraShards ? F.setTera({ ...won, pending: null }, 0, Object.keys(won.teraShards)[0]) : null
+    return [met.encounter.raid ?? null, met.encounter.stars ?? null, met.encounter.foes.map((f) => [f.id, f.level, f.gimmick ?? null, f.tera ?? null, f.raidHp ?? null]), F.captureFor(met, data), won.pending.raid ?? null, won.teraShards ?? null, mon ? [mon.id, mon.tera ?? null] : null, tera ? [tera.team[0].tera, tera.teraShards] : null, met.raidLeg ?? null]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

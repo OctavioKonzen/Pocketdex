@@ -784,6 +784,30 @@ void main() {
         }()
     ];
     expect(norm(rotation), expected['rotation']);
+    // Os reides (igual ao site).
+    final galar = data.bosses.indexWhere((b) => b['game'] == 'Sword/Shield'), paldea = data.bosses.indexWhere((b) => b['game'] == 'Scarlet/Violet');
+    final raid = [
+      for (var k = 0; k < 6; k++)
+        () {
+          final node = {'kind': 'wildboss', 'raid': k.isOdd ? 'tera' : 'max', 'stars': 1 + (k % 5)};
+          final r = {...rt, 'seed': 400 + k, 'floor': 20 + k, 'boss': {'region': k.isOdd ? paldea : galar, 'step': 0}, 'route': {'floor': 20 + k, 'biome': 'grass', 'options': [node]}};
+          final met = FactoryRun.chooseNode(r, data, 0);
+          final enc = met['encounter'] as Map;
+          final won = FactoryRun.winFloor(met, data, hp: [0.5]);
+          final mon = FactoryRun.capturedMon(won);
+          final shards = won['teraShards'] as Map?;
+          final tera = shards != null ? FactoryRun.setTera({...won, 'pending': null}, 0, '${shards.keys.first}') : null;
+          return [
+            enc['raid'], enc['stars'],
+            [for (final f in enc['foes'] as List) [f['id'], f['level'], f['gimmick'], f['tera'], f['raidHp']]],
+            FactoryRun.captureFor(met, data), FactoryRun.pendingOf(won)!['raid'], won['teraShards'],
+            mon == null ? null : [mon['id'], mon['tera']],
+            tera == null ? null : [FactoryRun.teamOf(tera).first['tera'], tera['teraShards']],
+            met['raidLeg'],
+          ];
+        }()
+    ];
+    expect(norm(raid), expected['raid']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

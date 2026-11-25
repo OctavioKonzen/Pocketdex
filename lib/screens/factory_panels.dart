@@ -183,6 +183,10 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
       capture: FactoryRun.captureFor(run, data),
       // A Rotação (Unova): só na única, com 3 ou mais de cada lado de pé. Igual ao site.
       rotation: !doubles && run['encounter']?['rotation'] == true && a.length >= 3 && b.length >= 3,
+      // O reide (Dynamax ou Tera): os aliados e o escudo do chefe. Igual ao site.
+      raid: run['encounter']?['raid'] != null
+          ? {'allies': FactoryRun.raidAllyNames['${run['encounter']['raid']}'], 'shield': 2 + _int(run['encounter']['stars'] ?? 1)}
+          : null,
       startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data).isNotEmpty
           ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data)
           : (place == 'wind' ? 'wind' : ''),
@@ -1009,6 +1013,30 @@ class _BagAndItemsState extends State<_BagAndItems> {
           if (canTeach) _bwButton('📀 ${tr('ENSINAR GOLPE')}', const Color(0xFF7C3AED), () => _teach(i), key: const ValueKey('team-teach')),
           // Pokémon-Amie (em teste): só com a opção ligada nas Configurações. Igual ao site.
           if (AppSettings.instance.amieTest) _bwButton('💞 Amie', const Color(0xFFDB2777), () => setState(() => _amie = !_amie), key: const ValueKey('team-amie')),
+          // O Tera Type com as Tera Shards (do Reide Tera): teraShardCost do tipo trocam o dele. Igual ao site.
+          if (((run['teraShards'] as Map?) ?? const {}).entries.any((e) => _int(e.value) >= FactoryRun.teraShardCost && e.key != mon['tera']))
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: DropdownButton<String>(
+                key: const ValueKey('team-tera'),
+                underline: const SizedBox(),
+                isDense: true,
+                dropdownColor: Colors.white,
+                style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900),
+                value: '',
+                items: [
+                  DropdownMenuItem(value: '', child: Text('💎 ${tr('Tera')}: ${mon['tera'] != null ? tr(_typePt['${mon['tera']}'] ?? '${mon['tera']}') : '—'}')),
+                  for (final e in ((run['teraShards'] as Map?) ?? const {}).entries)
+                    if (_int(e.value) >= FactoryRun.teraShardCost && e.key != mon['tera'])
+                      DropdownMenuItem(value: '${e.key}', child: Text('💎 ${tr(_typePt['${e.key}'] ?? '${e.key}')} (${e.value})')),
+                ],
+                onChanged: (type) {
+                  final next = type == null || type.isEmpty ? null : FactoryRun.setTera(run, i, type);
+                  if (next != null) widget.onSave(next);
+                },
+              ),
+            ),
           // A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao site.
           if (FactoryRun.itemFormsOf(widget.data, mon).isNotEmpty)
             Container(
@@ -2391,6 +2419,9 @@ const _nodeInfo = <String, (String, String, String)>{
   'mythic': ('✨', 'Pokémon mítico', 'Um Pokémon mítico, raríssimo. Dá para capturar.'),
   'boss': ('👑', 'Chefe', ''),
   'bike': ('🚲', 'Pedalar', 'De bicicleta: passa o andar sem batalha (e sem prêmio).'),
+  // Os reides (Galar e Paldea): o chefe gigante com 3 aliados. Igual ao site.
+  'raidmax': ('🔴', 'Reide Dynamax', 'Uma toca com um Pokémon Gigantamax. 3 aliados lutam junto; vencendo, ele é seu.'),
+  'raidtera': ('💎', 'Reide Tera', 'Um cristal com um Pokémon Terastalizado. 3 aliados lutam junto; vencendo, ele é seu e dá Tera Shards.'),
   'grotto': ('🕳️', 'Hidden Grotto', 'Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota).'),
   'clue': ('🔍', 'Pista do lendário', 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.'),
   'rematch': ('🏆', 'Revanche do Campeão', 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.'),
@@ -4729,6 +4760,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
+        // O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao site.
+        if (p['raid'] is Map)
+          Text(
+              '${p['raid']['kind'] == 'tera' ? '💎' : '🔴'} ${tr(p['raid']['kind'] == 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} ${'★' * _int(p['raid']['stars'] ?? 1)}'
+              '${p['raid']['shards'] != null ? ' · +${p['raid']['shards']} Tera Shard (${tr(_typePt['${p['raid']['type']}'] ?? '${p['raid']['type']}')})' : ''}',
+              key: const ValueKey('factory-raid'),
+              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF67E8F9))),
         if (badge != null) ...[
           Text('🏅 ${tr('Você recebeu a insígnia de {0}!').replaceAll('{0}', '${badge['name']}')}',
               key: const ValueKey('factory-badge'), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),
@@ -6361,7 +6399,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Builder(builder: (context) {
                 final node = options[k];
                 if (node['kind'] == 'dungeon') return placeButton(k);
-                final info = node['area'] == true
+                final raidInfo = node['raid'] == null ? null : _nodeInfo['raid${node['raid']}'];
+                final info = raidInfo != null
+                    ? (raidInfo.$1, '${raidInfo.$2} ${'★' * _int(node['stars'] ?? 1)}', raidInfo.$3)
+                    : node['area'] == true
                     ? _nodeInfo['area']!
                     : node['mythic'] == true
                     ? _nodeInfo['mythic']!
@@ -6386,7 +6427,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       key: const ValueKey('town-puzzle'));
                 }
                 return btn(
-                  kind: node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
+                  kind: node['raid'] != null ? 'raid${node['raid']}' : node['area'] == true ? 'area' : node['mythic'] == true ? 'mythic' : node['meteor'] == true ? 'meteor' : '${node['kind']}',
                   '${options.length == 1 && foeName == null && node['kind'] != 'dboss' ? '${tr('SEGUIR')}: ' : ''}${node['biome'] == 'underwater' && route['biome'] != 'underwater' ? '🤿 ${tr('MERGULHAR')}: ' : ''}${town && isBoss ? '🏟️' : b?.$2 ?? info.$1} ${foeName ?? tr(info.$2).replaceAll('{0}', node['blocker'] != null ? _name(node['legend']) : '')}${node['quest'] == true ? ' · ${_name(node['legend'])}' : node['roam'] == true || placeLegend ? ' · ${node['forceShiny'] == true ? '✨ ' : ''}${_name(node['legend'])}' : ''}${b != null && node['quest'] != true ? ' · ${tr(b.$1)}' : ''}${node['hidden'] != null ? ' 📡' : ''}',
                   widget.busy || (FactoryRun.isBattleNode(node) && down) || noSurf ? null : () => pick(k),
                   sub: noSurf
@@ -8781,6 +8822,7 @@ const _cardColors = {
   'safari': (Color(0xFF84CC16), Color(0xFF4D7C0F)), 'meteor': (Color(0xFFF59E0B), Color(0xFFB45309)), 'mythic': (Color(0xFFF0ABFC), Color(0xFFA21CAF)),
   'bike': (Color(0xFF14B8A6), Color(0xFF0F766E)), 'clue': (Color(0xFFA78BFA), Color(0xFF6D28D9)), 'grotto': (Color(0xFF78716C), Color(0xFF44403C)), 'rematch': (Color(0xFFFACC15), Color(0xFFA16207)), 'leave': (Color(0xFF64748B), Color(0xFF334155)),
   'dungeon': (Color(0xFF78716C), Color(0xFF44403C)),
+  'raidmax': (Color(0xFFDC2626), Color(0xFF7F1D1D)), 'raidtera': (Color(0xFF06B6D4), Color(0xFF155E75)),
 };
 
 /// Um caminho como carta: o ícone grande, o nome e o que tem nele; virada (❔) quando, sem o Mapa, não dá para saber.

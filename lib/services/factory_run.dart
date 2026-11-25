@@ -159,6 +159,39 @@ class FactoryRun {
   /// Batalha de Rotação (como no Black & White): em Unova, a partir do andar rotationFloor, alguns treinadores (com 3
   /// ou mais Pokémon) lutam em Rotação: 3 na roda, girar não gasta o turno. Igual ao site.
   static const rotationFloor = 8, rotationChance = 0.25;
+
+  /// Os reides (como em Sword/Shield e Scarlet/Violet): em Galar, uma toca de Reide Dynamax (o chefe Gigantamax); em
+  /// Paldea, um cristal de Reide Tera (o chefe Terastalizado). Um caminho a mais na rota (uma vez por rota), com 3
+  /// aliados que atacam junto e um escudo de energia no chefe. Vencendo, ele é seu (sem jogar bola) e o Reide Tera dá
+  /// Tera Shards do tipo dele (teraShardCost trocam o Tera Type de um Pokémon). Igual ao site.
+  static const raidRegions = {'Galar': 'max', 'Armor': 'max', 'Crown': 'max', 'Paldea': 'tera', 'Kitakami': 'tera', 'Blueberry': 'tera'};
+  static const raidFloor = 6, teraShardCost = 3;
+  static const raidChance = 0.35, raidHp = 1.5;
+
+  /// Os 3 aliados do reide (os amigos de cada jogo).
+  static const raidAllyNames = {'max': ['Hop', 'Leon', 'Sonia'], 'tera': ['Nemona', 'Arven', 'Penny']};
+
+  /// As estrelas do reide (1 a 5): mais fundo na corrida, mais forte.
+  static int raidStars(Json run) => math.max(1, math.min(5, 1 + _int(run['floor']) ~/ 12));
+
+  /// Quantas Tera Shards o Reide Tera dá (as estrelas + 1).
+  static int raidShards(Json run) {
+    final enc = run['encounter'] as Map?;
+    final foes = (enc?['foes'] as List?) ?? const [];
+    return enc?['raid'] == 'tera' && foes.isNotEmpty && (foes.first as Map)['tera'] != null ? _int(enc!['stars'] ?? 1) + 1 : 0;
+  }
+
+  /// O chefe do reide como prêmio: sem o HP a mais nem a mecânica (ele vem com os IVs fortes).
+  static Json _raidPrize(Map f) => {for (final e in f.entries) if (!const {'raidHp', 'gimmick', 'title', 'boost', 'item'}.contains(e.key)) '${e.key}': e.value};
+
+  /// Troca o Tera Type do Pokémon index gastando teraShardCost Tera Shards do tipo (null se não dá). Igual ao site.
+  static Json? setTera(Json run, int index, String type) {
+    final team = teamOf(run);
+    final shards = Map<String, dynamic>.from((run['teraShards'] as Map?) ?? const {});
+    if (index < 0 || index >= team.length || !teraTypes.contains(type) || team[index]['tera'] == type || _int(shards[type] ?? 0) < teraShardCost) return null;
+    shards[type] = _int(shards[type]) - teraShardCost;
+    return {...run, 'teraShards': shards, 'team': [for (var i = 0; i < team.length; i++) i == index ? {...team[i], 'tera': type} : team[i]]};
+  }
   static const rotationRegions = ['Unova'];
 
   /// Nos andares 5, 15, 25...: chance de um chefe sem treinador (Mega, Gigantamax ou lendário).
@@ -2294,6 +2327,11 @@ class FactoryRun {
       if (call != null) {
         options.add(call['kind'] == 'rematch' ? {'kind': 'ace', 'call': 'rematch', 'caller': call['name']} : {'kind': 'wild', 'call': 'rare', 'caller': call['name']});
       }
+      // O reide (Galar e Paldea): um caminho a mais na rota, na última bifurcação (uma vez por rota).
+      final raid = raidRegions[regionOf(data, run)];
+      if (raid != null && !inside && pos == forks[2] && _int(run['floor']) >= raidFloor && run['raidLeg'] != legOf(run) && followRoll(run, 2246822519) < raidChance) {
+        options.add({'kind': 'wildboss', 'raid': raid, 'stars': raidStars(run)});
+      }
       // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
       if (!inside && pos == forks[1] && floor >= questFloor && grottoBiomes.contains(biome) && run['grottoLeg'] != legOf(run) && followRoll(run, 1103515245) < grottoChance) {
         options.add({'kind': 'grotto'});
@@ -2645,6 +2683,8 @@ class FactoryRun {
       return out;
     }
     // O Hidden Grotto: um Pokémon com a habilidade oculta ou um item raro (sem batalha).
+    // O reide: uma vez por rota.
+    if (node['raid'] != null) out['raidLeg'] = legOf(run);
     if (node['kind'] == 'grotto') {
       out['grottoLeg'] = legOf(run);
       if (followRoll(run, 2891336453) >= grottoMon) {
@@ -2870,6 +2910,8 @@ class FactoryRun {
     final encounter = run['encounter'] as Map?;
     final kind = encounter?['kind'];
     if (kind != 'wild' && kind != 'wildboss') return null;
+    // No reide não se joga bola: vencendo, ele é seu.
+    if (encounter?['raid'] != null) return null;
     // Nuzlocke: um capturado por área (a rota, a cidade e cada lugar contam separados).
     if (run['nuzlocke'] == true && areaUsed(run) && !(nuzRule(run, 'shinyClause') && ((encounter?['foes'] as List?) ?? const []).any((f) => f['shiny'] == true))) {
       return null;
@@ -2949,6 +2991,15 @@ class FactoryRun {
           if (node['roam'] == true) 'roam': true,
           if (node['roam'] == true && node['roamHp'] != null) 'hpRatio': node['roamHp'],
         };
+      } else if (node?['raid'] == 'max' && gmax.isNotEmpty) {
+        // O Reide Dynamax: um Gigantamax (o mais forte do andar).
+        id = _pick(gmax, rand);
+        extra = {'gimmick': 'dmax', 'title': 'gmax'};
+      } else if (node?['raid'] == 'tera') {
+        // O Reide Tera: um Pokémon forte (não lendário) Terastalizado num tipo ao acaso.
+        final strongMons = [for (final e in data.species.entries) if (_int(e.value[2]) == 0 && _int(e.value[1]) >= 480 && fits(e.key)) e.key];
+        id = _pick(strongMons.isNotEmpty ? strongMons : [for (final e in data.species.entries) if (_int(e.value[2]) == 0) e.key], rand);
+        extra = {'gimmick': 'tera', 'tera': _pick(teraTypes, rand), 'title': 'tera'};
       } else if (r < 0.4 && megas.isNotEmpty) {
         id = _pick(megas, rand);
         final stone = _pick(data.megas[id]!, rand)[0] as String;
@@ -2962,8 +3013,14 @@ class FactoryRun {
         extra = {'title': 'legend'};
       }
       // O lendário do lugar e o que dorme no caminho vêm na forma deles (o Gyarados vermelho é Gyarados, o Snorlax é Snorlax).
-      final lvl = math.max(_bossLevel(data, floor, id, level + 3), node?['legend'] != null ? minLevelOf(data, id) : 0);
-      return {'kind': 'wildboss', 'foes': [foe(id, lvl, {...strong, ...extra, if (rand() < shinyChance * _shinyRate(node) || node?['forceShiny'] == true) 'shiny': true})]};
+      final lvl = math.max(_bossLevel(data, floor, id, level + 3), node?['legend'] != null ? minLevelOf(data, id) : 0) + (node?['raid'] != null ? 2 * _int(node!['stars'] ?? 1) : 0);
+      // O reide: o chefe com muito mais HP (raidHp) e as estrelas.
+      return {
+        'kind': 'wildboss',
+        if (node?['raid'] != null) 'raid': node!['raid'],
+        if (node?['raid'] != null) 'stars': node!['stars'] ?? 1,
+        'foes': [foe(id, lvl, {...strong, ...extra, if (node?['raid'] != null) 'raidHp': raidHp, if (rand() < shinyChance * _shinyRate(node) || node?['forceShiny'] == true) 'shiny': true})],
+      };
     }
     if (boss != null) {
       // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -3414,6 +3471,13 @@ class FactoryRun {
       team[i] = {...team[i], 'id': id};
     }
     if (flipped) out.remove('flip');
+    // O Reide Tera: as Tera Shards do tipo do chefe.
+    if (raidShards(run) > 0 && !fled) {
+      final type = '${((run['encounter']['foes'] as List).first as Map)['tera']}';
+      final shards = Map<String, dynamic>.from((run['teraShards'] as Map?) ?? const {});
+      shards[type] = _int(shards[type] ?? 0) + raidShards(run);
+      out['teraShards'] = shards;
+    }
     // O Pokérus: raro; passa para os vizinhos no time e some em pokerusFloors andares (o dobro de EVs fica). Igual ao site.
     final pokerus = _pokerusStep(team, run);
     // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
@@ -3694,7 +3758,17 @@ class FactoryRun {
       if (shed) 'shed': true,
       if (pieces.isNotEmpty) 'pieces': pieces,
       // O capturado ou o ovo que chocou (a mesma tela).
-      'capture': captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
+      // No reide, vencendo, o chefe é seu (sem jogar bola).
+      'capture': run['encounter']?['raid'] != null && foes.isNotEmpty
+          ? _raidPrize(foes.first as Map)
+          : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
+      if (run['encounter']?['raid'] != null)
+        'raid': {
+          'kind': run['encounter']['raid'],
+          'stars': run['encounter']['stars'] ?? 1,
+          if (raidShards(run) > 0) 'shards': raidShards(run),
+          if (raidShards(run) > 0) 'type': ((run['encounter']['foes'] as List).first as Map)['tera'],
+        },
       // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura). Igual ao site.
       if (captured && ball != null) 'ball': ball,
       'cards': cardsPick,
@@ -3823,6 +3897,8 @@ class FactoryRun {
     if (foe['ha'] == true) mon = {...mon, 'ha': true};
     // O Alfa capturado continua Alfa (maior e mais forte).
     if (foe['alpha'] == true) mon = {...mon, 'alpha': true};
+    // O do Reide Tera continua com o Tera Type dele.
+    if (foe['tera'] != null) mon = {...mon, 'tera': foe['tera']};
     // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
     if (pendingOf(run)?['ball'] != null) mon = {...mon, 'ball': pendingOf(run)!['ball']};
     // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao site.
@@ -6654,6 +6730,7 @@ class FactoryRun {
           if (mon['ha'] == true) 'ability': 'hidden',
           if (mon['ball'] != null) 'ball': mon['ball'],
           if (mon['alpha'] == true) 'alpha': true,
+          if (mon['tera'] != null) 'tera': mon['tera'],
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
       );
@@ -6678,12 +6755,14 @@ class FactoryRun {
   static (int, Json) foeMember(Json foe, List<String> moveList) {
     final ivs = {for (final s in stats) s: foe['iv']}, evs = {for (final s in stats) s: foe['ev'] ?? 0};
     final boost = ((foe['boost'] as num?) ?? 0).toDouble() + (foe['shiny'] == true ? foeShinyBoost : 0);
+    // O chefe do reide: muito mais HP.
+    final raidHp = ((foe['raidHp'] as num?) ?? 0).toDouble();
     return (
       _int(foe['id']),
       {
         'level': foe['level'], 'levelCap': 'none', 'ivs': _cap(ivs, 31), 'evs': _cap(evs, 252), 'moves': moveList, 'lockMoves': true,
         'bonus': overflowPoints(ivs, evs, _int(foe['level'])),
-        if (boost != 0) 'boost': {for (final s in stats) s: _round3(boost)},
+        if (boost != 0 || raidHp != 0) 'boost': {for (final s in stats) s: _round3(boost + (s == 'hp' ? raidHp : 0))},
         if (foe['shiny'] == true) 'shiny': true,
         if (foe['ha'] == true) 'ability': 'hidden',
         if (foe['alpha'] == true) 'alpha': true,

@@ -19,7 +19,7 @@ import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../l
 import { learnsetOf, movesFor } from '../lib/factoryBattle'
 import { battleMons } from '../lib/battleSetup'
 import {
-  BAG_ITEMS, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  BAG_ITEMS, setTera, TERA_SHARD_COST, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
   factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
   shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
   forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
@@ -433,6 +433,14 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
             : <BwButton color="bg-blue-600" onClick={() => { save(setLead(run, i)); onLead() }} testid="team-lead">⬆ {t('PRIMEIRO NA BATALHA')}</BwButton>}
           {canTeach && <BwButton color="bg-violet-600" onClick={() => setTeaching(true)} testid="team-teach">📀 {t('ENSINAR GOLPE')}</BwButton>}
           {amieOn && <BwButton color="bg-pink-600" onClick={() => setAmie(!amie)} testid="team-amie">💞 Amie</BwButton>}
+          {/* O Tera Type com as Tera Shards (do Reide Tera): TERA_SHARD_COST do tipo trocam o dele. Igual ao app. */}
+          {Object.entries(run.teraShards ?? {}).some(([type, n]) => n >= TERA_SHARD_COST && type !== m.tera) && (
+            <select aria-label={t('Tera Type')} value="" onChange={(e) => e.target.value && save(setTera(run, i, e.target.value))}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-tera">
+              <option value="">💎 {t('Tera')}: {m.tera ? t(TYPE_PT[m.tera]) : '—'}</option>
+              {Object.entries(run.teraShards ?? {}).filter(([type, n]) => n >= TERA_SHARD_COST && type !== m.tera).map(([type, n]) => <option key={type} value={type}>💎 {t(TYPE_PT[type])} ({n})</option>)}
+            </select>
+          )}
           {/* A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao app. */}
           {itemFormsOf(data, m).length > 0 && (
             <select aria-label={t('Forma')} value={m.id} onChange={(e) => save(setForm(run, data, i, Number(e.target.value), clockOf().night))}
@@ -1203,6 +1211,9 @@ const NODE_INFO = {
   trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi) e ganha mais XP.' },
   safari: { icon: '🦒', label: 'Safari Zone', help: 'Sem batalha: a entrada custa 500 moedas. 10 Safari Balls para capturar Pokémon raros.' },
   wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
+  // Os reides (Galar e Paldea): o chefe gigante com 3 aliados. Igual ao app.
+  raidmax: { icon: '🔴', label: 'Reide Dynamax', help: 'Uma toca com um Pokémon Gigantamax. 3 aliados lutam junto; vencendo, ele é seu.' },
+  raidtera: { icon: '💎', label: 'Reide Tera', help: 'Um cristal com um Pokémon Terastalizado. 3 aliados lutam junto; vencendo, ele é seu e dá Tera Shards.' },
   meteor: { icon: '☄️', label: 'Chuva de meteoros', help: 'Um Clefairy apareceu com os meteoros (mais chance de shiny).' },
   mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
   boss: { icon: '👑', label: 'Chefe', help: '' },
@@ -2586,6 +2597,7 @@ const CARD_COLORS = {
   mart: ['#3b82f6', '#1d4ed8'], center: ['#ec4899', '#be185d'], event: ['#eab308', '#a16207'], trade: ['#06b6d4', '#0e7490'],
   safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'], clue: ['#a78bfa', '#6d28d9'], grotto: ['#78716c', '#44403c'],
   rematch: ['#facc15', '#a16207'], leave: ['#64748b', '#334155'], dungeon: ['#78716c', '#44403c'],
+  raidmax: ['#dc2626', '#7f1d1d'], raidtera: ['#06b6d4', '#155e75'],
 }
 
 /** Um caminho como carta: o ícone grande, o nome e o que tem nele; virada (❔) quando, sem o Mapa, não dá para saber. */
@@ -2754,7 +2766,7 @@ function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blo
       )}
       {/* Os caminhos: botões no próprio mapa. */}
       {route.options.map((node, k) => {
-        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.raid ? NODE_INFO[`raid${node.raid}`] : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
         const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
         return (
           <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
@@ -3407,6 +3419,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <>
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
+        {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
+        {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
         {p.badge?.z && <p className="text-sm font-semibold text-sky-400" data-testid="factory-badge-z" data-no-translate>💎 {t('{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.z))}</p>}
         {p.scale && <p className="text-sm font-semibold text-pink-400" data-testid="factory-scale">💗 {t('Você achou uma Heart Scale! Ela paga o Move Reminder.')}</p>}
@@ -3939,7 +3953,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         ))) || []),
       ...(((hasMap || !fork) && route.options.map((node, k) => {
           if (node.kind === 'dungeon') return placeButton(node, k)
-          const info = node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+          const info = node.raid ? { ...NODE_INFO[`raid${node.raid}`], label: `${NODE_INFO[`raid${node.raid}`].label} ${'★'.repeat(node.stars ?? 1)}` } : node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
           const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
           const noSurf = nodeBlocked(run, node)
           // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece). Igual ao app.
@@ -3953,7 +3967,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             )
           }
           return (
-            <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
+            <Btn key={k} i={k} kind={node.raid ? `raid${node.raid}` : node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
               sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : node.quest ? t(QUEST_HELP).replace('{0}', QUEST_PRIZE) : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
               {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.quest ? <span data-no-translate> · {name(node.legend)}</span> : node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b && !node.quest ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
             </Btn>

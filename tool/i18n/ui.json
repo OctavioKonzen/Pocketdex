@@ -15496,5 +15496,65 @@
   "fr": "Vous avez fait tourner la roue !",
   "es": "¡Giraste la rueda!",
   "pt": "Você girou a roda!"
+ },
+ "Reide Dynamax": {
+  "en": "Max Raid",
+  "fr": "Raid Dynamax",
+  "es": "Incursión Dinamax",
+  "pt": "Reide Dynamax"
+ },
+ "Reide Tera": {
+  "en": "Tera Raid",
+  "fr": "Raid Téracristal",
+  "es": "Teraincursión",
+  "pt": "Reide Tera"
+ },
+ "Uma toca com um Pokémon Gigantamax. 3 aliados lutam junto; vencendo, ele é seu.": {
+  "en": "A den with a Gigantamax Pokémon. 3 allies fight with you; win and it's yours.",
+  "fr": "Un antre avec un Pokémon Gigamax. 3 alliés combattent avec vous ; gagnez et il est à vous.",
+  "es": "Una guarida con un Pokémon Gigamax. 3 aliados luchan contigo; si ganas, es tuyo.",
+  "pt": "Uma toca com um Pokémon Gigantamax. 3 aliados lutam junto; vencendo, ele é seu."
+ },
+ "Um cristal com um Pokémon Terastalizado. 3 aliados lutam junto; vencendo, ele é seu e dá Tera Shards.": {
+  "en": "A crystal with a Terastallized Pokémon. 3 allies fight with you; win and it's yours, plus Tera Shards.",
+  "fr": "Un cristal avec un Pokémon Téracristallisé. 3 alliés combattent avec vous ; gagnez et il est à vous, avec des Téra-Éclats.",
+  "es": "Un cristal con un Pokémon teracristalizado. 3 aliados luchan contigo; si ganas, es tuyo y da Teralitos.",
+  "pt": "Um cristal com um Pokémon Terastalizado. 3 aliados lutam junto; vencendo, ele é seu e dá Tera Shards."
+ },
+ "Reide Tera vencido! O chefe é seu.": {
+  "en": "Tera Raid cleared! The boss is yours.",
+  "fr": "Raid Téracristal réussi ! Le boss est à vous.",
+  "es": "¡Teraincursión superada! El jefe es tuyo.",
+  "pt": "Reide Tera vencido! O chefe é seu."
+ },
+ "Reide Dynamax vencido! O chefe é seu.": {
+  "en": "Max Raid cleared! The boss is yours.",
+  "fr": "Raid Dynamax réussi ! Le boss est à vous.",
+  "es": "¡Incursión Dinamax superada! El jefe es tuyo.",
+  "pt": "Reide Dynamax vencido! O chefe é seu."
+ },
+ "Tera": {
+  "en": "Tera",
+  "fr": "Téra",
+  "es": "Tera",
+  "pt": "Tera"
+ },
+ "Tera Type": {
+  "en": "Tera Type",
+  "fr": "Type Téra",
+  "es": "Teratipo",
+  "pt": "Tera Type"
+ },
+ "Um escudo de energia protege o chefe!": {
+  "en": "An energy shield protects the boss!",
+  "fr": "Un bouclier d'énergie protège le boss !",
+  "es": "¡Un escudo de energía protege al jefe!",
+  "pt": "Um escudo de energia protege o chefe!"
+ },
+ "O escudo de energia quebrou!": {
+  "en": "The energy shield broke!",
+  "fr": "Le bouclier d'énergie s'est brisé !",
+  "es": "¡El escudo de energía se rompió!",
+  "pt": "O escudo de energia quebrou!"
  }
 }

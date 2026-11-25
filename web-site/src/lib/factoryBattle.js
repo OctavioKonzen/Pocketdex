@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, benchShare, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf } from './factoryRun'
+import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, benchShare, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf, RAID_ALLY_NAMES } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -54,7 +54,7 @@ export async function factoryBattle(run) {
   const doubles = isDoubleBattle(run)
   // A Rotação (Unova): só na única, com 3 ou mais de cada lado de pé.
   const rotation = !doubles && Boolean(run.encounter.rotation) && a.length >= 3 && b.length >= 3
-  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar, ...(rotation ? { rotation: true } : {}),
+  const battle = newBattle(a, b, seededRandom(seed >>> 0), { ai: 'normal', seed: seed >>> 0, bags: bagsFor(run), healPct: true, capture: captureFor(run, data), weather, field, exp: expBar, ...(rotation ? { rotation: true } : {}), ...(run.encounter.raid ? { raid: { allies: RAID_ALLY_NAMES[run.encounter.raid], shield: 2 + (run.encounter.stars ?? 1) } } : {}),
     ...(doubles ? { mode: 'doubles', controllers: [['me', 'me'], ['npc1', 'npc2']] } : {}) })
   battle.members = { mine, theirs }
   battle.scene = scene

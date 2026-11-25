@@ -649,6 +649,42 @@ function eventsFor(game, lines) {
   return events;
 }
 
+/**
+ * O reide (input.raid): quando o chefe cai para a metade do HP, um escudo de energia (Defesa e Defesa Especial +2)
+ * que some depois de raid.shield golpes; e, no fim de cada turno, os aliados atacam o chefe (cada um, às vezes, tira
+ * 2% a 5% do HP; com o escudo, bem menos).
+ */
+function raidStep(game) {
+  const raid = game.raid, battle = game.battle;
+  if (!raid || battle.ended) return;
+  const boss = battle.sides[1].active[0];
+  if (!boss || boss.fainted) return;
+  if (game.shield > 0) {
+    const hits = battle.log.slice(game.raidFrom ?? 0).filter((l) => l.startsWith('|-damage|p2a') && !l.includes('[from]')).length;
+    game.shield = Math.max(0, game.shield - hits);
+    if (!game.shield) {
+      battle.add('message', 'O escudo de energia quebrou!');
+      battle.boost({def: -2, spd: -2}, boss, null, null, true);
+    }
+  } else if (!game.shieldUp && raid.shield && boss.hp <= boss.maxhp / 2) {
+    game.shieldUp = true;
+    game.shield = raid.shield;
+    battle.add('message', 'Um escudo de energia protege o chefe!');
+    battle.boost({def: 2, spd: 2}, boss, null, null, true);
+  }
+  for (const name of raid.allies) {
+    if (boss.hp <= 0) break;
+    if (battle.random() >= 0.6) continue;
+    const damage = Math.max(1, Math.floor(boss.maxhp * (0.02 + battle.random() * 0.03) * (game.shield > 0 ? 0.25 : 1)));
+    battle.add('message', `${name} atacou o chefe!`);
+    battle.directDamage(damage, boss);
+  }
+  if (boss.hp <= 0) {
+    battle.faintMessages();
+    if (!battle.ended) battle.win(battle.sides[0]);
+  }
+}
+
 /** Batalha de Rotação: gira a roda (o da posição index entra, sem gastar o turno). */
 function rotateTo(game, sideIndex, index) {
   const side = game.battle.sides[sideIndex];
@@ -831,7 +867,7 @@ export const PocketDexSim = {
     // Regras opcionais (convite online): Sleep Clause (só um Pokémon dormindo por vez).
     const ruleset = (input.rules ?? []).includes('sleep') ? ['Sleep Clause Mod'] : [];
     const battle = new Battle({format: {...formats, gameType: mode, playerCount: mode === 'multi' ? 4 : 2, ruleset}, seed: input.seed});
-    const game = {rotation: input.rotation && mode === 'singles' ? input.teams.map((team) => team.slice(0, 3).map((_, i) => i)) : null, battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
+    const game = {raid: input.raid && mode === 'singles' ? {allies: input.raid.allies ?? ['Aliado 1', 'Aliado 2', 'Aliado 3'], shield: Number(input.raid.shield ?? 0)} : null, rotation: input.rotation && mode === 'singles' ? input.teams.map((team) => team.slice(0, 3).map((_, i) => i)) : null, battle, teams: input.teams, controllers: input.controllers, cursor: 0, used: input.teams.map(() => ({mega: false, tera: false})), pendingItems: input.teams.map(() => null), bags: input.teams.map((_, side) => ({potion: 3, 'super-potion': 2, 'hyper-potion': 1, 'max-potion': 0, revive: 1, ...(input.bags?.[side] ?? {})})), healPct: Boolean(input.healPct), capture: input.capture ?? null, captured: null};
     input.teams.forEach((team, side) => battle.setPlayer(`p${side + 1}`, {name: ['Você', 'Adversário', 'Aliado', 'Aliado adversário'][side], team: team.map(setFor)}));
     configure(game);
     // O clima do lugar (Battle Factory: sol no deserto, chuva no mar, neve na caverna de gelo...): já começa assim e fica até
@@ -868,6 +904,7 @@ export const PocketDexSim = {
   choose(handle, actions) {
     const game = games.get(handle);
     if (!game) throw new Error('Batalha encerrada');
+    game.raidFrom = game.battle.log.length;
     if (actions.some(a => a.kind === 'forfeit')) {
       game.battle.win(game.battle.sides[actions[0].kind === 'forfeit' ? 1 : 0]);
       return result(game);
@@ -942,6 +979,8 @@ export const PocketDexSim = {
         throw new Error(error);
       }
     }
+    // O reide: o escudo de energia e os aliados atacando no fim do turno.
+    raidStep(game);
     // XP dos derrubados (antes de marcar quem entrou agora) e quem lutou com quem.
     giveExp(game);
     markFought(game);

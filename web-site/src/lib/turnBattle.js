@@ -136,6 +136,8 @@ export function newBattle(mine, theirs, random, options = {}) {
     capture: options.capture ?? null,
     // Batalha de Rotação (como no Black & White): 3 na roda; girar não gasta o turno.
     rotation: Boolean(options.rotation),
+    // O reide (Dynamax ou Tera): os aliados e o escudo do chefe ({allies, shield}).
+    raid: options.raid ?? null,
     captured: null,
     // Battle Factory: o clima do lugar no começo (sol no deserto, chuva no mar...).
     startWeather: options.weather || '',

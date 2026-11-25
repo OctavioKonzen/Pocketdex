@@ -487,6 +487,22 @@ test('Rotation battle: rotating is free (same turn attack) and the CPU rotates t
   } finally {sim.dispose(game.handle);}
 });
 
+test('Raid: the allies chip the boss every turn and an energy shield shows up at half HP', () => {
+  const game = sim.create({teams: [[mon('Mew', ['splash'])], [{set: {species: 'Snorlax', moves: ['splash'], level: 50}}]], seed: [1, 2, 3, 4], raid: {allies: ['Hop', 'Marnie', 'Bede'], shield: 3}});
+  try {
+    let r = sim.inspect(game.handle);
+    const full = r.state.sides[1].team[0].maxHp;
+    let shield = false;
+    for (let k = 0; k < 40 && r.state.winner == null; k++) {
+      r = sim.choose(game.handle, [move(0), move(0)]);
+      if (r.log.some((l) => l.includes('escudo de energia protege'))) shield = true;
+    }
+    assert.ok(r.log.some((l) => /atacou o chefe/.test(l)) || r.state.winner === 0);
+    assert.ok(shield);
+    assert.ok(r.state.sides[1].team[0].hp < full);
+  } finally {sim.dispose(game.handle);}
+});
+
 test('Battle Factory: a failed throw spends the ball and the turn; balls only work on wild battles', () => {
   const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Mewtwo', ['splash'])]], seed: [1, 2, 3, 4], capture: {rates: [3]}, bags: [{'poke-ball': 1}, null]});
   try {

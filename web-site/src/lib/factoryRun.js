@@ -76,6 +76,22 @@ export const ALPHA_IVS = 20
  * mais Pokémon) lutam em Rotação: 3 na roda, girar não gasta o turno. Igual ao app.
  */
 export const ROTATION_FLOOR = 8
+/**
+ * Os reides (como em Sword/Shield e Scarlet/Violet): em Galar, uma toca de Reide Dynamax (o chefe Gigantamax); em
+ * Paldea, um cristal de Reide Tera (o chefe Terastalizado). Um caminho a mais na rota (uma vez por rota), com 3
+ * aliados que atacam junto e um escudo de energia no chefe. Vencendo, ele é seu (sem jogar bola) e o Reide Tera dá Tera
+ * Shards do tipo dele (TERA_SHARD_COST trocam o Tera Type de um Pokémon). Igual ao app.
+ */
+export const RAID_REGIONS = { Galar: 'max', Armor: 'max', Crown: 'max', Paldea: 'tera', Kitakami: 'tera', Blueberry: 'tera' }
+export const RAID_FLOOR = 6
+export const RAID_CHANCE = 0.35
+export const RAID_HP = 1.5
+export const RAID_ALLIES = 3
+export const TERA_SHARD_COST = 3
+/** Os 3 aliados do reide (os amigos de cada jogo). */
+export const RAID_ALLY_NAMES = { max: ['Hop', 'Leon', 'Sonia'], tera: ['Nemona', 'Arven', 'Penny'] }
+/** As estrelas do reide (1 a 5): mais fundo na corrida, mais forte. */
+export const raidStars = (run) => Math.max(1, Math.min(5, 1 + Math.floor(run.floor / 12)))
 export const ROTATION_CHANCE = 0.25
 export const ROTATION_REGIONS = ['Unova']
 export const BOSS_EVERY = 10
@@ -2641,6 +2657,9 @@ export function routeOptions(run, data, rand) {
     // A ligação do Pokégear: a revanche ou o Pokémon raro, na primeira bifurcação.
     const call = !inside && pos === FORKS[0] ? callOf(data, run) : null
     if (call) options.push(call.kind === 'rematch' ? { kind: 'ace', call: 'rematch', caller: call.name } : { kind: 'wild', call: 'rare', caller: call.name })
+    // O reide (Galar e Paldea): um caminho a mais na rota, na última bifurcação (uma vez por rota).
+    const raid = RAID_REGIONS[regionOf(data, run)]
+    if (raid && !inside && pos === FORKS[2] && run.floor >= RAID_FLOOR && run.raidLeg !== legOf(run) && followRoll(run, 2246822519) < RAID_CHANCE) options.push({ kind: 'wildboss', raid, stars: raidStars(run) })
     // O Hidden Grotto: um caminho a mais nas rotas de mato (uma vez por rota).
     if (!inside && pos === FORKS[1] && run.floor >= QUEST_FLOOR && GROTTO_BIOMES.includes(biome) && run.grottoLeg !== legOf(run) && followRoll(run, 1103515245) < GROTTO_CHANCE) options.push({ kind: 'grotto' })
   }
@@ -2728,6 +2747,8 @@ export function chooseNode(run, data, index, clock = null) {
     out.route = routeOptions(out, data, dice(out))
     return out
   }
+  // O reide: uma vez por rota.
+  if (node.raid) out.raidLeg = legOf(run)
   // O Hidden Grotto: um Pokémon com a habilidade oculta ou um item raro (sem batalha).
   if (node.kind === 'grotto') {
     out.grottoLeg = legOf(run)
@@ -2891,6 +2912,16 @@ export function chooseNode(run, data, index, clock = null) {
 
 /** Os tipos para o Terastal dos chefes dos lugares. */
 export const TERA_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy']
+/** O chefe do reide como prêmio: sem o HP a mais nem a mecânica (ele vem com os IVs fortes). */
+const raidPrize = (f) => { const { raidHp, gimmick, title, boost, item, ...rest } = f; return { ...rest, ...(f.tera ? { tera: f.tera } : {}) } }
+/** Quantas Tera Shards o Reide Tera dá (as estrelas + 1). */
+export const raidShards = (run) => (run.encounter?.raid === 'tera' && run.encounter.foes?.[0]?.tera ? (run.encounter.stars ?? 1) + 1 : 0)
+/** Troca o Tera Type do Pokémon index gastando TERA_SHARD_COST Tera Shards do tipo (null se não dá). Igual ao app. */
+export function setTera(run, index, type) {
+  const mon = run.team[index]
+  if (!mon || !TERA_TYPES.includes(type) || mon.tera === type || (run.teraShards?.[type] ?? 0) < TERA_SHARD_COST) return null
+  return { ...run, teraShards: { ...run.teraShards, [type]: run.teraShards[type] - TERA_SHARD_COST }, team: run.team.map((m, i) => (i === index ? { ...m, tera: type } : m)) }
+}
 
 /** Os chefes dos lugares (fim da rota, cavernas, mar...): Mega (se ele tiver), senão Gigantamax (se tiver), senão Tera de um tipo ao acaso. */
 export function bossGimmick(data, f, rand) {
@@ -2954,6 +2985,15 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
       id = node.legend
       // O lendário que foge: com o HP que ficou da última vez.
       extra = { title: 'legend', ...(node.mythic ? { mythic: true } : {}), ...(node.roam ? { roam: true, ...(node.roamHp != null ? { hpRatio: node.roamHp } : {}) } : {}) }
+    } else if (node?.raid === 'max' && gmax.length) {
+      // O Reide Dynamax: um Gigantamax (o mais forte do andar).
+      id = pickOne(gmax, rand)
+      extra = { gimmick: 'dmax', title: 'gmax' }
+    } else if (node?.raid === 'tera') {
+      // O Reide Tera: um Pokémon forte (não lendário) Terastalizado num tipo ao acaso.
+      const strongMons = Object.entries(data.species).filter(([k, info]) => info[2] === 0 && info[1] >= 480 && fits(Number(k))).map(([k]) => Number(k))
+      id = pickOne(strongMons.length ? strongMons : Object.keys(data.species).map(Number).filter((k) => data.species[k][2] === 0), rand)
+      extra = { gimmick: 'tera', tera: pickOne(TERA_TYPES, rand), title: 'tera' }
     } else if (r < 0.4 && megas.length) {
       id = pickOne(megas, rand)
       const [stone] = pickOne(data.megas[id], rand)
@@ -2967,8 +3007,10 @@ export function encounterFor(data, floor, rand, boss = null, wild = false, node 
       extra = { title: 'legend' }
     }
     // O lendário do lugar e o que dorme no caminho vêm na forma deles (o Gyarados vermelho é Gyarados, o Snorlax é Snorlax).
-    const lvl = Math.max(bossLevel(data, floor, id, level + 3), node?.legend != null ? minLevelOf(data, id) : 0)
-    return { kind: 'wildboss', foes: [foe(id, lvl, { ...strong, ...extra, ...(rand() < SHINY_CHANCE * (node?.shiny ?? 1) || node?.forceShiny ? { shiny: true } : {}) })] }
+    const lvl = Math.max(bossLevel(data, floor, id, level + 3), node?.legend != null ? minLevelOf(data, id) : 0) + (node?.raid ? 2 * (node.stars ?? 1) : 0)
+    // O reide: o chefe com muito mais HP (raidHp) e as estrelas.
+    const raid = node?.raid ? { raid: node.raid, stars: node.stars ?? 1 } : {}
+    return { kind: 'wildboss', ...raid, foes: [foe(id, lvl, { ...strong, ...extra, ...(node?.raid ? { raidHp: RAID_HP } : {}), ...(rand() < SHINY_CHANCE * (node?.shiny ?? 1) || node?.forceShiny ? { shiny: true } : {}) })] }
   }
   if (boss) {
     // Os times dos chefes são de Pokémon evoluídos: quem é mais forte que as espécies do andar vem com nível menor.
@@ -3358,6 +3400,8 @@ export function winFloor(run, data, after = {}) {
     return { ...m, id }
   })
   if (flipped) delete out.flip
+  // O Reide Tera: as Tera Shards do tipo do chefe.
+  if (raidShards(run) && !fled) out.teraShards = { ...(run.teraShards ?? {}), [run.encounter.foes[0].tera]: (run.teraShards?.[run.encounter.foes[0].tera] ?? 0) + raidShards(run) }
   // O Pokérus: raro; passa para os vizinhos no time e some em POKERUS_FLOORS andares (o dobro de EVs fica). Igual ao app.
   const pokerus = pokerusStep(out, run)
   // Pickup: quem tem acha um item de vez em quando (melhor conforme o andar).
@@ -3561,7 +3605,9 @@ export function winFloor(run, data, after = {}) {
     exp, gains, money, levels, joy, drop, story, reward, ...(champion ? { champion: true } : {}),
     ...(picked.length ? { picked } : {}), ...(lost.length ? { lost } : {}), ...(shed ? { shed: true } : {}), ...(dropped ? { pieces } : {}),
     // O capturado ou o ovo que chocou (a mesma tela).
-    capture: after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
+    // No reide, vencendo, o chefe é seu (sem jogar bola).
+    capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
+    ...(run.encounter.raid ? { raid: { kind: run.encounter.raid, stars: run.encounter.stars ?? 1, ...(raidShards(run) ? { shards: raidShards(run), type: foes[0]?.tera } : {}) } } : {}),
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3, run.relics ?? []) : null,
@@ -3661,6 +3707,8 @@ export function capturedMon(run, into = null) {
   if (foe.ha) mon = { ...mon, ha: true }
   // O Alfa capturado continua Alfa (maior e mais forte).
   if (foe.alpha) mon = { ...mon, alpha: true }
+  // O do Reide Tera continua com o Tera Type dele.
+  if (foe.tera) mon = { ...mon, tera: foe.tera }
   // A Poké Ball em que ele foi capturado (ele sai dela nas batalhas).
   if (run.pending?.ball) mon = { ...mon, ball: run.pending.ball }
   // Do ovo da Creche: os 3 melhores IVs do pai passam para o filhote (fica o maior). Igual ao app.
@@ -5178,6 +5226,8 @@ export function bagsFor(run) {
 export function captureFor(run, data) {
   const { kind, foes, biome } = run.encounter ?? {}
   if (kind !== 'wild' && kind !== 'wildboss') return null
+  // No reide não se joga bola: vencendo, ele é seu.
+  if (run.encounter.raid) return null
   // Nuzlocke: um capturado por área.
   // Nuzlocke: um capturado por área (a rota, a cidade e cada lugar contam separados).
   if (run.nuzlocke && areaUsed(run) && !(nuzRule(run, 'shinyClause') && foes.some((f) => f.shiny))) return null
@@ -5227,7 +5277,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }
@@ -5240,7 +5290,7 @@ export function foeMember(foe, moveList) {
     id: foe.id,
     set: {
       level: foe.level, levelCap: 'none', ivs: capStats(ivs, 31), evs: capStats(evs, 252), moves: moveList, lockMoves: true, bonus: overflowPoints(ivs, evs, foe.level),
-      ...(foe.boost || foe.shiny ? { boost: Object.fromEntries(STATS.map((s) => [s, round3((foe.boost ?? 0) + (foe.shiny ? FOE_SHINY_BOOST : 0))])) } : {}),
+      ...(foe.boost || foe.shiny || foe.raidHp ? { boost: Object.fromEntries(STATS.map((s) => [s, round3((foe.boost ?? 0) + (foe.shiny ? FOE_SHINY_BOOST : 0) + (s === 'hp' ? foe.raidHp ?? 0 : 0))])) } : {}),
       ...(foe.shiny ? { shiny: true } : {}),
       ...(foe.ha ? { ability: 'hidden' } : {}),
       ...(foe.alpha ? { alpha: true } : {}),
