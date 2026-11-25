@@ -439,3 +439,25 @@ describe('chance de crítico', () => {
     expect(critChance({}, { slug: 'growl', category: 'status' })).toBe(null)
   })
 })
+
+describe('Emergency Exit do selvagem', () => {
+  it('o Golisopod selvagem foge ao cair abaixo da metade do HP; no treinador, não (igual ao app)', async () => {
+    const { foeMember } = await import('./factoryRun')
+    const { simulatorDispose } = await import('./battleSimulator')
+    const play = async (wildExit) => {
+      const [mew, golisopod] = await battleMons([
+        foeMember({ id: 151, level: 50, iv: 31, ev: 0 }, ['seismic-toss']),
+        foeMember({ id: 768, level: 25, iv: 31, ev: 0 }, ['harden']),
+      ])
+      const b = newBattle([mew], [golisopod], seededRandom(7))
+      if (wildExit) b.wildExit = true
+      try {
+        const keys = [...startBattle(b), ...playTurn(b, { move: 0 }, () => ({ rolls: [[1]], eff: 1 }))].filter((e) => e.t === 'text').map((e) => e.key)
+        return [keys.includes('wildExit'), Boolean(b.fled), b.winner, active(b, 1).hp > 0]
+      } finally { simulatorDispose(b) }
+    }
+    expect(await play(true)).toEqual([true, true, 0, true])
+    expect(await play(false)).toEqual([false, false, null, true])
+  }, 30000)
+})
+

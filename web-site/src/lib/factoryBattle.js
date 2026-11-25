@@ -64,6 +64,8 @@ export async function factoryBattle(run) {
   battle.expBar = expBar
   // O lendário que foge: depois de ROAM_TURNS turnos, ele vai embora.
   if (run.encounter.foes[0]?.roam) battle.fleeAfter = ROAM_TURNS
+  // O selvagem com Emergency Exit ou Wimp Out (Golisopod, Wimpod): caindo abaixo da metade do HP, foge (como nos jogos).
+  if ((run.encounter.kind === 'wild' || run.encounter.kind === 'wildboss') && !doubles && !run.encounter.raid) battle.wildExit = true
   return battle
 }
 

@@ -324,6 +324,8 @@ export function damageRange(hit, att, def, move, weather = '') {
 
 /** Golpes que sempre acertam crítico. */
 const ALWAYS_CRIT = ['frost-breath', 'storm-throw', 'wicked-blow', 'surging-strikes', 'flower-trick', 'zippy-zap']
+/** As habilidades que tiram o selvagem da batalha abaixo da metade do HP. Igual ao app. */
+export const WILD_EXIT = ['emergencyexit', 'wimpout']
 const plain = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 /**
  * A chance de crítico do golpe (em %), como no jogo: o estágio do golpe
@@ -904,6 +906,8 @@ function turnOf(battle, action, hit) {
     const plan = cpuPlan(battle, hit)
     const mine = action.switch != null ? {kind: 'switch', index: action.switch} : action.item != null ? {kind: 'item', item: action.item, index: action.target} : {kind: 'move', index: action.move, gimmick: action.gimmick, ...(action.rotate != null ? {rotate: action.rotate} : {})}
     const theirs = battle.simulator.state.sides[1].wait ? {kind: 'wait'} : plan.kind === 'item' ? {kind: 'item', item: plan.item, index: plan.target} : plan.kind === 'switch' ? plan : {kind: 'move', index: plan.index, gimmick: cpuGimmick(battle, plan.index)}
+    // O HP do selvagem antes do turno (para o Emergency Exit / Wimp Out).
+    const exitFrom = battle.wildExit ? active(battle, 1).hp : 0
     let events
     try {
       events = simulatorTurn(battle, [mine, theirs])
@@ -913,6 +917,14 @@ function turnOf(battle, action, hit) {
       // de o turno travar.
       if (theirs.kind === 'wait') throw error
       events = simulatorTurn(battle, [mine, simulatorRecommend(battle, 1)[0]])
+    }
+    // O Golisopod ou o Wimpod selvagem: caiu abaixo da metade do HP neste turno, foge da batalha (como nos jogos).
+    const wildFoe = active(battle, 1)
+    if (battle.wildExit && battle.winner == null && battle.captured == null && WILD_EXIT.includes(plain(wildFoe.ability)) && wildFoe.hp > 0 && wildFoe.hp * 2 < wildFoe.maxHp && exitFrom * 2 >= wildFoe.maxHp) {
+      battle.fled = true
+      battle.winner = 0
+      say(events, 'wildExit', wildFoe.name, wildFoe.ability)
+      return [...turnOrder(events), ...events]
     }
     // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
     // Dormindo ou congelado, não consegue fugir (como nos jogos).
@@ -1174,6 +1186,7 @@ export const LINES = {
   lose: 'Todos os seus Pokémon desmaiaram... Você perdeu!',
   ran: 'Você fugiu da batalha!',
   roamFled: '{0} fugiu! Ele vai aparecer de novo pelo caminho.',
+  wildExit: '{1}! {0} selvagem fugiu!',
   usedItem: ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
   healed: ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
   revived: ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],

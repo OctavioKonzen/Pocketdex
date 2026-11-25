@@ -777,6 +777,10 @@ class TurnBattle {
   /// O lendário que foge (Battle Factory): depois de quantos turnos ele vai embora; fled: foi embora.
   int? fleeAfter;
   bool fled = false;
+
+  /// O selvagem com Emergency Exit ou Wimp Out foge abaixo da metade do HP (Battle Factory). Igual ao site.
+  bool wildExit = false;
+  static const wildExitAbilities = ['emergencyexit', 'wimpout'];
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
 
   BattleMon active(int side) => teams[side][activeIndex[side]];
@@ -1607,6 +1611,8 @@ class TurnBattle {
         : plan.kind == 'item' ? {'kind': 'item', 'item': plan.item, 'index': plan.target}
         : plan.kind == 'switch' ? {'kind': 'switch', 'index': plan.index}
         : {'kind': 'move', 'index': plan.index, 'gimmick': _cpuGimmick(plan.index)};
+      // O HP do selvagem antes do turno (para o Emergency Exit / Wimp Out).
+      final exitFrom = wildExit ? active(1).hp : 0;
       List<BattleEvent> events;
       try {
         events = _simChoose([mine, theirs]);
@@ -1616,6 +1622,14 @@ class TurnBattle {
         // vez de o turno travar.
         if (theirs['kind'] == 'wait') rethrow;
         events = _simChoose([mine, recommend(1).first]);
+      }
+      // O Golisopod ou o Wimpod selvagem: caiu abaixo da metade do HP neste turno, foge da batalha (como nos jogos).
+      final wildFoe = active(1);
+      if (wildExit && winner == null && captured == null && wildExitAbilities.contains(_plain(wildFoe.simulationAbility ?? wildFoe.ability)) && wildFoe.hp > 0 && wildFoe.hp * 2 < wildFoe.maxHp && exitFrom * 2 >= wildFoe.maxHp) {
+        fled = true;
+        winner = 0;
+        _say(events, 'wildExit', [wildFoe.name, wildFoe.simulationAbility ?? wildFoe.ability]);
+        return [...turnOrder(events), ...events];
       }
       // O lendário que foge (Battle Factory): passados os turnos dele, vai embora (o HP que ficou é guardado).
       // Dormindo ou congelado, não consegue fugir (como nos jogos).
@@ -1838,6 +1852,7 @@ class TurnBattle {
     'lose': 'Todos os seus Pokémon desmaiaram... Você perdeu!',
     'ran': 'Você fugiu da batalha!',
     'roamFled': '{0} fugiu! Ele vai aparecer de novo pelo caminho.',
+    'wildExit': '{1}! {0} selvagem fugiu!',
     'usedItem': ['Você usou {1} em {0}!', 'O adversário usou {1} em {0}!'],
     'healed': ['{0} recuperou {1} de HP!', '{0} inimigo recuperou {1} de HP!'],
     'revived': ['{0} voltou à batalha!', '{0} inimigo voltou à batalha!'],

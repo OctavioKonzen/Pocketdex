@@ -206,6 +206,8 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   battle.expBar = expBar;
   // O lendário que foge: depois de roamTurns turnos, ele vai embora.
   if (FactoryRun.foesOf(run).firstOrNull?['roam'] == true) battle.fleeAfter = FactoryRun.roamTurns;
+  // O selvagem com Emergency Exit ou Wimp Out (Golisopod, Wimpod): caindo abaixo da metade do HP, foge (como nos jogos).
+  if ((kind == 'wild' || kind == 'wildboss') && !doubles && run['encounter']?['raid'] == null) battle.wildExit = true;
   return (battle, order);
 }
 

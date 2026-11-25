@@ -1368,6 +1368,22 @@ void main() {
     reference.dispose();
   });
 
+  test('o Golisopod selvagem foge ao cair abaixo da metade do HP (Emergency Exit); no treinador, não (igual ao site)', () async {
+    Future<List> play(bool wildExit) async {
+      final mons = await TurnBattleSetup.mons([
+        FactoryRun.foeMember({'id': 151, 'level': 50, 'iv': 31, 'ev': 0}, const ['seismic-toss']),
+        FactoryRun.foeMember({'id': 768, 'level': 25, 'iv': 31, 'ev': 0}, const ['harden']),
+      ], (row) => '${row['name']}');
+      final b = TurnBattle([mons[0]], [mons[1]], League.seededRandom(7))..wildExit = wildExit;
+      final keys = [...b.start(), ...b.playTurn((a, d, s, c, [p, w = '']) => null, move: 0)].map((e) => e.key).toList();
+      final out = [keys.contains('wildExit'), b.fled, b.winner, b.active(1).hp > 0];
+      b.dispose();
+      return out;
+    }
+    expect(await play(true), [true, true, 0, true]);
+    expect(await play(false), [false, false, null, true]);
+  });
+
   test('mapa: cidades, caminhos (sempre uma batalha), bioma, treinador forte, Poké Mart, Centro e eventos; bolas antigas vão para a Bolsa', () {
     final kanto = data.bosses.firstWhere((b) => b['game'] == 'Red/Blue');
     final brock = (kanto['leaders'] as List).firstWhere((l) => l['name'] == 'Brock');

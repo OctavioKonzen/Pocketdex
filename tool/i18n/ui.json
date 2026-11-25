@@ -15604,5 +15604,11 @@
   "fr": "Le labo ressuscite le {0} : voici {1}.",
   "es": "El laboratorio revive el {0}: sale {1}.",
   "pt": "O laboratório revive o {0}: vem {1}."
+ },
+ "{1}! {0} selvagem fugiu!": {
+  "en": "{1}! The wild {0} fled!",
+  "fr": "{1} ! Le {0} sauvage s'enfuit !",
+  "es": "¡{1}! ¡El {0} salvaje huyó!",
+  "pt": "{1}! {0} selvagem fugiu!"
  }
 }
