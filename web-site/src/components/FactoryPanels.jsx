@@ -1,0 +1,4357 @@
+// As telas da Battle Factory (lib/factoryRun.js): o começo (o inicial grátis,
+// comprar Pokémon e shiny com as moedas, continuar a corrida, a história da
+// região) e a corrida em tela cheia, no lugar da batalha (FactoryScreen): o
+// resultado do andar (XP, Enfermeira Joy, drops), o capturado, a carta de
+// bônus, a loja com "Continuar" e o mapa com os caminhos de cada andar (Bolsa,
+// itens, golpes e mecânicas em todos). Igual ao app (lib/screens/factory_panels.dart).
+
+import { Children, cloneElement, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import PokeIcon from './PokeIcon'
+import PcPanel from './PcPanel'
+import Sprite, { standOf, useAnimated } from './Sprite'
+import { BattleBackground, battleScale, battleScene, farPerson, foeBottom, nearPerson, PlatformBase } from './BattleScene'
+import BwBag from './BwBag'
+import BwParty from './BwParty'
+import { SUMMARY_STATS } from './BwSummary'
+import { TRAINER_ADULT_PX, TrainerSprite } from './Trainer'
+import { Button, SearchInput, TypeBadge } from './ui'
+import { getFactoryData, getMoves, getSpecies, shinyPath, spriteUrl } from '../lib/data'
+import { learnsetOf, movesFor } from '../lib/factoryBattle'
+import { battleMons } from '../lib/battleSetup'
+import {
+  BAG_ITEMS, GIMMI_COINS, setTera, TERA_SHARD_COST, badgeArt, feedPuff, habitatOf, campMeal, mealLeft, flipWaiting, flipScreen, itemFormsOf, formItemOf, setForm, FORM_ITEM_NAMES, FORM_LABELS, runSummary, dexBook, HUNT_MAX, HUNT_STEP, huntBase, huntMultOf, setHunt, bossOf, regionOf, genderOf, piecesOf, pieceOf, upgradePieces, tradePieces, PIECE_ITEMS, PIECE_TRADE, capturedMon, isRegionalForm, emptyFactory, unequipItem, ROUTE_LENGTH, CITY_LENGTH, routePos, targetOf, BOTTLE_CAP_IVS, buyItem, buyPokemon, canEvolveWith, capture, CARDS, chooseNode, claimStarter, endRun, equipFromStash,
+  factoryOf, freePick, gimmickOf, gimmicksOf, HEAL_SHARE, HELD_BOOST, isBattleNode, teamRoom, nextFloor, pokemonPrice, routeCities, setGimmick, setMainItem,
+  shopOwned, shopPrice, skipCapture, startersOf, startRun, storyLine, sceneLines, bossCity, takeCard, teachMove, teamDown, applyBagItem, NUZLOCKE_RULES, NUZLOCKE_DEFAULT, atPc, pcOf, PC_SIZE, RARE_PLACES, shownScene, gameOf, tierOf, foeBoostAt, leagueAhead, unlockShiny, VITAMIN_EVS, VITAMINS,
+  forSale, normalizeOwned, UPGRADES, upgradeLevel, upgradePrice, upgradeValue, buyUpgrade, upgradeNeeds, UPGRADE_BRANCHES, UPGRADE_TREE, UPGRADE_FX, MINOR_BASE, isMinor, isKeystone,
+  tradeMon, skipTrade, TRADE_LEVELS, levelCapOf, townTrade, townTradeable, legOf, fishPath, rodOf, RODS, headbuttPath, slatherHoney, honeyReady, honeyPath, HONEY_FLOORS, plantBerry, berryReady, harvestBerry, bikePath, takePhoto, photoNow, cancelEvolution, CONTEST_CATS, CONTEST_OF_TYPE, CONTEST_ROUNDS, contestOpen, startContest, contestAct, finishContest, SEASON_EVENTS, eventOn, eggMoves, withShinyCharm, SHINY_CHARM, radarPath, radarShiny, followerMood, withLegends, legendQuest, QUEST_CLUES, QUEST_PRIZE, LEGEND_LAIRS, evolutionMoves, setNick, applyRepel, repelOn, repelLeft, REPEL_FLOORS, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, gymLocked, puzzleTitle, GYM_CHALLENGES, KEY_ITEMS, hasKey, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, reminderCost, forgetMove, daycareOpen, daycareHere, safariAct, safariRates, leaveSafari, SAFARI_FEE, RELICS, cardLabel, cardText, progress, ACHIEVEMENTS, LUCKY_EGG, ESCAPE_HP, BALL_TIERS, rerollRoute, setLead, swapTeam, bossScene,
+  resolveChoice, regionLegend, sceneRegion, leaderType, villainTeam, rivalBoss, rocketBoss, placeInfo, routeInfo, DUNGEON_LENGTH, dungeonPos, townShop, townCenter,
+  weeklyOf, startWeekly, COSMETIC_BALLS, COSMETIC_FRAMES, hasCosmetic, buyCosmetic, equipCosmetic,
+  boostOf, memberOf, learnMove, movesLearnedBetween,
+  cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
+  mapMusic,
+  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, LEAGUE_FLAWLESS,
+  expAt,
+} from '../lib/factoryRun'
+import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
+import { REGION_MAPS, regionMap } from '../lib/regionMaps'
+import { language, localText, pick as pickText, t } from '../lib/i18n'
+import { prettyName, typeColor } from '../lib/pokemon'
+import { usePokemonIndex } from '../lib/pokemonIndex'
+import { prettySlug } from '../lib/teamSets'
+import { useStore } from '../lib/store'
+import { usePrefs } from '../lib/prefs'
+import { saveWeekly, useAuth, watchRanking } from '../lib/auth'
+import { weekKey } from '../lib/league'
+import { dailyMissions, dailyOf, missionLabel, trackDaily } from '../lib/factoryDaily'
+import { useMyTrainer, useTrainers } from '../lib/trainers'
+
+/** Os itens da árvore: o símbolo, o nome (do jogo, sem traduzir) e de onde cai. Igual ao app. */
+export const PIECE_INFO = {
+  'key-stone': ['🔮', 'Key Stone', 'chefes com Mega'],
+  'sparkling-stone': ['💎', 'Sparkling Stone', 'chefes com Z-Move'],
+  'comet-shard': ['☄️', 'Comet Shard', 'chefes com Dynamax, Gigantamax ou Tera'],
+  'relic-crown': ['👑', 'Relic Crown', 'lendários e míticos'],
+}
+/** Os itens em linha ("🔮 2 · 💎 0..."), só os que têm (ou todos, com all). */
+export const piecesLine = (pieces, all = false) => Object.entries(pieces).filter(([, n]) => all || n > 0).map(([item, n]) => `${PIECE_INFO[item][0]} ${n}`).join(' · ')
+
+/** O tempo de jogo da corrida: soma o tempo desde o último save (até 15 min: parado mais que isso não conta). Igual ao app. */
+let playTick = null
+function withPlayTime(factory) {
+  const now = Date.now()
+  const last = playTick
+  playTick = now
+  if (!factory?.run || last == null) return factory
+  return { ...factory, run: { ...factory.run, playMs: (factory.run.playMs ?? 0) + Math.min(15 * 60 * 1000, Math.max(0, now - last)) } }
+}
+/** O tempo de jogo como nos jogos: "2h 05min" ou "12 min". */
+export const playTimeText = (ms) => {
+  const min = Math.floor((ms ?? 0) / 60000)
+  return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min} min`
+}
+/** Salva a Factory (meta e corrida) na conta. */
+/** O evento de época de hoje na corrida (o sorteio dos selvagens usa esse). Igual ao app. */
+function withEvent(factory) {
+  if (!factory?.run) return factory
+  const now = new Date()
+  const id = eventOn(now.getMonth() + 1, now.getDate())
+  if ((factory.run.event ?? null) === id) return factory
+  const { event: _old, ...run } = factory.run
+  return { ...factory, run: id ? { ...run, event: id } : run }
+}
+export const saveFactory = (factory) => {
+  factory = withEvent(withPlayTime(factory))
+  // As missões do dia andam com o que mudou na corrida.
+  factory = trackDaily(factoryOf(useStore.getState().league), factory)
+  // Os vistos na corrida vão para a Pokédex (visto × capturado). Igual ao app.
+  factory = withSeen(factory, loadedData)
+  // Completou a Pokédex: o Shiny Charm para sempre. Igual ao app.
+  factory = withShinyCharm(factory, loadedData)
+  // Os lendários capturados nas missões ficam na conta. Igual ao app.
+  factory = withLegends(factory)
+  // Acabou a corrida da semana: o andar vai para o ranking dela (uma vez, com a conta conectada).
+  const last = factory?.last
+  if (last?.weekly && !last.posted) {
+    factory = { ...factory, last: { ...last, posted: true } }
+    const user = useAuth.getState().user
+    if (user?.uid && user.name && last.floor > 0) saveWeekly(user.uid, user.name, last.weekly, last.floor, useStore.getState().avatar, 'factory').catch(() => {})
+  }
+  useStore.getState().updateLeague((l) => ({ ...l, factory }))
+}
+// Só nos testes com os emuladores: deixa o teste montar uma corrida (por exemplo, numa bifurcação).
+if (import.meta.env.VITE_EMULATORS && typeof window !== 'undefined') window.__factory = { saveFactory, get: () => factoryOf(useStore.getState().league), set: (patch) => useStore.setState(patch) }
+export const useFactory = () => factoryOf(useStore((s) => s.league))
+
+// Os dados já carregados (saveFactory usa para marcar a espécie das formas regionais na Pokédex).
+let loadedData = null
+/** Os dados já carregados (ou null): a música da batalha da corrida (a região) sem esperar. */
+export const factoryDataNow = () => loadedData
+export function useFactoryData() {
+  const [data, setData] = useState(loadedData)
+  useEffect(() => {
+    getFactoryData().then((d) => { loadedData = d; setData(d) }).catch(() => setData(null))
+  }, [])
+  return data
+}
+
+const STAT_LABEL = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' }
+
+/** Nome de um item da corrida (TM, pedra, Cristal Z...), como nos jogos (não traduz). */
+const itemName = (id) => (id.startsWith('tm:') ? `TM ${prettySlug(id.slice(3))}` : prettySlug(id.startsWith('evo:') ? id.slice(4) : id))
+/** O sprite do item (TM, ficha de serviço e Cristal Z têm nomes próprios). */
+function itemIcon(id) {
+  if (id.startsWith('tm:')) return spriteUrl('items/tm-normal.png')
+  if (id.startsWith('evo:')) return spriteUrl(`items/${id.slice(4)}.png`)
+  const own = { 'move-tutor': 'tm-case', 'move-reminder': 'heart-scale', 'dynamax-band': 'wishing-piece', 'tera-orb': 'tera-orb' }[id]
+  return spriteUrl(`items/${own ?? (id.endsWith('-z') ? `${id}--held` : id)}.png`)
+}
+const hide = (e) => { e.currentTarget.style.visibility = 'hidden' }
+const GIMMICK_LABEL = { mega: 'Mega', z: 'Z-Move', dmax: 'Dynamax', tera: 'Tera' }
+
+function HpBar({ hp }) {
+  const value = Math.max(0, Math.min(1, hp ?? 1))
+  const color = value > 0.5 ? 'bg-emerald-500' : value > 0.2 ? 'bg-amber-500' : 'bg-red-500'
+  return (
+    <span className="mt-0.5 block h-1.5 w-12 overflow-hidden rounded bg-line" title={`${Math.round(value * 100)}%`}>
+      <span className={`block h-full ${color}`} style={{ width: `${value * 100}%` }} />
+    </span>
+  )
+}
+
+function MonChip({ mon, byId, selected, onClick, testid }) {
+  const name = byId?.get(mon.id)?.name ?? ''
+  const down = mon.hp != null && !(mon.hp > 0)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      aria-pressed={selected}
+      disabled={!onClick}
+      className={`flex flex-col items-center rounded-xl bg-bg p-1.5 ring-2 ${selected ? 'ring-amber-500' : 'ring-transparent'} ${onClick ? 'cursor-pointer hover:ring-line' : ''}`}
+    >
+      <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} className={`h-12 w-12 ${down ? 'opacity-40 grayscale' : ''}`} />
+      <span className="text-[11px] font-bold" data-no-translate>{mon.shiny ? '✨ ' : ''}{t(prettyName(name))}</span>
+      {mon.level != null && <span className="text-[10px] text-muted">Nv. {mon.level}</span>}
+      {mon.hp != null && (down ? <span className="text-[10px] font-bold text-red-500">{t('Desmaiado')}</span> : <HpBar hp={mon.hp} />)}
+      {mon.item && (
+        <span className="text-[10px] text-muted" data-no-translate>
+          @ {itemName(mon.item)}
+          {mon.extras?.length ? ` +${mon.extras.length}` : ''}
+        </span>
+      )}
+    </button>
+  )
+}
+
+/** O dinheiro e a Bolsa da corrida (Poké Balls e remédios). */
+function RunStatus({ run }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-bold">
+      <span>💰 {run.money}</span>
+      {BAG_ITEMS.filter((id) => run.bag[id] > 0).map((id) => (
+        <span key={id} className="inline-flex items-center gap-1" data-no-translate title={prettySlug(id)}>
+          <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-6 w-6" />×{run.bag[id]}
+        </span>
+      ))}
+    </p>
+  )
+}
+
+/** Os bolsos da Bolsa da corrida (como no Black & White). */
+const BAG_POCKETS = [
+  { id: 'items', label: 'Itens', img: 'leftovers' },
+  { id: 'medicine', label: 'Remédios', img: 'potion' },
+  { id: 'balls', label: 'Poké Balls', img: 'poke-ball' },
+  { id: 'tms', label: 'TMs e golpes', img: 'tm-normal' },
+  { id: 'key', label: 'Itens-chave', img: 'key-stone' },
+]
+const pocketOf = (id) => (BALL_TIERS.includes(id) || id.endsWith('-ball') ? 'balls' : id === 'revive' || HEAL_SHARE[id] ? 'medicine' : 'items')
+
+/**
+ * A Bolsa fora da batalha, separada em bolsos: remédios em quem está ferido,
+ * Revive em quem desmaiou, segurar os itens guardados e ensinar os TMs.
+ */
+function BagPanel({ run, byId, save, onClose }) {
+  const [selected, setSelected] = useState(null)
+  const [using, setUsing] = useState(null) // { kind, id }: falta escolher em quem
+  const [teaching, setTeaching] = useState(null)
+  const items = Object.fromEntries(BAG_POCKETS.map((p) => [p.id, []]))
+  for (const id of BAG_ITEMS) {
+    if (!(run.bag[id] > 0)) continue
+    const pocket = pocketOf(id)
+    const usable = pocket === 'medicine' && run.team.some((_, i) => applyBagItem(run, id, i))
+    items[pocket].push({ id, name: prettySlug(id), count: run.bag[id], icon: spriteUrl(`items/${id}.png`), help: itemHelp(id),
+      ...(pocket === 'medicine' ? { onUse: () => setUsing({ kind: 'bag', id }), disabled: !usable } : {}) })
+  }
+  ;(run.stash ?? []).forEach((id, k) => {
+    items.items.push({ id: `stash:${k}`, name: itemName(id), icon: itemIcon(id), help: `${itemHelp(id)} ${t('(guardado: escolha quem segura)')}`, use: t('SEGURAR'), onUse: () => setUsing({ kind: 'stash', id: k }) })
+  })
+  for (const [move, n] of Object.entries(run.tms ?? {})) {
+    if (n > 0) items.tms.push({ id: `tm:${move}`, name: itemName(`tm:${move}`), count: n, icon: itemIcon(`tm:${move}`), help: itemHelp(`tm:${move}`), use: t('ENSINAR'), onUse: () => setUsing({ kind: 'teach' }) })
+  }
+  for (const [token, n] of Object.entries(run.tokens ?? {})) {
+    if (n > 0) items.tms.push({ id: token, name: prettySlug(token), count: n, icon: itemIcon(token), help: itemHelp(token), use: t('ENSINAR'), onUse: () => setUsing({ kind: 'teach' }) })
+  }
+  for (const [flag, id] of [['townMap', 'town-map'], ['dmax', 'dynamax-band'], ['tera', 'tera-orb'], ['expShare', 'exp-share']]) {
+    if (run[flag]) items.key.push({ id, name: prettySlug(id), icon: itemIcon(id), help: itemHelp(id) })
+  }
+  const pockets = BAG_POCKETS.map((p) => ({ ...p, items: items[p.id] }))
+  const pick = (i) => {
+    if (using.kind === 'bag') save(applyBagItem(run, using.id, i))
+    else if (using.kind === 'stash') save(equipFromStash(run, using.id, i))
+    else { setTeaching(i); setUsing(null); return }
+    setUsing(null)
+    setSelected(null)
+  }
+  if (teaching != null) {
+    return (
+      <div className="p-2">
+        <OverlayClose title={`📀 ${t('Ensinar golpe')}`} onClose={() => setTeaching(null)} />
+        <MoveTeacher run={run} index={teaching} save={save} onClose={() => setTeaching(null)} />
+      </div>
+    )
+  }
+  // Escolher em quem: a tela do time do Black & White, no mesmo lugar.
+  if (using) {
+    return (
+      <BwParty
+        title={using.kind === 'stash' ? t('Quem vai segurar?') : using.kind === 'teach' ? t('Ensinar a quem?') : t('Usar em qual Pokémon?')}
+        team={partyOf(run, byId)}
+        testid="bag-target"
+        disabled={(i) => using.kind === 'bag' && !applyBagItem(run, using.id, i)}
+        onPick={pick}
+        onCancel={() => setUsing(null)}
+      />
+    )
+  }
+  return <BwBag pockets={pockets} onClose={onClose} selected={selected} onSelect={(id) => { setSelected(id); setUsing(null) }} testid="factory-bag" />
+}
+
+/** O time da corrida para a tela do time (BwParty). */
+// O item e as fitas dos concursos (🎀 da categoria). Igual ao app.
+const partyOf = (run, byId) => run.team.map((m) => ({ id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1,
+  sub: [m.alpha ? `α ${t('Alfa')}` : '', m.item ? itemName(m.item) : '', (m.ribbons ?? []).map((r) => CONTEST_CATS[r]?.[0] ?? '🎀').join('')].filter(Boolean).join(' · ') || undefined }))
+
+const CATEGORY_LABEL = { physical: 'Físico', special: 'Especial', status: 'Status' }
+
+/**
+ * Esquecer um golpe (como nos jogos): o Pokémon à esquerda e os 5 golpes à direita (os 4 de agora e o novo), no lugar
+ * do campo (como a Bolsa); toque num para ver o poder e a precisão no título e confirme embaixo. Igual ao app.
+ */
+function ForgetPanel({ mon, move, moves, name, types, pick, onPick, actions = null }) {
+  const current = mon.moves ?? []
+  const five = [...current, move]
+  const pm = pick == null ? null : moves[five[pick]]
+  return (
+    <div className="bw-party flex min-h-full flex-col gap-1.5 p-1.5" data-testid="forget-panel">
+      <p className="bw-party-title truncate rounded-lg px-3 py-1 text-sm font-black text-white" data-testid="forget-title" data-no-translate>
+        {pm ? `${prettySlug(five[pick])} · ${t('Poder')} ${pm.power ?? '—'} · ${t('Precisão')} ${pm.accuracy ?? '—'} · ${t(CATEGORY_LABEL[pm.category] ?? '')}` : t('Esquecer qual golpe?')}
+      </p>
+      <div className="flex gap-1.5">
+        {/* O Pokémon à esquerda (como nos jogos). */}
+        <div className="flex w-20 shrink-0 flex-col items-center gap-0.5 text-white">
+          <div className="h-[4.5rem] w-[4.5rem] rounded-xl border-2 border-sky-900 bg-sky-100"><PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} className="h-full w-full" /></div>
+          <p className="w-full truncate text-center text-xs font-black" data-no-translate>{name}</p>
+          <p className="text-[11px] font-bold" data-no-translate>Lv{mon.level}</p>
+          <div className="flex flex-wrap justify-center gap-0.5">{types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          {five.map((slug, k) => {
+            const m = moves[slug] ?? {}
+            const isNew = k === current.length
+            return (
+              <button key={slug} type="button" onClick={() => onPick(k)} data-testid={`forget-${k}`}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg border-2 border-sky-900 px-2 py-0.5 text-left text-xs font-black text-slate-900 ${pick === k ? 'bg-orange-300' : isNew ? 'bg-amber-100' : 'bg-white'}`}>
+                {m.type && <TypeBadge type={m.type} small />}
+                <span className="min-w-0 flex-1 truncate" data-no-translate>{prettySlug(slug)}</span>
+                {isNew && <span className="rounded bg-amber-600 px-1 text-[9px] text-white">{t('NOVO')}</span>}
+                <span className="tabular-nums">PP {m.pp ?? '—'}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {/* Confirmar o tocado (ESQUECER ou NÃO APRENDER) e VOLTAR, embaixo (a tela cobre os botões da caixa de texto). */}
+      {actions && <div className="mt-auto grid grid-cols-[2fr_1fr] gap-1.5 pt-1">{actions}</div>}
+    </div>
+  )
+}
+
+/** Os dados do Pokémon da corrida (como a tela DADOS da batalha): monta como na batalha e lê os atributos (com os bônus da corrida). */
+/** Os atributos do Pokémon da corrida num nível (a mesma conta da tela DADOS, com os bônus): para o quadro de subiu de nível. */
+async function statsAtLevel(run, m, level, data) {
+  const [mon] = await battleMons([memberOf(run, { ...m, level }, m.moves?.length ? m.moves : ['tackle'], data)])
+  if (!mon) return null
+  const calc = await import('../lib/damageCalc')
+  const stats = calc.sideStats(mon.base, { ...mon.side, hpPct: 100 })?.stats ?? {}
+  const boost = boostOf(run, m)
+  return {
+    hp: Math.round(mon.maxHp * (1 + (boost.hp ?? 0))),
+    ...Object.fromEntries(['atk', 'def', 'spa', 'spd', 'spe'].map((k) => [k, Math.round((stats[k] ?? 0) * (1 + (boost[k] ?? 0)))])),
+  }
+}
+
+/** O HP máximo do Pokémon da corrida (a mesma conta da tela DADOS, com os bônus), guardado pela chave dele. */
+const maxHpCache = new Map()
+async function maxHpOfRun(run, m, data) {
+  const key = JSON.stringify([m.id, m.level, m.ivs, m.evs, m.nature, boostOf(run, m)])
+  if (maxHpCache.has(key)) return maxHpCache.get(key)
+  const [mon] = await battleMons([memberOf(run, m, m.moves?.length ? m.moves : ['tackle'], data)])
+  const hp = mon ? Math.round(mon.maxHp * (1 + (boostOf(run, m).hp ?? 0))) : null
+  maxHpCache.set(key, hp)
+  return hp
+}
+
+/**
+ * A caixa de vida do Pokémon da frente (no lugar da sua na batalha): o nome, o nível, a barra de HP, a vida em números
+ * (17/68) e o XP do nível (a barra azul e quanto falta). Igual ao app.
+ */
+function LeadHp({ run, data, byId }) {
+  const m = run.team.find((x) => (x.hp ?? 1) > 0) ?? run.team[0]
+  const [maxHp, setMaxHp] = useState(null)
+  useEffect(() => {
+    let live = true
+    if (m && data) maxHpOfRun(run, m, data).then((hp) => live && setMaxHp(hp)).catch(() => {})
+    return () => { live = false }
+  }, [run, m, data])
+  if (!m) return null
+  const pct = Math.max(0, Math.min(100, (m.hp ?? 1) * 100))
+  const base = expAt(m.level)
+  const need = expAt(m.level + 1) - base
+  const got = Math.max(0, Math.min(need, (m.exp ?? base) - base))
+  return (
+    <div className="port-hp port-hp-mine lead-hp absolute right-[1.25%] bottom-[24%] z-20 w-[24%]" data-testid="port-hp-me">
+      <div className="port-hp-row"><span className="port-name truncate" data-no-translate>{m.nick ?? prettyName(byId?.get(m.id)?.name ?? '')}</span><span className="port-lv"><small>Lv</small>{m.level ?? ''}</span></div>
+      <div className="port-hp-bar"><b>HP</b><i><u className={pct > 50 ? 'hp-green' : pct > 20 ? 'hp-yellow' : 'hp-red'} style={{ width: `${pct}%` }} /></i></div>
+      <div className="port-hp-num" data-testid="port-hp-num">{maxHp ? `${Math.round((pct / 100) * maxHp)}/ ${maxHp}` : `${Math.round(pct)}%`}</div>
+      <div className="port-exp"><b data-no-translate>EXP</b><i><u style={{ width: `${need > 0 ? (got / need) * 100 : 0}%` }} /></i><span className="sr-only" data-testid="port-xp-num">{got}/{need}</span></div>
+    </div>
+  )
+}
+
+async function summaryOfRun(run, i, data, byId) {
+  const m = run.team[i]
+  const moves = m.moves?.length ? m.moves : await movesFor(m.id, m.level)
+  const [mon] = await battleMons([memberOf(run, m, moves, data)])
+  if (!mon) return null
+  const calc = await import('../lib/damageCalc')
+  const stats = calc.sideStats(mon.base, { ...mon.side, hpPct: 100 })?.stats ?? {}
+  const boost = boostOf(run, m)
+  const stat = (k) => (stats[k] != null ? Math.round(stats[k] * (1 + (boost[k] ?? 0))) : undefined)
+  const maxHp = Math.round(mon.maxHp * (1 + (boost.hp ?? 0)))
+  return {
+    // O gênero (decide evoluções como a do Combee e a do Burmy). Igual ao app.
+    id: m.id, shiny: m.shiny, name: t(prettyName(byId?.get(m.id)?.name ?? '')), gender: { F: '♀', M: '♂' }[genderOf(data, m)] ?? '', level: m.level, hp: Math.round((m.hp ?? 1) * maxHp), maxHp,
+    types: mon.types ?? [], ability: mon.side?.ability ?? '', item: m.item ? itemName(m.item) : '',
+    stats: Object.fromEntries(['atk', 'def', 'spa', 'spd', 'spe'].map((k) => [k, stat(k)])),
+    moves: mon.moves.map((mv) => ({ name: mv.name, type: mv.type, pp: mv.maxPp, maxPp: mv.maxPp })),
+  }
+}
+
+/** Um item na lista (ícone, nome e os botões); tocando nele aparece o que ele faz. Igual ao app. */
+function ItemRow({ id, main = false, children, testid }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div onClick={() => setOpen(!open)} className={`flex cursor-pointer items-center gap-2 rounded-lg border-2 border-sky-900 px-2 py-0.5 text-slate-900 ${main ? 'bg-amber-100' : 'bg-white'}`} data-testid={testid}>
+      <img src={itemIcon(id)} alt="" className="pixelated h-6 w-6 shrink-0" onError={hide} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-black" data-no-translate>{main ? '★ ' : ''}{itemName(id)} {open ? '▴' : '▾'}</p>
+        {open && itemHelp(id) && <p className="text-[10.5px] leading-tight text-slate-600" data-testid={`${testid}-info`}>{itemHelp(id)}</p>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+const BwButton = ({ color, onClick, children, testid, disabled = false }) => (
+  <button type="button" disabled={disabled} onClick={(e) => { e.stopPropagation(); onClick() }} className={`shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-black text-white disabled:cursor-default disabled:opacity-50 ${color}`} data-testid={testid}>{children}</button>
+)
+
+/**
+ * Os itens e as opções de quem foi aberto no time: o item principal (o efeito de verdade), os extras (só um pouco no
+ * atributo), segurar um item guardado, quem abre a batalha, a mecânica e ensinar golpe. Igual ao app.
+ */
+/** Pokémon-Amie (em teste): tocar no Pokémon acaricia (o grito e um coração subindo); o Poké Puff dá amizade, um por andar. Igual ao app. */
+function AmiePanel({ run, i, save }) {
+  const m = run.team[i]
+  const [pets, setPets] = useState(0)
+  const puff = feedPuff(run, i)
+  const hearts = heartsOf(m)
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-pink-950/60 p-1.5" data-testid="team-amie-panel">
+      <button type="button" className="relative h-16 w-16 shrink-0 cursor-pointer" onClick={() => { playCry(m.id); setPets((n) => n + 1) }} data-testid="amie-pet" aria-label={t('Acariciar')}>
+        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-full w-full" />
+        {pets > 0 && <span key={pets} className="amie-heart pointer-events-none absolute left-1/2 top-0 text-xl">❤️</span>}
+      </button>
+      <div className="min-w-0 flex-1 space-y-1 text-xs">
+        <p data-testid="amie-hearts">{'❤️'.repeat(hearts)}{'🤍'.repeat(FRIEND_HEARTS - hearts)}</p>
+        <p className="text-slate-300">{t('Toque nele para fazer carinho.')}</p>
+        <BwButton color="bg-pink-600" onClick={() => puff && save(puff)} testid="amie-puff" disabled={!puff}>🧁 Poké Puff</BwButton>
+        {!puff && <p className="text-slate-300">{t('Ele já comeu um Poké Puff neste andar.')}</p>}
+      </div>
+    </div>
+  )
+}
+
+function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
+  const [teaching, setTeaching] = useState(false)
+  // Pokémon-Amie (em teste): só com a opção ligada nas Configurações.
+  const amieOn = usePrefs((s) => s.amieTest)
+  const [amie, setAmie] = useState(false)
+  const m = run.team[i]
+  const extras = m.extras ?? []
+  const canTeach = Object.values(run.tms ?? {}).some((n) => n > 0) || Object.values(run.tokens ?? {}).some((n) => n > 0)
+  const options = gimmicksOf(data, run, m)
+  // A página OPÇÕES: quem abre a batalha, ensinar golpe e a mecânica.
+  if (part === 'actions') {
+    return (
+      <div className="bw-party-title h-full space-y-1 rounded-lg p-1.5 text-white" data-testid="team-actions">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {i === 0
+            ? <span className="rounded-lg bg-emerald-500 px-2 py-1 text-xs font-black text-slate-900">{t('Abre a batalha')}</span>
+            : <BwButton color="bg-blue-600" onClick={() => { save(setLead(run, i)); onLead() }} testid="team-lead">⬆ {t('PRIMEIRO NA BATALHA')}</BwButton>}
+          {canTeach && <BwButton color="bg-violet-600" onClick={() => setTeaching(true)} testid="team-teach">📀 {t('ENSINAR GOLPE')}</BwButton>}
+          {amieOn && <BwButton color="bg-pink-600" onClick={() => setAmie(!amie)} testid="team-amie">💞 Amie</BwButton>}
+          {/* O Tera Type com as Tera Shards (do Reide Tera): TERA_SHARD_COST do tipo trocam o dele. Igual ao app. */}
+          {Object.entries(run.teraShards ?? {}).some(([type, n]) => n >= TERA_SHARD_COST && type !== m.tera) && (
+            <select aria-label={t('Tera Type')} value="" onChange={(e) => e.target.value && save(setTera(run, i, e.target.value))}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-tera">
+              <option value="">💎 {t('Tera')}: {m.tera ? t(TYPE_PT[m.tera]) : '—'}</option>
+              {Object.entries(run.teraShards ?? {}).filter(([type, n]) => n >= TERA_SHARD_COST && type !== m.tera).map(([type, n]) => <option key={type} value={type}>💎 {t(TYPE_PT[type])} ({n})</option>)}
+            </select>
+          )}
+          {/* A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao app. */}
+          {itemFormsOf(data, m).length > 0 && (
+            <select aria-label={t('Forma')} value={m.id} onChange={(e) => save(setForm(run, data, i, Number(e.target.value), clockOf().night))}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-form" title={FORM_ITEM_NAMES[formItemOf(data, m)]}>
+              {itemFormsOf(data, m, clockOf().night).concat(itemFormsOf(data, m, clockOf().night).includes(m.id) ? [] : [m.id]).map((id) => <option key={id} value={id}>🔄 {FORM_LABELS[id] ?? id}</option>)}
+            </select>
+          )}
+          {options.length > 0 && (
+            <select aria-label={t('Mecânica')} value={gimmickOf(data, run, m) || 'none'} onChange={(e) => save(setGimmick(run, i, e.target.value))}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-gimmick">
+              <option value="none">{t('Sem mecânica')}</option>
+              {options.map((g) => <option key={g} value={g}>{GIMMICK_LABEL[g]}</option>)}
+            </select>
+          )}
+        </div>
+        {teaching && <div className="text-xs text-text"><MoveTeacher run={run} index={i} save={save} onClose={() => setTeaching(false)} /></div>}
+        {amie && <AmiePanel run={run} i={i} save={save} />}
+      </div>
+    )
+  }
+  return (
+    <div className="bw-party-title space-y-1 rounded-lg p-1.5 text-white" data-testid="team-options">
+      <p className="text-xs font-black">🎒 {t('Itens que ele segura')} (★ {t('o principal')})</p>
+      {!m.item && !extras.length && <p className="text-[11px] text-slate-300">{t('Nenhum item. Escolha um dos guardados abaixo.')}</p>}
+      {m.item && (
+        <ItemRow id={m.item} main testid="team-item-main">
+          <BwButton color="bg-red-600" onClick={() => save(unequipItem(run, i))} testid="team-unequip">{t('TIRAR')}</BwButton>
+        </ItemRow>
+      )}
+      {extras.map((id, k) => (
+        <ItemRow key={k} id={id} testid={`team-item-extra-${k}`}>
+          <BwButton color="bg-amber-600" onClick={() => save(setMainItem(run, i, k))} testid={`team-main-${k}`}>★</BwButton>
+          <BwButton color="bg-red-600" onClick={() => save(unequipItem(run, i, k))} testid={`team-unequip-${k}`}>{t('TIRAR')}</BwButton>
+        </ItemRow>
+      ))}
+      {(run.stash ?? []).length > 0 && (
+        <>
+          <p className="pt-1 text-xs font-black">🎁 {t('Guardados: toque para ele segurar')}</p>
+          {run.stash.map((id, k) => (
+            <ItemRow key={k} id={id} testid={`team-stash-${k}`}>
+              <BwButton color="bg-green-600" onClick={() => save(equipFromStash(run, k, i))} testid={`team-equip-${k}`}>{t('SEGURAR')}</BwButton>
+            </ItemRow>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+const TEAM_TABS = ['DADOS', 'GOLPES', 'ITENS', 'OPÇÕES']
+// As caixas do port (como a tela do time): escuras, com a borda cinza.
+const PORT_BOX = 'rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb]'
+
+/**
+ * Os dados de um Pokémon do time em páginas de tamanho fixo, como o resumo dos jogos: DADOS, GOLPES, ITENS e OPÇÕES,
+ * trocando arrastando para o lado (ou pelas setas e abas). Igual ao app.
+ */
+function TeamPages({ d, items, actions, onBack }) {
+  const ref = useRef(null)
+  const [page, setPage] = useState(0)
+  const go = (k) => { const el = ref.current; if (el && k >= 0 && k < TEAM_TABS.length) el.scrollTo({ left: k * el.clientWidth, behavior: 'smooth' }) }
+  const hp = d.maxHp > 0 ? Math.max(0, Math.min(1, d.hp / d.maxHp)) : 0
+  const statTop = Math.max(1, ...SUMMARY_STATS.map(([key]) => d.stats?.[key] ?? 0))
+  // O golpe tocado na página GOLPES e os dados dele (poder, precisão, categoria e o que faz).
+  const [movePick, setMovePick] = useState(0)
+  const [moveData, setMoveData] = useState(null)
+  useEffect(() => { let live = true; getMoves().then((m) => live && setMoveData(m)).catch(() => {}); return () => { live = false } }, [])
+  const pick = d.moves.length ? Math.min(movePick, d.moves.length - 1) : -1
+  const shown = pick >= 0 ? d.moves[pick] : null
+  const md = shown && moveData ? moveData[shown.name.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/ /g, '-')] : null
+  const num = (v) => (v == null || v === 'None' || v === '' ? '—' : v)
+  return (
+    <div className="bw-party flex h-full flex-col gap-1.5 p-1.5" data-testid="team-pages">
+      {/* Em cima, como as outras telas: ◀ o nome e o nível, as abas (a de agora acesa) ▶ e o ✕ (volta ao time). Igual ao app. */}
+      <div className="port-titlebar -mx-1.5 -mt-1.5 flex items-center gap-1 px-2 py-1 text-white">
+        <button type="button" onClick={() => go(page - 1)} disabled={page === 0} className="cursor-pointer px-1 font-black disabled:opacity-30" data-testid="team-prev">◀</button>
+        <span className="min-w-0 flex-1 truncate text-sm font-black" data-no-translate>{d.name} <span data-testid="team-gender">{d.gender} Lv{d.level}</span></span>
+        <span className="flex flex-none justify-center gap-0.5">
+          {TEAM_TABS.map((tab, k) => (
+            <button key={tab} type="button" onClick={() => go(k)} data-testid={`team-tab-${k}`}
+              className={`cursor-pointer rounded border px-1.5 py-0.5 text-[10px] font-black ${k === page ? 'border-orange-300 bg-orange-500' : 'border-[#8b93a1] bg-[#2b3240]'}`}>{t(tab)}</button>
+          ))}
+        </span>
+        <button type="button" onClick={() => go(page + 1)} disabled={page === TEAM_TABS.length - 1} className="cursor-pointer px-1 font-black disabled:opacity-30" data-testid="team-next">▶</button>
+        <button type="button" onClick={onBack} className="port-chip cursor-pointer px-2" aria-label={t('Fechar')} data-testid="bw-summary-back">✕</button>
+      </div>
+      {/* As páginas: arrastar para o lado troca (cada uma do tamanho do campo). */}
+      <div ref={ref} onScroll={(e) => setPage(Math.round(e.currentTarget.scrollLeft / Math.max(1, e.currentTarget.clientWidth)))}
+        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+        {/* DADOS, como nos desenhos: à esquerda o Pokémon (sprite, tipos, HP, habilidade e item); à direita os atributos com as barras. Igual ao app. */}
+        <div className="flex w-full shrink-0 snap-start gap-1.5">
+          <div className={`${PORT_BOX} flex w-2/5 flex-col gap-1 p-2 text-[11px] font-black text-white`}>
+            <PokeIcon id={d.id} shiny={Boolean(d.shiny)} className="min-h-0 w-full flex-1" />
+            <div className="flex flex-wrap justify-center gap-1">{d.types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+            <div className="flex items-center gap-1"><span className="text-lime-400">HP</span>
+              <span className="block h-1.5 flex-1 overflow-hidden border border-black bg-[#2b3240]"><span className={`block h-full ${hp > 0.5 ? 'bg-green-400' : hp > 0.2 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} /></span>
+              <span className="tabular-nums">{d.hp}/{d.maxHp}</span>
+            </div>
+            <p className="truncate">{t('Habilidade')}: <span className="text-amber-200" data-no-translate>{d.ability || '—'}</span></p>
+            <p className="truncate">{t('Item')}: <span className="text-amber-200" data-no-translate>{d.item || '—'}</span></p>
+          </div>
+          <div className={`${PORT_BOX} flex flex-1 flex-col justify-evenly px-3 py-1 text-[12px] font-bold text-white`}>
+            {SUMMARY_STATS.map(([key, label]) => (
+              <p key={key} className="flex items-center gap-2">
+                <span className="w-24 truncate">{t(label)}</span>
+                <span className="w-8 text-right tabular-nums font-black text-amber-200">{d.stats?.[key] ?? '—'}</span>
+                <span className="block h-2 flex-1 border border-black bg-[#2b3240]"><span className="block h-full bg-cyan-400" style={{ width: `${Math.min(100, ((d.stats?.[key] ?? 0) / statTop) * 100)}%` }} /></span>
+              </p>
+            ))}
+          </div>
+        </div>
+        {/* GOLPES, como nos desenhos: à esquerda os 4 golpes (toque num); à direita o tocado: tipo, categoria, poder, precisão, PP e o que ele faz. Igual ao app. */}
+        <div className="flex w-full shrink-0 snap-start gap-1.5">
+          <div className="flex w-2/5 flex-col gap-1">
+            {[0, 1, 2, 3].map((k) => {
+              const mv = d.moves[k]
+              if (!mv) return <div key={k} className={`${PORT_BOX} flex-1 opacity-40`} />
+              return (
+                <button key={k} type="button" onClick={() => setMovePick(k)} data-testid={`team-move-${k}`}
+                  className={`flex flex-1 cursor-pointer items-center gap-1.5 rounded-md border-2 px-2 text-left text-xs font-black text-white ${k === pick ? 'border-yellow-400 bg-[#42340aeb]' : 'border-[#8b93a1] bg-[#181a1eeb]'}`}>
+                  {mv.type && <TypeBadge type={mv.type} small />}
+                  <span className="min-w-0 flex-1 truncate" data-no-translate>{mv.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className={`${PORT_BOX} flex flex-1 flex-col gap-0.5 px-3 py-1.5 text-[12px] font-bold text-white`} data-testid="team-move-info">
+            {shown && <>
+              <p className="flex items-center gap-2 text-sm font-black"><span className="min-w-0 flex-1 truncate" data-no-translate>{shown.name}</span>{shown.type && <TypeBadge type={shown.type} small />}</p>
+              <p className="flex"><span className="w-24">{t('Categoria')}</span><span className="text-amber-200">{md ? t(CATEGORY_LABEL[md.category] ?? '—') : '—'}</span></p>
+              <p className="flex"><span className="w-24">{t('Poder')}</span><span className="text-amber-200">{num(md?.power)}</span></p>
+              <p className="flex"><span className="w-24">{t('Precisão')}</span><span className="text-amber-200">{num(md?.accuracy)}</span></p>
+              <p className="flex"><span className="w-24">PP</span><span className="text-amber-200 tabular-nums">{shown.pp}/{shown.maxPp}</span></p>
+              <p className="mt-1 min-h-0 flex-1 overflow-hidden text-[11px] font-semibold text-slate-300">{md ? localText('moves', md.name, md.effect) : ''}</p>
+            </>}
+          </div>
+        </div>
+        {/* Muitos itens guardados: só esta página rola. */}
+        <div className="w-full shrink-0 snap-start overflow-y-auto">{items}</div>
+        <div className="w-full shrink-0 snap-start">{actions}</div>
+      </div>
+    </div>
+  )
+}
+
+/** O time como a tela de trocar da batalha (Black & White): toque num Pokémon para ver os dados dele e equipar itens. Igual ao app. */
+function TeamView({ run, data, byId, save, onClose = null }) {
+  const [sel, setSel] = useState(null)
+  const [summary, setSummary] = useState(null)
+  // Os dados de quem está aberto (refeitos quando o item, o nível ou o time mudam).
+  useEffect(() => {
+    let live = true
+    if (sel == null || sel >= run.team.length) return
+    summaryOfRun(run, sel, data, byId).then((d) => live && setSummary(d)).catch(() => live && setSummary(null))
+    return () => { live = false }
+  }, [run, sel, data, byId])
+  if (sel != null && sel < run.team.length) {
+    if (!summary) return <div className="bw-party p-6 text-center text-white">...</div>
+    const lead = () => { setSummary(null); setSel(0) }
+    return <TeamPages d={summary} onBack={() => { setSel(null); setSummary(null) }}
+      items={<MonOptions run={run} data={data} i={sel} save={save} onLead={lead} />}
+      actions={<MonOptions run={run} data={data} i={sel} save={save} onLead={lead} part="actions" />} />
+  }
+  // O limite de nível de agora (o próximo chefe e os desvios): quem chegou nele para de ganhar XP até vencer o chefe.
+  const cap = levelCapOf(data, run)
+  const team = run.team.map((m) => ({
+    id: m.id, shiny: m.shiny, name: m.nick || t(prettyName(byId?.get(m.id)?.name ?? '')), level: m.level, hp: m.hp ?? 1, max: cap != null && m.level >= cap,
+    // A amizade (os corações) e, de quem veio de uma troca, o treinador de antes (OT).
+    hearts: heartsOf(m),
+    // O item que ele segura (★ o principal; +N os extras).
+    sub: m.item ? `★ ${itemName(m.item)}${(m.extras ?? []).length ? ` +${m.extras.length}` : ''}` : m.ot ? `🔁 OT ${m.ot}` : undefined,
+  }))
+  // Os ovos ocupam vagas do time (e chocam com as vitórias).
+  const party = <BwParty team={team} testid="factory-team" title={cap != null ? `📈 ${t('Nível máximo agora: {0}. Sobe quando você vence o próximo chefe.').replace('{0}', cap)}` : undefined} eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={(i) => { setSummary(null); setSel(i) }} onMove={(a, b) => save(swapTeam(run, a, b))} />
+  if (!onClose) return party
+  // Um cabeçalho só em cima (o Time com o ✕; aberto um Pokémon, o dele com as abas e o ✕). Igual ao app.
+  return (
+    <div className="flex h-full flex-col">
+      <OverlayClose onClose={onClose} title={`🧩 ${t('Time')}`} />
+      <div className="min-h-0 flex-1">{party}</div>
+    </div>
+  )
+}
+
+/** Ensinar um golpe: TM (os que ele aprende por máquina), Move Tutor (tutor e ovo) ou Move Reminder (os do nível). */
+function MoveTeacher({ run, index, save, onClose }) {
+  const mon = run.team[index]
+  const [info, setInfo] = useState(null)
+  const [choice, setChoice] = useState(null)
+  useEffect(() => {
+    let live = true
+    Promise.all([learnsetOf(mon.id), mon.moves?.length ? mon.moves : movesFor(mon.id, mon.level)]).then(([learnset, current]) => live && setInfo({ learnset, current }))
+    return () => { live = false }
+  }, [mon.id, mon.level, mon.moves])
+  if (!info) return <p className="w-full text-muted">...</p>
+  const has = (move, ...ways) => info.learnset.some((m) => m[0] === move && ways.includes(m[1]))
+  const unique = (list) => [...new Set(list)].filter((m) => !info.current.includes(m))
+  const sources = [
+    ['tm', unique(Object.entries(run.tms ?? {}).filter(([move, n]) => n > 0 && has(move, 'machine')).map(([move]) => move))],
+    ['move-tutor', run.tokens?.['move-tutor'] > 0 ? unique(info.learnset.filter((m) => m[1] === 'tutor' || m[1] === 'egg').map((m) => m[0])) : []],
+    ['move-reminder', run.tokens?.['move-reminder'] > 0 ? unique(info.learnset.filter((m) => m[1] === 'level-up' && m[2] <= mon.level).map((m) => m[0])) : []],
+  ].filter(([, list]) => list.length)
+  const label = { tm: t('TM'), 'move-tutor': 'Move Tutor', 'move-reminder': 'Move Reminder' }
+  const teach = (slot, picked = choice) => {
+    const next = teachMove(run, index, picked.move, info.current, slot, picked.source)
+    if (next) save(next)
+    onClose()
+  }
+  return (
+    <div className="w-full space-y-1 rounded-lg bg-card p-2" data-testid="move-teacher">
+      {!sources.length && <p className="text-muted">{t('Nada para ensinar a ele agora (TM que ele aprende ou fichas de Move Tutor/Reminder).')}</p>}
+      {!choice && sources.map(([source, list]) => (
+        <div key={source}>
+          <p className="font-bold">{label[source]}</p>
+          <div className="flex max-h-32 flex-wrap gap-1 overflow-y-auto">
+            {list.map((move) => (
+              <button key={move} type="button" onClick={() => (info.current.length < 4 ? teach(-1, { move, source }) : setChoice({ move, source }))}
+                className="rounded-lg bg-bg px-2 py-1 hover:ring-2 hover:ring-amber-500" data-no-translate>{prettySlug(move)}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {choice && (
+        <div>
+          <p className="font-bold">{t('Esquecer qual golpe para aprender {0}?').replace('{0}', prettySlug(choice.move))}</p>
+          <div className="flex flex-wrap gap-1">
+            {info.current.map((move, slot) => (
+              <button key={move} type="button" onClick={() => teach(slot)} className="rounded-lg bg-bg px-2 py-1 hover:ring-2 hover:ring-red-500" data-no-translate>{prettySlug(move)}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button type="button" onClick={onClose} className="text-muted underline">{t('Cancelar')}</button>
+    </div>
+  )
+}
+
+/** O texto da história: o começo da região (1º chefe) e quem vem a seguir. */
+function StoryPanel({ run, data }) {
+  const boss = bossOf(data, run)
+  const intro = run.boss.step === 0 ? storyLine(data, sceneRegion(boss), 'intro') : ''
+  return (
+    <div className="space-y-1 rounded-xl bg-indigo-500/10 p-2 text-sm" data-testid="factory-story">
+      <p className="font-black">📖 <span data-no-translate>{boss.region} · {boss.game}</span></p>
+      {intro && <p>{intro}</p>}
+      <p className="text-muted">{storyLine(data, sceneRegion(boss), boss.kind, boss.name)}</p>
+    </div>
+  )
+}
+
+export const bossKindLabel = (kind) => ({ gym: t('Líder de ginásio'), rival: t('Rival'), villain: t('Vilão'), elite: t('Elite dos Quatro'), champion: t('Campeão') })[kind] ?? ''
+
+/** O próximo chefe de cidade (o destino da rota). */
+function NextBoss({ run, data }) {
+  const boss = targetOf(data, run)
+  return (
+    <p className="text-xs text-muted">
+      👑 {t('Chefe em {0}:').replace('{0}', boss.city ?? '')}{' '}
+      <b data-no-translate>{boss.name}</b> · {bossKindLabel(boss.kind)} · <span data-no-translate>{boss.region ?? data.bosses[run.boss.region].region} ({data.bosses[run.boss.region].game})</span>
+    </p>
+  )
+}
+
+/** O começo: corrida em andamento (continuar no mapa), ou escolher o inicial; e a loja de Pokémon (moedas). */
+/** As missões de hoje, com o progresso e as moedas de cada uma. */
+function DailyMissions({ factory }) {
+  const daily = dailyOf(factory)
+  return (
+    <div className="rounded-2xl bg-bg p-3 text-sm" data-testid="factory-daily">
+      <p className="font-black">📅 {t('Missões de hoje')}</p>
+      <ul className="mt-2 space-y-2">
+        {dailyMissions().map(({ kind, count, coins }) => {
+          const value = Math.min(count, daily.p[kind] ?? 0)
+          const done = daily.done.includes(kind)
+          return (
+            <li key={kind} data-testid={`daily-${kind}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={done ? 'text-muted line-through' : 'font-semibold'}>{done ? '✅' : '▫️'} {t(missionLabel(kind, count)).replace('{0}', count)}</span>
+                <span className="shrink-0 font-bold">{value}/{count} · 🪙{coins}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
+                <div className={`h-full rounded-full transition-all ${done ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${(value / count) * 100}%` }} />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/** A galeria das melhores corridas: o andar, o time e o dia. */
+/** Os modos da corrida e o texto de cada um. Igual ao app. */
+const RUN_MODE_TEXTS = [
+  ['mono', '🎨 Monotipo: só dá para capturar Pokémon com um tipo do inicial'],
+]
+const MODE_ICONS = { nuzlocke: '🕯️', mono: '🎨', noItems: '🎒', regionalAll: '🌍' }
+
+/** Uma corrida do histórico: o dia, o andar, as moedas, os itens da árvore, os modos e o time (o MVP com ⭐). Igual ao app. */
+function HistoryRow({ h, byId }) {
+  const sum = h.summary ?? {}
+  const pieces = piecesLine(piecesOf(h))
+  const [open, setOpen] = useState(false)
+  const who = (v) => (typeof v === 'number' ? t(prettyName(byId?.get(v)?.name ?? '')) : v)
+  return (
+    <div className="rounded-xl bg-card px-2 py-1" data-testid="history-row">
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold">{t('Andar {0} · +{1} moedas').replace('{0}', h.floor).replace('{1}', h.coins)}{pieces ? ` · ${pieces}` : ''}</p>
+        <p className="text-[11px] text-muted">{(h.modes ?? []).map((m) => MODE_ICONS[m] ?? '').join('')} {h.date.split('-').reverse().join('/')}</p>
+      </div>
+      {(sum.team ?? []).slice(0, 6).map(([id, level, shiny], i) => {
+        const p = byId?.get(id)
+        const mvp = sum.mvp && sum.mvp[0] === id && sum.mvp[1] === level
+        return (
+          <span key={i} className="relative h-7 w-7">
+            {p && <Sprite path={shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} alt={p.name} />}
+            {mvp && <span className="absolute right-0 top-0 text-[9px]">⭐</span>}
+          </span>
+        )
+      })}
+      {(h.diary ?? []).length > 0 && <button type="button" className="cursor-pointer text-lg" onClick={() => setOpen(!open)} data-testid="history-diary" title={t('Diário da corrida')}>📔</button>}
+    </div>
+    {/* O diário da corrida: o que aconteceu, andar por andar. Igual ao app. */}
+    {open && (
+      <ol className="mt-1 max-h-48 space-y-0.5 overflow-y-auto border-t border-white/10 pt-1 text-xs" data-testid="diary" data-no-translate>
+        {h.diary.map(([kind, floor, v, shiny], i) => <li key={i}><span className="text-muted">{t('Andar')} {floor}</span> · {DIARY_TEXT[kind]?.[0]} {t(DIARY_TEXT[kind]?.[1] ?? '').replace('{0}', who(v))}{shiny ? ' ✨' : ''}</li>)}
+      </ol>
+    )}
+    </div>
+  )
+}
+
+/**
+ * A caça shiny: o Pokémon escolhido, quantas vezes já apareceu e quantas
+ * vezes mais comum está o shiny dele. Igual ao app.
+ */
+function HuntCard({ factory, data, byId }) {
+  const [picking, setPicking] = useState(false)
+  const [query, setQuery] = useState('')
+  const hunt = factory.hunt
+  const count = hunt?.count ?? 0
+  const mult = huntMultOf(count)
+  const toNext = mult >= HUNT_MAX ? null : HUNT_STEP - (count % HUNT_STEP)
+  const p = hunt && byId?.get(hunt.id)
+  const q = query.trim().toLowerCase()
+  const options = picking && byId
+    ? Object.keys(data.species).map(Number).filter((id) => huntBase(data, id) === id && byId.get(id) && (!q || byId.get(id).name.toLowerCase().includes(q))).sort((a, b) => a - b).slice(0, 120)
+    : []
+  return (
+    <details className="rounded-2xl bg-bg p-3" data-testid="factory-hunt">
+      <summary className="cursor-pointer font-bold">🎯 {t('Caça shiny')}</summary>
+      <p className="my-2 text-xs text-muted">{t('Escolha um Pokémon: a cada 10 vezes que ele (ou a linha dele) aparecer nas corridas, o shiny dele fica mais comum, até 8 vezes. Achou o shiny, a contagem recomeça.')}</p>
+      {hunt && (
+        <div className="flex items-center gap-2">
+          <span className="h-14 w-14 shrink-0">{p && <Sprite path={shinyPath(p.sprite)} box={p.box} fill={0.95} alt={p.name} />}</span>
+          <div>
+            <p className="font-black" data-no-translate>{t(prettyName(p?.name ?? ''))}</p>
+            <p className="text-xs" data-testid="hunt-count">{t('Encontros: {0}').replace('{0}', count)} · ✨ {mult}× {t('mais comum')}</p>
+            <p className="text-[11px] text-muted">{[toNext != null && t('Mais {0} para subir').replace('{0}', toNext), hunt.found > 0 && t('Shiny achados: {0}').replace('{0}', hunt.found)].filter(Boolean).join(' · ')}</p>
+          </div>
+        </div>
+      )}
+      <div className="mt-2 flex gap-2">
+        <button type="button" data-testid="hunt-pick" onClick={() => setPicking((v) => !v)} className="cursor-pointer rounded-full px-3 py-1 text-sm font-bold ring-1 ring-line">{hunt ? t('Trocar') : t('Escolher Pokémon')}</button>
+        {hunt && <button type="button" data-testid="hunt-stop" onClick={() => saveFactory(setHunt(factory, data, null))} className="cursor-pointer px-3 py-1 text-sm text-muted">{t('Parar')}</button>}
+      </div>
+      {picking && (
+        <div className="mt-2">
+          <SearchInput value={query} onChange={setQuery} placeholder="Buscar Pokémon" className="mb-2" />
+          <div className="flex max-h-72 flex-wrap gap-1 overflow-y-auto">
+            {options.map((id) => {
+              const o = byId.get(id)
+              return (
+                <button key={id} type="button" data-testid={`hunt-option-${id}`} title={o.name} onClick={() => { saveFactory(setHunt(factory, data, id)); setPicking(false) }}
+                  className="h-14 w-14 cursor-pointer rounded-xl bg-card">
+                  <Sprite path={o.sprite} box={o.box} fill={0.9} alt={o.name} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </details>
+  )
+}
+/** A troca dos itens da árvore: 3 de um por 1 de outro (quando falta um tipo de chefe). Igual ao app. */
+function PiecesTrade({ factory }) {
+  const [from, setFrom] = useState(PIECE_ITEMS[0])
+  const [to, setTo] = useState(PIECE_ITEMS[PIECE_ITEMS.length - 1])
+  const next = tradePieces(factory, from, to)
+  const pick = (value, set, testid) => (
+    <select value={value} onChange={(e) => set(e.target.value)} className="rounded-lg border border-line bg-bg px-1 py-0.5 text-xs" data-testid={testid}>
+      {PIECE_ITEMS.map((i) => <option key={i} value={i}>{PIECE_INFO[i][0]} {PIECE_INFO[i][1]}</option>)}
+    </select>
+  )
+  return (
+    <div className="mt-2 rounded-xl bg-card p-2 text-xs" data-testid="pieces-trade">
+      <p className="text-sm font-bold">🔁 {t('Trocar itens da árvore')} · {piecesLine(piecesOf(factory), true)}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        {PIECE_TRADE}× {pick(from, setFrom, 'trade-from')} → 1× {pick(to, setTo, 'trade-to')}
+        <Button disabled={!next} onClick={() => next && saveFactory(next)} data-testid="trade-pieces">{t('Trocar')}</Button>
+      </div>
+    </div>
+  )
+}
+
+/** Os bônus da árvore, em texto: como a próxima corrida começaria. Igual ao app. */
+export function bonusLines(factory, data) {
+  if (!data) return []
+  const starters = startersOf(factory, data)
+  const empty = starters.length ? startRun(emptyFactory(), data, starters[0], 1) : null
+  const run = starters.length ? startRun(factory, data, starters[0], 1) : null
+  if (!run || !empty) return []
+  const pct = (v) => `+${Math.round(v * 100)}%`
+  const names = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' }
+  const extra = Object.entries(run.bag).filter(([k, n]) => n - (empty.bag[k] ?? 0) > 0).map(([k, n]) => `+${n - (empty.bag[k] ?? 0)} ${itemName(k)}`)
+  const level = run.team[0].level - empty.team[0].level
+  const boosts = Object.entries(run.teamBoost).filter(([, v]) => v > 0)
+  return [
+    ...(boosts.length ? [`⚔️ ${boosts.map(([k, v]) => `${names[k]} ${pct(v)}`).join(' · ')}`] : []),
+    ...(run.mult.exp > 1 || run.mult.money > 1 ? [`📈 ${t('XP')} ×${run.mult.exp} · 💰 ${t('dinheiro')} ×${run.mult.money}${run.mult.shop < 1 ? ` · 🏷️ ${t('loja')} -${Math.round((1 - run.mult.shop) * 100)}%` : ''}`] : []),
+    ...(level > 0 ? [`🎓 ${t('Inicial')} +${level} ${t('níveis')}`] : []),
+    ...(run.money > 0 ? [`💵 ${t('Começa com {0} de dinheiro').replace('{0}', run.money)}`] : []),
+    ...(extra.length ? [`🎒 ${extra.join(' · ')}`] : []),
+    ...(run.stash?.length ? [`🧺 ${t('{0} itens guardados para segurar').replace('{0}', run.stash.length)}`] : []),
+    ...((run.shinyRate ?? 1) > 1 ? [`✨ ${t('Shiny {0}× mais comum').replace('{0}', run.shinyRate)}`] : []),
+    ...(run.winHeal > 0 ? [`💗 ${t('Cura {0}% depois de cada vitória').replace('{0}', run.winHeal)}`] : []),
+    ...(run.catchBonus > 0 ? [`🎯 ${t('Captura {0}% mais fácil').replace('{0}', run.catchBonus)}`] : []),
+  ]
+}
+
+/** O que a árvore já dá (a soma de tudo comprado). Igual ao app. */
+function Bonuses({ factory, data }) {
+  const lines = bonusLines(factory, data)
+  return (
+    <div className="mt-2 rounded-xl bg-card p-2 text-xs" data-testid="tree-bonuses">
+      <p className="text-sm font-bold">📊 {t('Seus bônus')}</p>
+      {lines.length ? lines.map((l) => <p key={l}>{l}</p>) : <p className="text-muted">{t('Nada ainda: compre melhorias na árvore.')}</p>}
+    </div>
+  )
+}
+
+function BestRuns({ gallery }) {
+  return (
+    <div className="rounded-2xl bg-bg p-3 text-sm" data-testid="factory-gallery">
+      <p className="font-black">🖼️ {t('Suas melhores corridas')}</p>
+      <ol className="mt-2 space-y-1.5">
+        {gallery.map((g, k) => (
+          <li key={k} className="flex items-center gap-2 rounded-xl bg-card px-2 py-1">
+            <span className="w-6 text-center text-base">{['🥇', '🥈', '🥉'][k] ?? `${k + 1}.`}</span>
+            <span className="w-20 shrink-0 font-bold">{t('Andar {0}').replace('{0}', g.floor)}</span>
+            <span className="flex min-w-0 flex-1 flex-wrap">
+              {g.team.map(([id, level, shiny], i) => <span key={i} title={`Lv. ${level}`}><PokeIcon id={id} shiny={Boolean(shiny)} className="h-9 w-9" /></span>)}
+            </span>
+            <span className="shrink-0 text-right text-xs text-muted">
+              {g.games > 0 && <span title={t('Jogos zerados')}>🎮{g.games} </span>}{g.nuzlocke && '🕯️ '}{g.weekly && '🏆 '}{g.date.split('-').reverse().join('/')}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+export function FactoryHub({ onContinue, busy }) {
+  const factory = useFactory()
+  const data = useFactoryData()
+  const byId = usePokemonIndex()
+  const [pick, setPick] = useState(null)
+  // Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar).
+  const [nuzlocke, setNuzlocke] = useState(false)
+  // As regras do Nuzlocke que você escolhe (o botão aparece com o modo ligado).
+  const [nuzRules, setNuzRules] = useState(NUZLOCKE_DEFAULT)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  // Os outros modos da corrida (monotipo, sem itens, formas regionais).
+  const [modes, setModes] = useState([])
+  const [query, setQuery] = useState('')
+  const run = factory.run
+
+  const shopList = useMemo(() => {
+    if (!data || !byId) return []
+    const q = query.trim().toLowerCase()
+    return Object.entries(data.species)
+      .map(([id, [, bst]]) => ({ id: Number(id), bst, price: pokemonPrice(bst), name: byId.get(Number(id))?.name ?? '' }))
+      // Só a primeira forma está à venda (a evolução vem jogando).
+      .filter((p) => forSale(data, p.id) && !factory.owned.includes(p.id) && (!q || p.name.includes(q)))
+      .sort((a, b) => a.price - b.price || a.id - b.id)
+      .slice(0, 24)
+  }, [data, byId, query, factory.owned])
+
+  // Contas antigas que compraram uma forma evoluída: ficam com a primeira forma dela.
+  useEffect(() => {
+    if (!data) return
+    const fixed = normalizeOwned(factory, data)
+    if (fixed !== factory) saveFactory(fixed)
+  }, [data, factory])
+
+  if (!data) return <p className="text-sm text-muted">...</p>
+  return (
+    <div className="space-y-4" data-testid="factory-hub">
+      <div className="rounded-2xl bg-bg p-3 text-sm">
+        <p className="font-black">🎲 {t('Pokelike')}</p>
+        <p className="text-muted">
+          {t('Um roguelike sem fim pela história de cada região: escolha um inicial no nível 5 e viaje de cidade em cidade, como nos jogos. Cada rota tem 10 andares e um chefe no último; depois vem a cidade, com 10 andares, o Poké Mart, o Centro Pokémon, a Creche e o líder no fim. Nas bifurcações você escolhe o caminho ou entra num lugar (cavernas, florestas, o mar, esgotos, museus...): 10 andares, um chefe e você volta para o andar em que entrou. Capture jogando a bola na batalha; nos lugares sem treinadores, até o chefe dá para capturar. O time não é curado entre os andares. Sem limite de nível, IVs, EVs ou itens; shiny é 1 em 4096. Perdeu: os andares viram moedas para comprar Pokémon e melhorias.')}
+        </p>
+        <p className="mt-1 font-bold">
+          {/* Os Star Pieces (caem dos chefes) destravam a árvore. Igual ao app. */}
+          {t('Recorde: andar {0}').replace('{0}', factory.best)}{factory.bestGames > 0 && <> · 🎮 {t('{0} jogos zerados numa corrida').replace('{0}', factory.bestGames)}</>} · 🪙 {factory.coins} {t('moedas')} · <span data-testid="factory-pieces">{piecesLine(piecesOf(factory), true)}</span>
+        </p>
+        {factory.refunded > 0 && (
+          <p className="mt-1 rounded-lg bg-amber-500/15 px-2 py-1 font-bold" data-testid="factory-refunded">
+            🪙 {t('Agora só a primeira forma fica à venda: devolvemos {0} moedas dos evoluídos que você tinha comprado.').replace('{0}', factory.refunded)}{' '}
+            <button type="button" className="cursor-pointer underline" onClick={() => saveFactory({ ...factory, refunded: 0 })}>{t('OK')}</button>
+          </p>
+        )}
+        {factory.last && !run && <p className="text-muted">{t('Última corrida: andar {0}, +{1} moedas.').replace('{0}', factory.last.floor).replace('{1}', factory.last.coins)}</p>}
+      </div>
+
+      <DailyMissions factory={factory} />
+      {factory.gallery?.length > 0 && <BestRuns gallery={factory.gallery} />}
+
+      {run ? (
+        <div className="space-y-3 rounded-2xl bg-bg p-3" data-testid="factory-run">
+          <p className="font-black">{t('Corrida em andamento: andar {0}').replace('{0}', run.floor)}</p>
+          <RunStatus run={run} />
+          <StoryPanel run={run} data={data} />
+          <NextBoss run={run} data={data} />
+          <div className="flex flex-wrap gap-1">{run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} />)}</div>
+          {run.cards.length > 0 && <p className="text-xs text-muted">{t('Cartas')}: {run.cards.map((c) => t(CARDS[c].label)).join(' · ')}</p>}
+          {(run.relics ?? []).length > 0 && <p className="text-xs text-muted" data-testid="factory-relics">🏺 {t('Relíquias')}: {run.relics.map((c) => `${RELICS[c].icon} ${t(RELICS[c].label)}`).join(' · ')}</p>}
+          <ContinueCard run={run} data={data} />
+          <div className="flex flex-wrap gap-2">
+            <Button data-testid="factory-continue-run" disabled={busy} onClick={onContinue}>🗺️ {t('Continuar a corrida')}</Button>
+            <Button color="#64748b" onClick={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))}>{t('Desistir (recebe as moedas)')}</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-muted">
+            {freePick(factory) ? t('Escolha o seu inicial grátis (de qualquer geração). Os outros você compra com moedas.') : t('Escolha com quem começar')}
+          </p>
+          <div className="flex max-h-72 flex-wrap gap-1 overflow-y-auto">
+            {startersOf(factory, data).flatMap((id) => [
+              <MonChip key={id} mon={{ id }} byId={byId} selected={pick?.id === id && !pick.shiny} onClick={() => setPick({ id, shiny: false })} testid={`starter-${id}`} />,
+              (factory.shinies ?? []).includes(id) && (
+                <MonChip key={`${id}-s`} mon={{ id, shiny: true }} byId={byId} selected={pick?.id === id && pick.shiny} onClick={() => setPick({ id, shiny: true })} testid={`starter-${id}-shiny`} />
+              ),
+            ])}
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold" data-testid="factory-nuzlocke">
+            <input type="checkbox" checked={nuzlocke} onChange={(e) => setNuzlocke(e.target.checked)} />
+            🕯️ {t('Modo Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar)')}
+          </label>
+          {nuzlocke && (
+            <div className="ml-6 space-y-1">
+              <button type="button" data-testid="factory-nuzlocke-rules" onClick={() => setRulesOpen((o) => !o)}
+                className="cursor-pointer rounded-lg border-2 border-slate-700 bg-surface px-3 py-1 text-sm font-black">
+                ⚙️ {t('Regras do Nuzlocke')} ({nuzRules.length}/{NUZLOCKE_RULES.length}) {rulesOpen ? '▲' : '▼'}
+              </button>
+              {rulesOpen && NUZLOCKE_RULES.map(([rule, icon, text]) => (
+                <label key={rule} className="flex items-center gap-2 text-sm" data-testid={`factory-nuzlocke-rule-${rule}`}>
+                  <input type="checkbox" checked={nuzRules.includes(rule)} onChange={(e) => setNuzRules((r) => (e.target.checked ? [...r, rule] : r.filter((x) => x !== rule)))} />
+                  {icon} {t(text)}
+                </label>
+              ))}
+            </div>
+          )}
+          {RUN_MODE_TEXTS.map(([mode, text]) => (
+            <label key={mode} className="flex items-center gap-2 text-sm font-semibold" data-testid={`factory-mode-${mode}`}>
+              <input type="checkbox" checked={modes.includes(mode)} onChange={(e) => setModes((m) => (e.target.checked ? [...m, mode] : m.filter((x) => x !== mode)))} />
+              {t(text)}
+            </label>
+          ))}
+          <Button
+            data-testid="factory-start"
+            disabled={busy || pick == null}
+            onClick={() => {
+              const meta = claimStarter(factory, data, pick.id)
+              const next = startRun(meta, data, pick.id, Math.floor(Math.random() * 2 ** 31), pick.shiny, { nuzlocke, nuzRules, modes })
+              if (!next) return
+              saveFactory({ ...meta, run: next })
+              onContinue()
+            }}
+          >
+            🎲 {t('Começar a corrida')}
+          </Button>
+        </div>
+      )}
+
+      {!run && <WeeklyCard factory={factory} data={data} byId={byId} onContinue={onContinue} />}
+
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-cosmetics">
+        <summary className="cursor-pointer font-bold">🎨 {t('Loja de cosméticos')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Com as moedas: a Poké Ball que você joga nas batalhas e a moldura da caixa de texto.')}</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {Object.entries(COSMETIC_BALLS).map(([id, price]) => {
+            const have = hasCosmetic(factory, 'ball', id)
+            const using = factory.ball === id
+            return (
+              <button key={id} type="button" data-testid={`cosmetic-${id}`} disabled={!have && factory.coins < price}
+                onClick={() => saveFactory(have ? equipCosmetic(factory, 'ball', using ? null : id) : buyCosmetic(factory, 'ball', id) ?? factory)}
+                className={`flex cursor-pointer flex-col items-center rounded-xl border-2 p-1 text-[11px] font-bold disabled:opacity-40 ${using ? 'border-amber-400 bg-amber-500/15' : 'border-transparent bg-card'}`}>
+                <img src={spriteUrl(`items/${id}.png`)} alt="" className="pixelated h-8 w-8" />
+                <span data-no-translate>{prettySlug(id)}</span>
+                <span className="text-muted">{using ? `✓ ${t('Usando')}` : have ? t('Usar') : `🪙 ${price}`}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {Object.entries(COSMETIC_FRAMES).map(([id, price]) => {
+            const have = hasCosmetic(factory, 'frame', id)
+            const using = factory.frame === id
+            return (
+              <button key={id} type="button" data-testid={`frame-${id}`} disabled={!have && factory.coins < price}
+                onClick={() => saveFactory(have ? equipCosmetic(factory, 'frame', using ? null : id) : buyCosmetic(factory, 'frame', id) ?? factory)}
+                className={`frame-${id} dlg-box cursor-pointer rounded-xl border-4 p-2 text-xs font-bold disabled:opacity-40 ${using ? 'ring-2 ring-amber-400' : ''}`}>
+                {t(FRAME_NAMES[id])} · {using ? `✓ ${t('Usando')}` : have ? t('Usar') : `🪙 ${price}`}
+              </button>
+            )
+          })}
+        </div>
+      </details>
+
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-upgrades" open={!run}>
+        <summary className="cursor-pointer font-bold">⬆️ {t('Árvore de melhorias')} <span className="text-xs text-muted" data-testid="upgrades-progress">★ {Object.keys(UPGRADES).reduce((n, id) => n + upgradeLevel(factory, id), 0)}/{Object.values(UPGRADES).reduce((n, u) => n + u.max, 0)}</span></summary>
+        <p className="my-2 text-xs text-muted">{t('Compradas com moedas, valem em todas as próximas corridas. Cada ramo começa na raiz; para avançar, a anterior, um andar recorde e Pokémon para começar.')}</p>
+        <SkillTree factory={factory} />
+        <PiecesTrade factory={factory} />
+        <Bonuses factory={factory} data={data} />
+      </details>
+
+      {(factory.history ?? []).length > 0 && (
+        <details className="rounded-2xl bg-bg p-3" data-testid="factory-history">
+          <summary className="cursor-pointer font-bold">📜 {t('Últimas corridas')}</summary>
+          <div className="mt-2 space-y-1.5">{factory.history.map((h, i) => <HistoryRow key={i} h={h} byId={byId} />)}</div>
+        </details>
+      )}
+
+      {(factory.hall ?? []).length > 0 && (
+        <details className="rounded-2xl bg-bg p-3" data-testid="factory-hall">
+          <summary className="cursor-pointer font-bold">👑 {t('Hall da Fama')}</summary>
+          <div className="mt-2 space-y-2">
+            {factory.hall.map((h) => (
+              // A foto do time campeão (no cenário do Campeão), como a tela do Hall da Fama dos jogos.
+              <div key={h.key} className="overflow-hidden rounded-xl border-4 border-amber-300 bg-card shadow" data-testid="hall-photo">
+                <div className="relative aspect-[3/1]">
+                  <BattleBackground scene={battleScene('champion-kanto')} layout="bw" />
+                  <div className="absolute inset-x-0 bottom-1 flex items-end justify-center gap-1">
+                    {h.team.map((m, i) => <PokeIcon key={i} id={m.id} shiny={Boolean(m.shiny)} className="h-12 w-12 drop-shadow sm:h-16 sm:w-16" />)}
+                  </div>
+                </div>
+                <p className="px-2 py-1 text-xs font-bold">👑 {t('Campeão no andar {0}').replace('{0}', h.floor)} · {h.team.map((m) => `Nv. ${m.level}`).join(' · ')}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <HuntCard factory={factory} data={data} byId={byId} />
+
+      <details className="rounded-2xl bg-bg p-3" data-testid="factory-shiny-shop">
+        <summary className="cursor-pointer font-bold">✨ {t('Inicial shiny')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Shiny tem +25% em todos os atributos e não se compra: capture qualquer Pokémon shiny numa corrida e ele vira inicial shiny (a primeira forma dele), até lendário.')}</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {(factory.shinies ?? []).map((id) => (
+            <div key={id} className="flex items-center gap-2 rounded-xl bg-card p-2" data-testid={`factory-shiny-${id}`}>
+              <PokeIcon id={id} shiny className="h-10 w-10" />
+              <p className="min-w-0 flex-1 truncate text-xs font-bold" data-no-translate>✨ {t(prettyName(byId?.get(id)?.name ?? ''))}</p>
+            </div>
+          ))}
+        </div>
+        {!(factory.shinies ?? []).length && <p className="text-xs text-muted">{t('Nenhum ainda.')}</p>}
+      </details>
+
+      <details className="rounded-2xl bg-bg p-3">
+        <summary className="cursor-pointer font-bold">🪙 {t('Comprar Pokémon com moedas')}</summary>
+        <p className="my-2 text-xs text-muted">{t('Só a primeira forma de cada um (a evolução vem jogando). Os mais fortes custam mais. Comprado, ele aparece entre os iniciais.')}</p>
+        {freePick(factory) && <p className="mb-2 text-xs font-bold text-amber-500">{t('Primeiro escolha o seu inicial grátis.')}</p>}
+        <SearchInput value={query} onChange={setQuery} placeholder={t('Buscar Pokémon')} />
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {shopList.map((p) => (
+            <div key={p.id} className="flex items-center gap-2 rounded-xl bg-card p-2">
+              <PokeIcon id={p.id} className="h-10 w-10" />
+              <div className="min-w-0 flex-1 text-xs">
+                <p className="truncate font-bold" data-no-translate>{t(prettyName(p.name))}</p>
+                <p className="text-muted">🪙 {p.price}</p>
+              </div>
+              <Button disabled={factory.coins < p.price || freePick(factory)} onClick={() => {
+                const next = buyPokemon(factory, data, p.id)
+                if (next) saveFactory(next)
+              }}>
+                {t('Comprar')}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
+  )
+}
+
+/** O nome curto de cada melhoria (nos requisitos da árvore). */
+const UPGRADE_NAMES = {
+  level: 'Treino', ivs: 'Genética', balls: 'Poké Balls', potions: 'Potions', revive: 'Revives', money: 'Dinheiro',
+  shop: 'Desconto', exp: 'XP extra', expShare: 'Exp. Share', reroll: 'Sortear caminho', cards: 'Carta a mais', shiny: 'Shiny',
+  greatBalls: 'Great Balls', rope: 'Escape Rope', coins: 'Moedas', map: 'Mapa', dmax: 'Dynamax Band', tera: 'Tera Orb',
+  superPotions: 'Super Potions', hyperPotions: 'Hyper Potions', maxPotions: 'Max Potions', sitrus: 'Sitrus Berry', lum: 'Lum Berry', leftovers: 'Leftovers',
+  sash: 'Focus Sash', ultraBalls: 'Ultra Balls', masterBall: 'Master Ball', quickBalls: 'Mão firme', netBalls: 'Mira certeira', timerBalls: 'Paciência',
+  duskBalls: 'Isca', expPlus: 'XP avançado', luckyEgg: 'Lucky Egg', hpBoost: 'Vigor', speBoost: 'Agilidade', tutor: 'Move Tutor',
+  reminder: 'Move Reminder', atk: 'Força', spa: 'Foco', def: 'Couraça', spd: 'Escudo', allStats: 'Mestre',
+  band: 'Choice Band', scarf: 'Choice Scarf', specs: 'Choice Specs', lifeOrb: 'Life Orb', vest: 'Assault Vest', helmet: 'Rocky Helmet',
+  quickClaw: 'Quick Claw', balloon: 'Air Balloon', brightPowder: 'Bright Powder', boots: 'Heavy-Duty Boots', kingsRock: 'King\'s Rock', loot: 'Recompensas',
+  expertBelt: 'Expert Belt', bonusCoins: 'Tesouro', policy: 'Weakness Policy', muscleBand: 'Muscle Band', wiseGlasses: 'Wise Glasses', shellBell: 'Shell Bell',
+  scopeLens: 'Scope Lens', eviolite: 'Eviolite', victoryHeal: 'Recuperação',
+}
+/** Os biomas das rotas: nome, símbolo e as cores do caminho no mapa. */
+const BIOME_INFO = {
+  grass: { label: 'Campo', icon: '🌾', color: '#65a30d' },
+  forest: { label: 'Floresta', icon: '🌲', color: '#15803d' },
+  water: { label: 'Mar', icon: '🌊', color: '#0284c7' },
+  cave: { label: 'Caverna', icon: '🪨', color: '#57534e' },
+  mountain: { label: 'Montanha', icon: '⛰️', color: '#78716c' },
+  volcano: { label: 'Vulcão', icon: '🌋', color: '#dc2626' },
+  city: { label: 'Cidade', icon: '🏙️', color: '#6366f1' },
+  snow: { label: 'Neve', icon: '❄️', color: '#38bdf8' },
+  tower: { label: 'Torre', icon: '👻', color: '#7c3aed' },
+  sky: { label: 'Céu', icon: '☁️', color: '#0ea5e9' },
+  beach: { label: 'Praia', icon: '🏖️', color: '#d97706' },
+  underwater: { label: 'Fundo do mar', icon: '🐠', color: '#1e40af' },
+  swamp: { label: 'Pântano', icon: '🪵', color: '#4d7c0f' },
+  sewer: { label: 'Esgoto', icon: '🚰', color: '#475569' },
+  icecave: { label: 'Caverna de gelo', icon: '🧊', color: '#0891b2' },
+  lavacave: { label: 'Caverna de lava', icon: '🌋', color: '#c2410c' },
+  poisoncave: { label: 'Caverna venenosa', icon: '🍄', color: '#7e22ce' },
+  seacave: { label: 'Caverna aquática', icon: '🐚', color: '#0e7490' },
+  waterfall: { label: 'Gruta da cachoeira', icon: '🏞️', color: '#0369a1' },
+  desert: { label: 'Deserto', icon: '🏜️', color: '#b45309' },
+  ruins: { label: 'Ruínas', icon: '🏛️', color: '#a16207' },
+  flowers: { label: 'Campo de flores', icon: '🌸', color: '#db2777' },
+  plant: { label: 'Usina', icon: '⚡', color: '#ca8a04' },
+  crystal: { label: 'Mina de cristal', icon: '💎', color: '#7c3aed' },
+  dunes: { label: 'Deserto à noite', icon: '🌙', color: '#4338ca' },
+  bamboo: { label: 'Bambuzal', icon: '🎋', color: '#4d7c0f' },
+  temple: { label: 'Templo', icon: '⛩️', color: '#b91c1c' },
+  // As bases das equipes vilãs (só capangas).
+  'base-rocket': { label: 'Base da Equipe Rocket', icon: '🏴', color: '#b91c1c' },
+  'base-aqua': { label: 'Base da Equipe Aqua', icon: '🏴', color: '#1d4ed8' },
+  'base-magma': { label: 'Base da Equipe Magma', icon: '🏴', color: '#c2410c' },
+  'base-galactic': { label: 'Base da Equipe Galáctica', icon: '🏴', color: '#0e7490' },
+  'base-plasma': { label: 'Castelo da Equipe Plasma', icon: '🏴', color: '#1e40af' },
+  'base-flare': { label: 'Laboratório da Equipe Flare', icon: '🏴', color: '#dc2626' },
+  'base-skull': { label: 'Base da Equipe Skull', icon: '🏴', color: '#6b21a8' },
+  'base-aether': { label: 'Paraíso Aether', icon: '🏴', color: '#ca8a04' },
+  'base-star': { label: 'Base da Equipe Star', icon: '🏴', color: '#db2777' },
+  'base-yell': { label: 'Spikemuth (Equipe Yell)', icon: '📣', color: '#be185d' },
+  'base-macro': { label: 'Rose Tower (Macro Cosmos)', icon: '🏢', color: '#1d4ed8' },
+}
+/** Cada ponto do mapa: símbolo, nome e o que tem nele. */
+const NODE_INFO = {
+  wild: { icon: '🌿', label: 'Pokémon selvagem', help: 'Dá para capturar: jogue a bola antes de ele desmaiar.' },
+  trainer: { icon: '🧢', label: 'Treinador', help: 'Dinheiro em dobro.' },
+  ace: { icon: '💪', label: 'Treinador forte', help: 'Um Pokémon a mais e mais forte; sempre deixa um item.' },
+  mart: { icon: '🎒', label: 'Vendedor ambulante', help: 'Vende o mesmo que o Poké Mart (sem batalha, sem XP).' },
+  center: { icon: '⛺', label: 'Parada para descanso', help: 'Alguém do caminho cura o time todo, até quem desmaiou (sem batalha).' },
+  event: { icon: '❓', label: 'Evento', help: 'Itens, dinheiro, frutas ou uma ficha de Move Tutor (sem batalha).' },
+  trade: { icon: '🔁', label: 'Troca', help: 'Alguém da rota troca um Pokémon com você: o que vem chega 3 níveis acima (com o item de quem foi) e ganha mais XP.' },
+  safari: { icon: '🦒', label: 'Safari Zone', help: 'Sem batalha: a entrada custa 500 moedas. 10 Safari Balls para capturar Pokémon raros.' },
+  wildboss: { icon: '🐉', label: 'Chefe sem treinador', help: 'Uma Mega, um Gigantamax ou um lendário. Dá para capturar.' },
+  // Os reides (Galar e Paldea): o chefe gigante com 3 aliados. Igual ao app.
+  raidmax: { icon: '🔴', label: 'Reide Dynamax', help: 'Uma toca com um Pokémon Gigantamax. 3 aliados lutam junto; vencendo, ele é seu.' },
+  raidtera: { icon: '💎', label: 'Reide Tera', help: 'Um cristal com um Pokémon Terastalizado. 3 aliados lutam junto; vencendo, ele é seu e dá Tera Shards.' },
+  meteor: { icon: '☄️', label: 'Chuva de meteoros', help: 'Um Clefairy apareceu com os meteoros (mais chance de shiny).' },
+  mythic: { icon: '✨', label: 'Pokémon mítico', help: 'Um Pokémon mítico, raríssimo. Dá para capturar.' },
+  boss: { icon: '👑', label: 'Chefe', help: '' },
+  bike: { icon: '🚲', label: 'Pedalar', help: 'De bicicleta: passa o andar sem batalha (e sem prêmio).' },
+  grotto: { icon: '🕳️', label: 'Hidden Grotto', help: 'Um buraco escondido no mato: um Pokémon com a habilidade oculta ou um item raro (uma vez por rota).' },
+  clue: { icon: '🔍', label: 'Pista do lendário', help: 'Siga a pista do lendário da região (sem batalha). Com todas as pistas, o covil dele aparece na rota seguinte.' },
+  rematch: { icon: '🏆', label: 'Revanche do Campeão', help: 'O Campeão que você venceu quer revanche: time mais forte, prêmio maior.' },
+  rival: { icon: '⚔️', label: 'Rival', help: 'O seu rival te seguiu pela rota: quer ver quem ficou mais forte (prêmio maior).' },
+  leave: { icon: '↩️', label: 'Voltar', help: 'Sai da água e volta para onde você entrou.' },
+  area: { icon: '👑', label: 'Chefe do lugar', help: 'O Pokémon mais forte daqui (sem treinador): dá para capturar.' },
+  dboss: { icon: '💀', label: 'Chefe', help: '' },
+}
+/** As MOs: o nome (do jogo, sem traduzir) e o que fazem na corrida. */
+const HM_INFO = {
+  cut: { name: 'Cut', icon: '✂️', help: 'Uma vez por rota, corta uma árvore e abre um caminho escondido (um selvagem raro).' },
+  flash: { name: 'Flash', icon: '💡', help: 'Ilumina cavernas, esgotos e torres: dá para ver os caminhos sem o Mapa, e a caverna secreta sempre tem algo.' },
+  surf: { name: 'Surf', icon: '🌊', help: 'Deixa navegar pelo mar (o caminho para o Mar).' },
+  dive: { name: 'Dive', icon: '🤿', help: 'Deixa mergulhar até o fundo do mar.' },
+  'rock-smash': { name: 'Rock Smash', icon: '🪨', help: 'Uma vez por rota, nas cavernas, montanhas e desertos, quebra uma rocha: aparece um selvagem raro do lugar.' },
+  strength: { name: 'Strength', icon: '💪', help: 'Uma vez por rota, nas cavernas e montanhas, empurra uma pedra: atrás dela, um treinador forte (sempre deixa um item).' },
+  waterfall: { name: 'Waterfall', icon: '🏞️', help: 'Sobe a cachoeira do Mar até a gruta atrás dela (selvagens e um chefe forte).' },
+}
+/** O aviso do caminho bloqueado: a MO que falta e com qual insígnia ela vem. */
+const HM_HINTS = {
+  surf: 'Precisa de um Pokémon com Surf no time (ou da 3ª insígnia).',
+  dive: 'Precisa de um Pokémon com Dive no time (ou da 5ª insígnia).',
+  waterfall: 'Precisa de um Pokémon com Waterfall no time (ou da 7ª insígnia).',
+}
+/** Os itens-chave: o símbolo e para que servem (os nomes são os dos jogos, sem traduzir). */
+const KEY_INFO = {
+  'silph-scope': { icon: '🔭', help: 'Deixa ver os fantasmas da Pokémon Tower: agora dá para entrar.' },
+  'poke-flute': { icon: '🪈', help: 'Acorda o Snorlax que dorme na rota até Fuchsia City.' },
+  'squirt-bottle': { icon: '🚿', help: 'Molha o Sudowoodo que bloqueia a rota até Ecruteak City.' },
+  'old-rod': { icon: '🎣', help: 'Dá para pescar onde há água (uma vez por rota): vêm os Pokémon de Água mais comuns.' },
+  'good-rod': { icon: '🎣', help: 'Uma vara melhor: na pesca vêm Pokémon de Água menos comuns.' },
+  'super-rod': { icon: '🎣', help: 'A melhor vara: na pesca vêm os Pokémon de Água raros.' },
+  bicycle: { icon: '🚲', help: 'Uma vez por rota (duas na Cycling Road), passa um andar sem batalha.' },
+  'poke-radar': { icon: '📶', help: 'Nas rotas de mato, abre um caminho com o mato balançando: encontros seguidos da mesma espécie formam uma corrente (mais shiny e IVs altos).' },
+  'ss-ticket': { icon: '🎫', help: 'Deixa embarcar na balsa dos portos e das ilhas: treinadores a bordo e um prêmio no fim.' },
+}
+/** Os caminhos e as ações da rodada 14: a pesca, as árvores e a bicicleta. */
+const FISH_INFO = { icon: '🎣', label: 'Pescaria', help: 'Um Pokémon de Água mordeu a isca: quem vem depende da vara.' }
+const HEADBUTT_INFO = { icon: '🌳', label: 'Árvore sacudida', help: 'Caiu um Pokémon que vive na árvore.' }
+const CALL_INFO = {
+  rematch: { icon: '📞', label: 'Revanche (Pokégear)', help: 'Quem ligou quer revanche: um treinador forte, com prêmio maior.' },
+  rare: { icon: '📞', label: 'Dica do Pokégear', help: 'Quem ligou viu um Pokémon raro aqui: mais chance de shiny e IVs altos.' },
+}
+const RADAR_INFO = { icon: '📶', label: 'Poké Radar', help: 'O mato balança: vença ou capture para subir a corrente (a mesma espécie, mais chance de shiny e IVs mais altos). Outro caminho quebra a corrente.' }
+const HONEY_INFO = { icon: '🍯', label: 'Árvore de mel', help: 'Um Pokémon raro está lambendo o mel (mais chance de shiny).' }
+/**
+ * Os desafios dos ginásios, cada um no tema do tipo (os quebra-cabeças dos jogos): o nome, o que fazer e os símbolos.
+ */
+const PUZZLE_INFO = {
+  normal: { title: 'Quem é esse Pokémon?', intro: 'Reconheça a silhueta: acerte 4 de 5.' },
+  fire: { title: 'O quiz do Blaine', intro: 'Responda as perguntas do líder: acerte 4 de 5.' },
+  water: { title: 'O piso de gelo do Juan', intro: 'Pise em todos os ladrilhos uma única vez: pisar de novo quebra o gelo.' },
+  grass: { title: 'O jardim da Erika', intro: 'Ache o caminho entre as cercas vivas até a líder, sem gastar os passos.' },
+  electric: { title: 'As lixeiras do Lt. Surge', intro: 'Dois interruptores, um ao lado do outro, estão escondidos nas lixeiras. O número diz a quantas casas está o mais próximo.' },
+  ice: { title: 'O gelo do Pryce', intro: 'No gelo você escorrega até bater numa pedra. Chegue ao líder.' },
+  fighting: { title: 'Os sacos de pancada da Maylene', intro: 'Memorize a ordem dos golpes e repita sem errar.' },
+  poison: { title: 'As paredes invisíveis do Koga', intro: 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.' },
+  ground: { title: 'Os ladrilhos giratórios do Giovanni', intro: 'Cada ladrilho te joga em linha reta até bater. Chegue ao líder.' },
+  flying: { title: 'Os canhões da Skyla', intro: 'O canhão te atira em linha reta até a parede. Chegue à líder.' },
+  psychic: { title: 'Os teleportes da Sabrina', intro: 'Memorize a ordem das plataformas e repita sem errar.' },
+  bug: { title: 'As teias do Bugsy', intro: 'Duas alavancas, uma ao lado da outra, estão escondidas nas teias. O número diz a quantas casas está a mais próxima.' },
+  rock: { title: 'As lajes do Roark', intro: 'Pise em todas as lajes uma única vez: pisar de novo faz desmoronar.' },
+  ghost: { title: 'A ponte invisível do Morty', intro: 'O caminho não aparece: um passo fora dele e você cai. Chegue ao líder.' },
+  dragon: { title: 'As estátuas de dragão do Drayden', intro: 'Memorize a ordem das estátuas e repita sem errar.' },
+  dark: { title: 'No escuro: quem é esse Pokémon?', intro: 'As luzes estão apagadas. Reconheça a silhueta: acerte 4 de 5.' },
+  steel: { title: 'As esteiras do Byron', intro: 'A esteira te leva em linha reta até bater. Chegue ao líder.' },
+  fairy: { title: 'O quiz da Opal', intro: 'Responda as perguntas da líder: acerte 4 de 5.' },
+}
+const PUZZLE_CELL = { me: '🧍', goal: '🏅', rock: '🪨', wall: '🧱', floor: '', done: '✅', closed: '🗑️', hit: '🔘', dark: '', boulder: '🪨', target: '⭕', switch: '🔀', on: '💡', off: '', back: '❔' }
+/** O que fazer em cada mecânica (o título é o do líder). Igual ao app. */
+const PUZZLE_HELP = {
+  quiz: 'Responda as perguntas do líder: acerte {0} de {1}.',
+  silhouette: 'Reconheça a silhueta: acerte {0} de {1}.',
+  switches: 'Dois interruptores, um ao lado do outro, estão escondidos. O número diz a quantas casas está o mais próximo.',
+  slide: 'Você escorrega até bater numa pedra. Chegue ao líder.',
+  maze: 'Ache o caminho até o líder sem gastar os passos.',
+  hidden: 'As paredes não aparecem até você bater nelas. Chegue ao líder com poucas batidas.',
+  dark: 'Está escuro: você só vê em volta de onde já passou. Chegue ao líder sem gastar os passos.',
+  tiles: 'Pise em todas as casas uma única vez: pisar de novo faz desabar.',
+  memory: 'Memorize a ordem e repita sem errar.',
+  teleport: 'Cada plataforma leva para outra sala (a que você já usou mostra o destino). Ache a sala do líder.',
+  boulder: 'Empurre a pedra até o alvo: ande até ela e continue na mesma direção.',
+  arrows: 'Cada seta te leva na direção dela até parar. Chegue ao líder.',
+  gates: 'Os interruptores trocam as barreiras: sobem as vermelhas e descem as azuis (ou o contrário). Chegue ao líder.',
+  lights: 'Tocar acende ou apaga a casa e as vizinhas. Acenda todas.',
+  pairs: 'Ache os pares virando duas cartas de cada vez, sem errar demais.',
+}
+const PUZZLE_ARROWS = ['⬆️', '➡️', '⬇️', '⬅️']
+const PUZZLE_SKIN = { bug: { closed: '🕸️', hit: '🕹️' }, water: { done: '💧', floor: '🧊' }, rock: { done: '🪨', floor: '⬜' }, ghost: { wall: '🕳️' }, grass: { wall: '🌳' }, ice: { floor: '🧊' } }
+const PUZZLE_SYMBOLS = {
+  fighting: ['👊', '🦵', '🤜', '🥋', '💥', '🛡️'], psychic: ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'], dragon: ['🐉', '🐲', '🔥', '💎', '⚡', '🌀'],
+  grass: ['🌸', '🌻', '🌷', '🌹', '🍀', '🌼'], fire: ['🔥', '💃', '🎶', '⭐', '🌋', '✨'], water: ['🐟', '🦐', '🥬', '🍋', '🧅', '🌶️'],
+  ghost: ['🎵', '🎤', '🥁', '🎧', '🎸', '🎹'],
+}
+const PUZZLE_QUESTION = {
+  strong: 'Qual tipo é super efetivo contra {0}?', typeOf: 'Qual é um dos tipos de {0}?', hasType: 'Qual destes Pokémon é do tipo {0}?', who: 'Quem é esse Pokémon?',
+  beats: 'Qual tipo vence {0}?', math: 'Quanto é {0}?', dexNo: 'Qual é o número de {0} na Pokédex?', evo: 'Em quem {0} evolui?',
+}
+const PUZZLE_MON_Q = ['typeOf', 'beats', 'dexNo', 'evo']
+const TYPE_PT = { normal: 'Normal', fire: 'Fogo', water: 'Água', grass: 'Planta', electric: 'Elétrico', ice: 'Gelo', fighting: 'Lutador', poison: 'Venenoso', ground: 'Terra', flying: 'Voador', psychic: 'Psíquico', bug: 'Inseto', rock: 'Pedra', ghost: 'Fantasma', dragon: 'Dragão', dark: 'Sombrio', steel: 'Aço', fairy: 'Fada' }
+/** O item-chave que falta para este caminho (o Silph Scope, a Poké Flute, a Squirt Bottle) ou null. */
+const keyNeeded = (run, node) => [node?.needs, node?.blocker].find((k) => k != null && !hasKey(run, k)) ?? null
+const BLOCKER_INFO = { icon: '💤', label: '{0} bloqueia o caminho', help: 'Com o item certo, ele acorda e luta. Dá para capturar.' }
+const AROUND_INFO = { icon: '↪️', label: 'Dar a volta', help: 'Um treinador no desvio; ele continua lá, dormindo.' }
+const PLACE_LEGEND_HELP = 'O lendário daqui: é o chefe do lugar. Dá para capturar.'
+const QUEST_HELP = 'O covil do lendário da missão: capture para cumprir a missão (+💰{0}). Sem capturar, falta mais uma pista.'
+/** As pistas da missão do lendário (a 1ª, a 2ª e a última, que abre o covil). */
+const QUEST_CLUE_TEXT = [
+  'Um velho conta uma lenda: um Pokémon lendário dorme em {0}.',
+  'Pegadas enormes no caminho, rumo a {0}... o lendário está perto.',
+  'O caminho para {0} se abriu: o covil do lendário aparece na próxima rota!',
+]
+const hmHint = (run, node) => (keyNeeded(run, node) ? t(node.blocker ? 'Precisa de {0} para acordá-lo; sem ela, só dando a volta.' : 'Precisa de {0} para entrar.').replace('{0}', KEY_ITEMS[keyNeeded(run, node)]) : node?.kind === 'safari' && !hmNeeded(run, node) ? t('Você precisa de {0} moedas para entrar.').replace('{0}', SAFARI_FEE) : t(HM_HINTS[hmNeeded(run, node)] ?? HM_HINTS.surf))
+/** O clima do lugar (a previsão no mapa). */
+const WEATHER_LABEL = { rain: '🌧️ Chuva', sun: '☀️ Sol forte', sand: '🏜️ Tempestade de areia', snow: '❄️ Neve' }
+/** O clima da rota (o mesmo em todos os andares dela) atrai Pokémon diferentes. */
+const WEATHER_PULL = { rain: 'mais Água, Elétrico e Inseto', sun: 'mais Fogo, Planta e Terra', sand: 'mais Pedra, Terra e Aço', snow: 'mais Gelo' }
+const CUT_INFO = { icon: '🌳', label: 'Caminho escondido', help: 'Aberto com Cut: um selvagem raro do lugar.' }
+const SMASH_INFO = { icon: '🪨', label: 'Rocha quebrada', help: 'Aberta com Rock Smash: um selvagem raro do lugar.' }
+const STRENGTH_INFO = { icon: '💪', label: 'Pedra empurrada', help: 'Aberta com Strength: um treinador forte (sempre deixa um item).' }
+/** O símbolo do caminho aberto por uma MO (Cut, Rock Smash, Strength). */
+const hmPathInfo = (node) => (node.cut ? CUT_INFO : node.smash ? SMASH_INFO : node.strength ? STRENGTH_INFO : node.blocker ? BLOCKER_INFO : node.around ? AROUND_INFO : node.fish != null ? FISH_INFO : node.tree === 'headbutt' ? HEADBUTT_INFO : node.tree === 'honey' ? HONEY_INFO : node.radar ? RADAR_INFO : node.call ? CALL_INFO[node.call] : null)
+const CITY_KIND_SET = new Set(['gym', 'elite', 'champion'])
+const EVENT_TEXT = {
+  items: 'Você achou {1}× {0} no caminho!',
+  money: 'Um treinador perdeu 💰{0} e não voltou para buscar.',
+  berries: 'Frutas no caminho: o time recuperou 30% do HP.',
+  tutor: 'Um velho professor te deu uma ficha de Move Tutor.',
+  declined: 'Você seguiu o seu caminho.',
+  bike: 'Você pedalou por este trecho sem encontrar ninguém.',
+  grotto: 'No Hidden Grotto você achou {0}!',
+  helped: 'O treinador agradeceu e te deu {0}!',
+  secretFound: 'Na caverna secreta: {0} e 💰{1}!',
+  secretEmpty: 'A caverna estava vazia... e escura demais para procurar.',
+  bought: 'O mercador sorriu e te entregou {0}.',
+  betWon: 'Você ganhou a aposta: +💰{0}!',
+  betLost: 'Você perdeu a aposta: −💰{0}.',
+  injuredJoined: 'Você usou {0} e o Pokémon ferido quis ir com você!',
+  noPotion: 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
+}
+const EVENT_ICON = { grotto: '🕳️', clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
+/** O símbolo de cada melhoria (no círculo da árvore). */
+const UPGRADE_ICONS = {
+  level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
+  expShare: '📡', reroll: '🎲', cards: '🃏', shiny: '🌟', greatBalls: '🔵', rope: '🪢', coins: '🪙', map: '🗺️',
+  dmax: '🔴', tera: '💎', superPotions: '💧', hyperPotions: '🧴', maxPotions: '🍶', sitrus: '🍋', lum: '🫐', leftovers: '🍎',
+  sash: '🎗️', ultraBalls: '🟡', masterBall: '🟣', quickBalls: '🎯', netBalls: '🫳', timerBalls: '⏳', duskBalls: '🍓', expPlus: '🌠',
+  luckyEgg: '🥚', hpBoost: '❤️', speBoost: '💨', tutor: '📜', reminder: '🧠', atk: '⚔️', spa: '🔮', def: '🛡️',
+  spd: '🔰', allStats: '👑', band: '🎀', scarf: '🧣', specs: '👓', lifeOrb: '🟠', vest: '🦺', helmet: '⛑️',
+  quickClaw: '🦅', balloon: '🎈', brightPowder: '💫', boots: '👢', kingsRock: '🪨', loot: '💵', expertBelt: '🥋', bonusCoins: '🏆',
+  policy: '📋', muscleBand: '💪', wiseGlasses: '🤓', shellBell: '🐚', scopeLens: '🔭', eviolite: '💠', victoryHeal: '💚',
+}
+/** A cor de cada ramo (as linhas e os círculos comprados), na ordem de UPGRADE_BRANCHES. */
+const BRANCH_COLORS = ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444', '#a855f7', '#eab308', '#ec4899']
+/** A árvore em círculo (como as árvores de habilidade dos jogos): os ramos saem do centro para todos os lados. Igual ao app. */
+// gap: a distância mínima entre os centros de dois nós vizinhos do mesmo anel (o maior círculo, com o brilho e o selo).
+const TREE = { first: 190, step: 70, pad: 230, from: 90, to: -270, gap: 66 }
+/** A melhoria grande que dá nome e símbolo (os nós pequenos usam os da melhoria do mesmo efeito). */
+const upgradeKey = (id) => (isMinor(id) ? MINOR_BASE[UPGRADE_FX[id].join(':')] : id)
+/**
+ * As posições (árvore radial): cada ramo ganha um pedaço do círculo do tamanho
+ * das pontas dele; cada melhoria fica no meio do pedaço do pai, mais longe do
+ * centro a cada nível. Igual ao app.
+ */
+export function skillTreeLayout() {
+  const parentOf = (id) => UPGRADE_TREE[id]?.needs?.[0] ?? null
+  const kidsOf = {}
+  for (const [, , ids] of UPGRADE_BRANCHES) for (const id of ids) { const p = parentOf(id); if (p) (kidsOf[p] ??= []).push(id) }
+  const tipsMemo = {}
+  const tips = (id) => (tipsMemo[id] ??= (kidsOf[id] ?? []).reduce((n, k) => n + tips(k), 0) || 1)
+  const total = UPGRADE_BRANCHES.reduce((n, [, , ids]) => n + tips(ids[0]), 0)
+  const rad = (d) => (d * Math.PI) / 180
+  // 1º: o ângulo de cada um (o meio do pedaço do pai) e o nível (a distância do centro).
+  const angles = []
+  const mids = []
+  let start = rad(TREE.from)
+  UPGRADE_BRANCHES.forEach(([, , ids], b) => {
+    const place = (id, a, z, depth, parent) => {
+      angles.push({ branch: b, id, parent, angle: (a + z) / 2, depth })
+      let x = a
+      for (const k of kidsOf[id] ?? []) {
+        const span = ((z - a) * tips(k)) / tips(id)
+        place(k, x, x + span, depth + 1, id)
+        x += span
+      }
+    }
+    const span = ((rad(TREE.to) - rad(TREE.from)) * tips(ids[0])) / total
+    place(ids[0], start, start + span, 0, null)
+    mids.push(start + span / 2)
+    start += span
+  })
+  // 2º: o raio de cada anel, grande o bastante para os vizinhos do mesmo anel não encostarem (nada um em cima do outro).
+  const maxDepth = Math.max(...angles.map((n) => n.depth))
+  const radii = []
+  for (let d = 0; d <= maxDepth; d++) {
+    const ring = angles.filter((n) => n.depth === d).map((n) => n.angle).sort((x, y) => x - y)
+    let gap = 2 * Math.PI
+    ring.forEach((a, k) => { if (ring.length > 1) gap = Math.min(gap, Math.abs((k + 1 < ring.length ? ring[k + 1] : ring[0] + 2 * Math.PI) - a)) })
+    const need = ring.length > 1 ? TREE.gap / (2 * Math.sin(Math.min(gap, Math.PI) / 2)) : 0
+    radii.push(Math.max(d === 0 ? TREE.first : radii[d - 1] + TREE.step, need))
+  }
+  const radius = radii[maxDepth]
+  const size = 2 * (radius + TREE.pad)
+  const c = size / 2
+  const out = UPGRADE_BRANCHES.map(([icon, branch, ids], b) => ({
+    icon, branch, ids, color: BRANCH_COLORS[b % BRANCH_COLORS.length], mid: mids[b],
+    nodes: angles.filter((n) => n.branch === b).map((n) => ({ id: n.id, parent: n.parent, angle: n.angle, pos: [c + Math.cos(n.angle) * radii[n.depth], c - Math.sin(n.angle) * radii[n.depth]] })),
+  }))
+  return { branches: out, size, c, radius }
+}
+
+/**
+ * A árvore de melhorias (como as árvores de habilidade dos jogos): fundo escuro,
+ * os ramos saem do centro em todas as direções; os círculos grandes são as
+ * melhorias (com o selo do nível), os pequenos são os nós da trilha delas.
+ * Comprado: aceso na cor do ramo; para comprar: contorno claro; bloqueado:
+ * apagado. Tocando, abre o que faz e o botão de comprar. Igual ao app.
+ */
+function SkillTree({ factory }) {
+  const { branches: layout, size, c, radius } = useMemo(() => skillTreeLayout(), [])
+  const firstOpen = layout.flatMap((b) => b.ids).find((id) => upgradePrice(factory, id) != null && !upgradeNeeds(factory, id).length)
+  const [picked, setPicked] = useState(null)
+  const [zoom, setZoom] = useState(0.4)
+  // Tela cheia: a árvore ocupa a tela toda (Esc ou ✕ fecha).
+  const [full, setFull] = useState(false)
+  useEffect(() => {
+    if (!full) return
+    const close = (e) => e.key === 'Escape' && setFull(false)
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [full])
+  const box = useRef(null)
+  const id = picked ?? firstOpen ?? 'level'
+  const up = UPGRADES[id]
+  const level = upgradeLevel(factory, id)
+  const price = upgradePrice(factory, id)
+  const next = (up.offset ?? 0) + (level + 1) * up.per
+  const needs = price == null ? [] : upgradeNeeds(factory, id)
+  const stateOf = (u) => (upgradeLevel(factory, u) ? 'have' : upgradeNeeds(factory, u).some((n) => n.kind === 'up') ? 'locked' : 'open')
+  const posOf = Object.fromEntries(layout.flatMap((b) => b.nodes.map((n) => [n.id, n.pos])))
+  const spent = Object.values(factory.upgrades ?? {}).reduce((n, v) => n + v, 0)
+  const all = Object.values(UPGRADES).reduce((n, u) => n + u.max, 0)
+  // Começa no centro da árvore; dá para arrastar e dar zoom.
+  useEffect(() => {
+    const el = box.current
+    if (el) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2 }
+  }, [zoom, full])
+  const key = upgradeKey(id)
+  const buyable = layout.flatMap((b) => b.ids).map((k) => [k, upgradePrice(factory, k)]).filter(([k, p]) => p != null && p <= (factory.coins ?? 0) && !upgradeNeeds(factory, k).length).sort((a, b) => a[1] - b[1])
+  // O filtro da lista embaixo da árvore: 'buy' (dá para comprar), um ramo ou 'need:<item>' (falta o item). Igual ao app.
+  const [filter, setFilter] = useState('buy')
+  const branchIds = Object.fromEntries(UPGRADE_BRANCHES.map(([, branch, ids]) => [branch, ids]))
+  const filtered = filter === 'buy' ? buyable : layout.flatMap((b) => b.ids).map((k) => [k, upgradePrice(factory, k)])
+    .filter(([k, p]) => p != null && (filter.startsWith('need:') ? upgradeNeeds(factory, k).some((n) => n.kind === 'pieces' && n.item === filter.slice(5)) : (branchIds[filter] ?? []).includes(k)))
+    .sort((a, b) => a[1] - b[1])
+  // Leva a árvore até o nó (no zoom de agora), para quem escolhe pela lista.
+  const focus = (k) => {
+    const el = box.current, pos = posOf[k]
+    if (el && pos) { el.scrollLeft = pos[0] * zoom - el.clientWidth / 2; el.scrollTop = pos[1] * zoom - el.clientHeight / 2 }
+  }
+  return (
+    <div className={full ? 'fixed inset-0 z-50 flex flex-col gap-2 bg-[#05070d] p-2' : 'space-y-2'} data-testid="skill-tree">
+      <div className={full ? 'relative min-h-0 flex-1' : 'relative'}>
+        <div ref={box} className={`${full ? 'h-full' : 'max-h-[34rem]'} overflow-auto rounded-xl`} style={{ background: 'radial-gradient(circle at center, #1e1b4b 0%, #0b1020 55%, #05070d 100%)' }}>
+          <svg width={size * zoom} height={size * zoom} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('Árvore de melhorias')}>
+            {/* Anéis de fundo (a distância do centro). */}
+            {[1, 2, 3, 4, 5].map((k) => <circle key={`ring-${k}`} cx={c} cy={c} r={(k * (size / 2 - TREE.pad)) / 5} fill="none" stroke="#1e293b" strokeWidth="2" strokeDasharray="6 10" />)}
+            {layout.map((b) => b.nodes.map((n) => {
+              const [x1, y1] = n.parent ? posOf[n.parent] : [c, c]
+              const lit = upgradeLevel(factory, n.id) > 0
+              return <line key={`l-${n.id}`} x1={x1} y1={y1} x2={n.pos[0]} y2={n.pos[1]} stroke={lit ? b.color : '#334155'} strokeOpacity={lit ? 1 : 0.7} strokeWidth={lit ? 5 : isMinor(n.id) ? 2 : 3} strokeLinecap="round" />
+            }))}
+            <circle cx={c} cy={c} r="54" fill="#0f172a" stroke="#fde047" strokeWidth="4" />
+            <text x={c} y={c - 4} textAnchor="middle" fontSize="30">⭐</text>
+            <text x={c} y={c + 30} textAnchor="middle" fontSize="15" fontWeight="900" fill="#fde047">{spent}/{all}</text>
+            {layout.map((b) => {
+              const have = b.ids.reduce((k, u) => k + upgradeLevel(factory, u), 0)
+              const total = b.ids.reduce((k, u) => k + UPGRADES[u].max, 0)
+              // O nome do ramo e os pontos, na borda, no meio do pedaço dele.
+              const r = radius + 55
+              return (
+                <text key={`t-${b.branch}`} x={c + Math.cos(b.mid) * r} y={c - Math.sin(b.mid) * r + 10} textAnchor="middle" fontSize="30" fontWeight="900" fill={b.color} stroke="#05070d" strokeWidth="6" paintOrder="stroke">
+                  {b.icon} {t(b.branch)} · {have}/{total}
+                </text>
+              )
+            })}
+            {layout.map((b) => b.nodes.map((n) => {
+              const u = UPGRADES[n.id]
+              const lv = upgradeLevel(factory, n.id)
+              const state = stateOf(n.id)
+              const sel = n.id === id
+              const minor = isMinor(n.id)
+              // O nó-chave (o último da trilha): maior e com o contorno dourado.
+              const keystone = isKeystone(n.id)
+              const r = keystone ? 17 : minor ? 11 : 24
+              return (
+                <g key={n.id} onClick={() => setPicked(n.id)} className="cursor-pointer" data-testid={`upgrade-${n.id}`} role="button" aria-label={t(UPGRADE_NAMES[upgradeKey(n.id)])}>
+                  {state === 'have' && <circle cx={n.pos[0]} cy={n.pos[1]} r={r + 7} fill={b.color} opacity="0.25" />}
+                  <circle cx={n.pos[0]} cy={n.pos[1]} r={sel ? r + 4 : r} fill={state === 'have' ? b.color : '#111827'} stroke={sel ? '#fde047' : keystone ? '#f59e0b' : state === 'locked' ? '#334155' : state === 'open' ? '#f8fafc' : b.color} strokeWidth={sel ? 5 : keystone ? 4 : minor ? 2 : 3} opacity={state === 'locked' ? 0.55 : 1} />
+                  <text x={n.pos[0]} y={n.pos[1] + (minor ? 4 : 7)} textAnchor="middle" fontSize={keystone ? 15 : minor ? 11 : 20} opacity={state === 'locked' ? 0.5 : 1}>{state === 'locked' && !minor ? '🔒' : UPGRADE_ICONS[upgradeKey(n.id)]}</text>
+                  {/* O nível (comprado/máximo), num selo embaixo (só nas melhorias grandes). */}
+                  {!minor && (
+                    <>
+                      <rect x={n.pos[0] - 15} y={n.pos[1] + r - 4} width="30" height="15" rx="7.5" fill="#0f172a" stroke={b.color} strokeWidth="1.5" />
+                      <text x={n.pos[0]} y={n.pos[1] + r + 7} textAnchor="middle" fontSize="10" fontWeight="900" fill="#f8fafc">{lv}/{u.max}</text>
+                    </>
+                  )}
+                </g>
+              )
+            }))}
+          </svg>
+        </div>
+        <div className="absolute right-2 top-2 flex gap-1">
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.max(0.2, Math.round((z - 0.1) * 100) / 100))} aria-label={t('Diminuir')} data-testid="tree-zoom-out">−</button>
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 100) / 100))} aria-label={t('Aumentar')} data-testid="tree-zoom-in">+</button>
+          {/* Tela cheia (abre a árvore na tela toda; nela, fecha). */}
+          <button type="button" className="h-8 w-8 cursor-pointer rounded-full bg-slate-800 font-black text-white" onClick={() => setFull((f) => !f)} aria-label={t(full ? 'Fechar' : 'Tela cheia')} data-testid={full ? 'tree-full-close' : 'tree-full'}>{full ? '✕' : '⛶'}</button>
+        </div>
+      </div>
+      {/* O filtro: o que dá para comprar, um ramo ou o que falta um item (sem procurar na árvore). */}
+      <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 text-[11px]" data-testid="upgrade-filters">
+        {[['buy', `💰 ${t('Dá para comprar')}`], ...UPGRADE_BRANCHES.map(([icon, branch]) => [branch, `${icon} ${t(branch)}`]), ...PIECE_ITEMS.map((i) => [`need:${i}`, `${t('Falta')} ${PIECE_INFO[i][0]}`])].map(([key, label]) => (
+          <button key={key} type="button" onClick={() => setFilter(key)} data-testid={`upgrade-filter-${key}`}
+            className={`cursor-pointer rounded-full px-2 py-0.5 font-extrabold ${filter === key ? 'bg-amber-500 text-white' : 'bg-card'}`}>{label}</button>
+        ))}
+      </div>
+      {/* Prático: a lista do filtro (do mais barato); tocar leva até ele. */}
+      {filtered.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs" data-testid="upgrade-buyable">
+          {filtered.map(([k, p]) => (
+            <button key={k} type="button" className="cursor-pointer rounded-full border border-amber-400/60 bg-card px-2 py-1 font-extrabold" data-testid={`buyable-${k}`}
+              onClick={() => { setPicked(k); focus(k) }}>
+              {upgradeNeeds(factory, k).length || p > (factory.coins ?? 0) ? '🔒 ' : ''}{UPGRADE_ICONS[upgradeKey(k)]} {t(UPGRADE_NAMES[upgradeKey(k)])} · 🪙{p}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* O que a melhoria escolhida faz, o que falta e o botão de comprar. */}
+      <div className="flex items-center gap-2 rounded-xl border-2 border-amber-400/60 bg-card p-2 text-xs" data-testid="upgrade-detail">
+        <span className="text-2xl">{UPGRADE_ICONS[key]}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-black">{t(UPGRADE_NAMES[key])}{isKeystone(id) ? ` · ${t('nó-chave')}` : isMinor(id) ? ` · ${t('nó pequeno')}` : ''}</p>
+          <p className="font-bold">{t(up.label).replace('{0}', price == null ? (up.offset ?? 0) + upgradeValue(factory, id) : next)}</p>
+          <p className="text-muted">{'★'.repeat(level)}{'☆'.repeat(up.max - level)} · {price == null ? t('No máximo') : `🪙 ${price}${upgradePieces(factory, id) ? ` · ${PIECE_INFO[pieceOf(id)][0]} ${upgradePieces(factory, id)}` : ''}`}</p>
+          {needs.map((n) => (
+            <p key={n.kind} className="text-[11px] text-red-500" data-testid={`need-${id}-${n.kind}`}>
+              ✖ {n.kind === 'up' ? t('{0} no nível {1}').replace('{0}', t(UPGRADE_NAMES[upgradeKey(n.id)])).replace('{1}', n.level) : n.kind === 'best' ? t('Chegar ao andar {0} (recorde: {1})').replace('{0}', n.floor).replace('{1}', factory.best ?? 0) : n.kind === 'pieces' ? t('{0} {1} (tem {2}; cai de {3})').replace('{0}', n.count).replace('{1}', `${PIECE_INFO[n.item][0]} ${PIECE_INFO[n.item][1]}`).replace('{2}', piecesOf(factory)[n.item]).replace('{3}', t(PIECE_INFO[n.item][2])) : t('Ter {0} Pokémon para começar (tem {1})').replace('{0}', n.count).replace('{1}', factory.owned?.length ?? 0)}
+            </p>
+          ))}
+        </div>
+        {price != null && (
+          <Button disabled={factory.coins < price || needs.length > 0} onClick={() => { const n = buyUpgrade(factory, id); if (n) saveFactory(n) }} data-testid="upgrade-buy">
+            {t('Comprar')}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** O texto de um evento do mapa (com o item, o dinheiro ou a quantidade). */
+function eventText(event) {
+  const item = itemName(event.item ?? '')
+  if (event.kind === 'money' || event.kind === 'betWon' || event.kind === 'betLost') return t(EVENT_TEXT[event.kind]).replace('{0}', event.money)
+  if (event.kind === 'clue') return `${t(QUEST_CLUE_TEXT[Math.min(QUEST_CLUE_TEXT.length, event.clues) - 1])} (${t('pista')} ${event.clues}/${QUEST_CLUES})`.replace('{0}', event.lair)
+  if (event.kind === 'secretFound') return t(EVENT_TEXT.secretFound).replace('{0}', item).replace('{1}', event.money)
+  return t(EVENT_TEXT[event.kind]).replace('{0}', item).replace('{1}', event.count ?? '')
+}
+/** As escolhas da rota: o que aparece, o ícone e os botões. */
+const CHOICE_INFO = {
+  help: { icon: '🙋', text: 'Um treinador perdeu as Poké Balls e pede ajuda: dar 💰{0} para ele?', yes: 'AJUDAR', no: 'RECUSAR' },
+  follow: { icon: '🐾', text: 'Um Pokémon ferido foge para dentro do mato. Seguir ele?', yes: 'SEGUIR', no: 'DEIXAR' },
+  secret: { icon: '🕳️', text: 'Uma entrada escondida entre as pedras: entrar na caverna secreta?', yes: 'ENTRAR', no: 'NÃO ENTRAR' },
+  merchant: { icon: '🧳', text: 'Um mercador misterioso oferece {2} por 💰{0}. Comprar?', yes: 'COMPRAR', no: 'RECUSAR' },
+  bet: { icon: '🎰', text: 'Um apostador te desafia: 💰{0} no cara ou coroa. Dobra ou perde tudo!', yes: 'APOSTAR', no: 'RECUSAR' },
+  injured: { icon: '🩹', text: 'Um {1} ferido na beira do caminho. Usar uma poção nele? Curado, ele quer ir com você.', yes: 'CURAR', no: 'DEIXAR' },
+}
+/** A missão da rota. */
+const MISSION_TEXT = {
+  defeat: 'Derrote {0} Pokémon do tipo {1}',
+  catch: 'Capture um Pokémon do tipo {1}',
+  grunts: 'Derrote {0} capangas da base',
+}
+function missionText(m) {
+  return t(MISSION_TEXT[m.kind]).replace('{0}', m.need).replace('{1}', m.type ? m.type[0].toUpperCase() + m.type.slice(1) : '')
+}
+/** O que o Pokémon que segue você acha do lugar. Igual ao app. */
+const MOOD_TEXT = {
+  tired: 'está cansado: melhor procurar um Centro Pokémon.',
+  night: 'fica animado com a noite!',
+  happy: 'adora este lugar!',
+  wet: 'não gosta nada de tanta água...',
+  hot: 'está derretendo com esse calor...',
+  love: 'olha para você, todo contente.',
+  calm: 'segue você, atento ao caminho.',
+}
+/** O balão do Pokémon que segue você (como em HeartGold/SoulSilver). Igual ao app. */
+const PET_MS = 3000
+const MOOD_EMOTE = { tired: '💤', night: '❗', happy: '🎵', wet: '💢', hot: '💦', love: '❤️', calm: '💭' }
+/** O que quem ligou no Pokégear disse. Igual ao app. */
+const CALL_TEXT = {
+  rematch: 'ligou no Pokégear: quer revanche! Está te esperando num dos caminhos.',
+  rare: 'ligou no Pokégear: viu um Pokémon raro num dos caminhos daqui!',
+}
+/** O diário da corrida: o ícone e o texto de cada coisa. Igual ao app. */
+const DIARY_TEXT = { c: ['🎯', 'Capturou {0}'], h: ['🥚', '{0} saiu do ovo'], f: ['💫', '{0} desmaiou'], b: ['🏅', 'Insígnia de {0}'], w: ['🏆', 'Venceu o Campeão {0}'], l: ['🌟', 'Missão lendária: {0}'] }
+
+/** O lugar do covil de um lendário (o nome do jogo). */
+const LEGEND_LAIR_NAME = (id) => LEGEND_LAIRS[id]?.[0] ?? '???'
+/** A missão do lendário em uma linha: quem (??? até a 2ª pista), as pistas e o covil (depois da 1ª pista). */
+function questLine(quest, name) {
+  const who = quest.clues >= 2 ? name(quest.id) : '???'
+  return `${t('Missão lendária')}: ${who} · ${t('pistas')} ${quest.clues}/${QUEST_CLUES}${quest.clues ? ` · ${quest.lair}` : ''}${quest.clues >= QUEST_CLUES ? ` · ${t('o covil está na próxima bifurcação!')}` : ''}`
+}
+/** As pistas do lendário da região, conforme a história anda (a última: na rota para a Liga). */
+const LEGEND_CLUES = [
+  'Os moradores falam de um Pokémon lendário que vive nesta região...',
+  'Pegadas enormes no caminho: algo muito poderoso passou por aqui.',
+  'Um velho conta que o lendário só aparece para quem chega perto da Liga.',
+  'O ar está pesado: o lendário espera num dos caminhos para a Liga!',
+]
+/** O líder antes da luta, pelo tipo do ginásio. */
+const LEADER_LINES = {
+  normal: 'Força bruta e simplicidade: o meu time não tem fraquezas escondidas!',
+  fire: 'As chamas do meu ginásio vão testar a sua coragem!',
+  water: 'Vamos ver se você aguenta a força da correnteza!',
+  grass: 'A natureza tem paciência... e raízes fortes. Prepare-se!',
+  electric: 'Sente o choque? É a energia do meu ginásio!',
+  ice: 'Frio e calma: assim se vence uma batalha.',
+  fighting: 'Treino todo dia desde o nascer do sol. Mostre a sua garra!',
+  poison: 'Um passo em falso e o veneno decide a luta.',
+  ground: 'Pise firme: aqui o chão é meu aliado!',
+  flying: 'Vamos ver se você consegue acompanhar o vento!',
+  psychic: 'Eu já vi como esta batalha termina... mas venha mesmo assim.',
+  bug: 'Pequenos, mas espertos: os insetos sempre surpreendem!',
+  rock: 'Duro como pedra: o meu time não cede!',
+  ghost: 'Hehe... os meus Pokémon adoram visitas.',
+  dragon: 'Os dragões só respeitam quem é forte de verdade!',
+  dark: 'Nas sombras, quem ataca primeiro vence.',
+  steel: 'Aço polido e estratégia: nenhum golpe passa fácil.',
+  fairy: 'Encanto e poder: não se engane com a aparência!',
+}
+/** Depois da luta: o líder entrega a insígnia, o rival reage (conforme perde), o vilão foge. */
+const BEAT_LINES = {
+  gym: 'Você venceu de forma justa. Esta insígnia é sua!',
+  elite: 'Impressionante... siga em frente: o próximo da Elite espera.',
+  champion: 'Você é o novo Campeão! O seu nome vai para o Hall da Fama.',
+  villain: 'Isso não acaba aqui! Os nossos planos continuam...',
+}
+const RIVAL_BEAT = [
+  'Hmpf... foi sorte! Da próxima vez eu ganho.',
+  'De novo?! Vou treinar em dobro, pode esperar.',
+  'Você ficou forte de verdade... mas eu não desisto.',
+  'Tudo bem, você é melhor. Te espero na Liga!',
+]
+/** O plano de cada equipe vilã (contado quando ela aparece). */
+const VILLAIN_PLANS = {
+  rocket: 'A Equipe Rocket quer roubar Pokémon raros e dominar o mundo!',
+  aqua: 'A Equipe Aqua quer despertar o lendário e cobrir a terra com o mar!',
+  magma: 'A Equipe Magma quer secar os mares e aumentar a terra firme!',
+  galactic: 'A Equipe Galáctica quer apagar o mundo e criar um novo, sem espírito!',
+  plasma: 'A Equipe Plasma quer separar os Pokémon de todos os treinadores!',
+  flare: 'A Equipe Flare quer um mundo belo... só para eles!',
+  skull: 'A Equipe Skull só quer bagunça e roubar Pokémon por aí!',
+  aether: 'A Fundação Aether esconde segredos sobre as Ultra Beasts!',
+  star: 'A Equipe Star tem os próprios motivos... prove que merece saber!',
+}
+/** A estação e a hora (do relógio de quem joga): mudam os Pokémon que aparecem e o clima. */
+const SEASON_LABEL = { spring: '🌸 Primavera', summer: '☀️ Verão', autumn: '🍂 Outono', winter: '❄️ Inverno' }
+const LEGEND_INFO = { icon: '🌟', label: 'Lendário', help: 'O lendário da região espera aqui. Dá para capturar.' }
+/** O lendário que foge (Raikou, Entei, Suicune...). */
+const ROAM_INFO = { icon: '🐾', label: 'Lendário que foge', help: 'Foge depois do primeiro turno (dormindo ou congelado, não); o HP que você tirar fica para a próxima vez. Dá para capturar.' }
+/** O capanga do plano da equipe vilã (nas cidades antes da base). */
+const PLOT_INFO = { icon: '🚨', label: 'Capanga da equipe vilã', help: 'Vencendo, você atrapalha o plano: ganha uma Ultra Ball e o chefe da equipe vem mais fraco.' }
+/** O nome do lendário que foge sem a forma (Tornadus, não "Tornadus incarnate"). */
+const roamName = (n) => String(n).replace(/[\s-]incarnate$/i, '')
+/** O HUD do mapa: os efeitos do lugar (ícone e nome). Igual ao app. */
+const FIELD_HUD = {
+  diamonds: ['💎', 'Chuva de diamantes'], rockfall: ['🪨', 'Desmoronamento'], ashes: ['🌋', 'Cinzas ardentes'], miasma: ['☠️', 'Névoa tóxica'], chill: ['🥶', 'Frio cortante'],
+  haunt: ['👻', 'Aura sombria'], current: ['🌊', 'Correnteza'], spores: ['🍄', 'Esporos'], quicksand: ['⏳', 'Areia movediça'], storm: ['⛈️', 'Tempestade'], aurora: ['🌌', 'Aurora'],
+  fog: ['🌫️', 'Neblina'], wind: ['🌬️', 'Ventos fortes'], grassy: ['🌿', 'Grassy Terrain'], electric: ['⚡', 'Electric Terrain'], psychic: ['🔮', 'Psychic Terrain'], misty: ['🌸', 'Misty Terrain'],
+}
+/**
+ * O HUD do mapa (como a faixa do tempo nos jogos): a hora (dia ou noite), o clima e o efeito do lugar (fixos na
+ * rota), a estação, onde o lendário que foge foi visto e o plano da equipe vilã. Igual ao app.
+ */
+function MapHud({ run, data, scene, clock, monName, inline = false }) {
+  const sky = weatherOf(run, scene, clock.season, data)
+  const field = fieldOf(run, scene, data)
+  const roam = roamerSeen(data, run)
+  const plot = villainPlot(data, run)
+  const chip = 'port-chip shrink-0 px-1 py-px'
+  return (
+    <div className={`pointer-events-none z-10 flex flex-wrap gap-1 text-[10px] font-black text-white sm:text-xs ${inline ? '' : 'absolute left-2 right-2 top-9 sm:top-10'}`} data-testid="map-hud">
+      <span className={chip} data-testid="hud-time">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
+      <span className={chip} data-testid="hud-weather">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
+      {FIELD_HUD[field] && <span className={chip} data-testid="hud-field">{FIELD_HUD[field][0]} {t(FIELD_HUD[field][1])}</span>}
+      <span className={chip}>{t(SEASON_LABEL[clock.season])}</span>
+      {roam && <span className={chip} data-testid="hud-roamer">🐾 <span data-no-translate>{roamName(monName(roam.id))}</span>: {roam.here ? t('nesta rota!') : <span data-no-translate>{roam.city}</span>}</span>}
+      {plot?.chapters.length > 0 && <span className={chip} data-testid="hud-plot">🚨 {plot.foiled}/{plot.chapters.length}</span>}
+    </div>
+  )
+}
+
+/** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
+function stepOf(p) {
+  if (!p) return null
+  if (p.choice) return 'choice'
+  if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
+  if (p.capture) return 'capture'
+  if (p.cards) return 'cards'
+  if (p.safari) return 'safari'
+  if (p.puzzle) return 'puzzle'
+  if (p.contest) return 'contest'
+  if (p.trade) return 'trade'
+  if (p.shop) return 'shop'
+  return null
+}
+
+/**
+ * O resultado do andar sem nada para ver com calma (só XP, dinheiro, níveis sem evolução e itens achados): passa direto
+ * para o próximo andar ou a escolha, com o resumo numa linha da caixa de texto. Igual ao app.
+ */
+/**
+ * A cena da insígnia (como no Black & White): o fundo azul-acinzentado com o emblema apagado, o líder de corpo inteiro à
+ * direita e a insígnia grande à esquerda, que entra girando como moeda, cinza, e ganha cor; o brilho passa por ela e
+ * as estrelinhas piscam. Tocar (ou esperar) fecha e ela fica pequena no alto. Igual ao app.
+ */
+const BADGE_SCENE_MS = 4200
+/** A altura do líder na cena (parte da largura do campo). */
+const BADGE_LEADER_H = 0.36
+/** O líder (dos dados dos chefes) pelo nome: o treinador dele para o sprite. */
+const gymLeaderOf = (data, name) => {
+  for (const b of data?.bosses ?? []) for (const l of b.leaders ?? []) if (l.kind === 'gym' && l.name === name) return l
+  return null
+}
+/** A máscara com o formato da insígnia (o brilho só passa por ela). */
+const badgeMask = (art) => {
+  const url = `url(${spriteUrl(`badges/${art}.png`)})`
+  return { WebkitMaskImage: url, maskImage: url, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }
+}
+const SPARKS = [[18, 30, 0], [78, 26, 0.35], [84, 64, 0.7], [16, 70, 0.5], [50, 12, 0.2], [62, 82, 0.9]]
+function BadgeScene({ badge, trainer = null, onDone }) {
+  const done = useRef(onDone)
+  done.current = onDone
+  const [ref, width] = useWidth()
+  useEffect(() => {
+    const id = setTimeout(() => done.current(), INSTANT_TEXT ? 0 : BADGE_SCENE_MS)
+    return () => clearTimeout(id)
+  }, [])
+  const color = typeColor(badge.type)
+  const art = badgeArt(badge.name)
+  return (
+    <div ref={ref} className="badge-scene absolute inset-0 z-30 cursor-pointer overflow-hidden" onClick={() => done.current()} data-testid="badge-scene">
+      {/* O emblema grande e apagado atrás (como no Black & White). */}
+      <svg className="badge-emblem absolute left-1/2 top-[44%] h-[86%] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
+        <circle cx="86" cy="96" r="66" />
+        <circle cx="86" cy="96" r="24" />
+        <path d="M20 96 H62 M110 96 H152 L190 20 M152 96 L112 186" />
+      </svg>
+      {SPARKS.map(([x, y, d], k) => <span key={k} className="badge-spark absolute" style={{ left: `${x * 0.5 + 4}%`, top: `${y * 0.8}%`, animationDelay: `${1.5 + d}s` }}>✦</span>)}
+      {/* A insígnia grande à esquerda: entra girando como moeda, cinza, e ganha cor; o brilho passa por cima. */}
+      <div className="badge-fly absolute left-[9%] top-[9%] w-[32%]" style={{ aspectRatio: '1' }}>
+        {art ? (
+          // O desenho oficial; o brilho passa só por cima dele (a máscara é a própria insígnia).
+          <>
+            <img src={spriteUrl(`badges/${art}.png`)} alt="" className="absolute inset-0 h-full w-full object-contain" draggable={false} data-testid="badge-art" />
+            <div className="absolute inset-0 overflow-hidden" style={badgeMask(art)}><span className="badge-sweep absolute" /></div>
+          </>
+        ) : (
+          <div className="badge-gem absolute inset-[12%] overflow-hidden rounded-[14%] border-[4px] border-white" style={{ background: `linear-gradient(135deg, #fffb, ${color} 45%, #0006)` }}>
+            <span className="badge-sweep absolute" />
+          </div>
+        )}
+      </div>
+      {/* O líder de corpo inteiro à direita, entrando de lado. */}
+      {trainer && (
+        // Na metade direita, de pé em cima da caixa de texto (a caixa de HP some durante a cena).
+        <div className="badge-leader absolute right-[4%] bottom-[22%] flex w-[44%] items-end justify-center" data-testid="badge-leader">
+          <TrainerSprite trainer={trainer} height={width * BADGE_LEADER_H} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function quickResult(p) {
+  if (!p || p.seen || p.exp == null || p.center || p.event) return false
+  for (const k of ['key', 'hm', 'story', 'plot', 'flawless', 'placeReward', 'fled', 'lost', 'shed', 'joy', 'beat', 'mission', 'quest']) {
+    const v = p[k]
+    if (v == null || v === false || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue
+    return false
+  }
+  return !(p.levels ?? []).some((l) => l.evolved || l.friend)
+}
+
+/** A largura de um elemento (os sprites de treinador são em px). */
+function useWidth() {
+  const [width, setWidth] = useState(640)
+  const observer = useRef(null)
+  const ref = useCallback((el) => {
+    observer.current?.disconnect()
+    if (!el || typeof ResizeObserver === 'undefined') return
+    observer.current = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.current.observe(el)
+  }, [])
+  return [ref, width]
+}
+
+/** O campo da batalha (o mesmo cenário dela, no mesmo tamanho: 4:3, como no Black & White), no lugar em que você está. */
+function Field({ biome = 'grass', fieldRef, children, testid }) {
+  return (
+    <div ref={fieldRef} className="absolute inset-0 overflow-clip" style={{ background: '#9fdcff' }} data-testid={testid} data-layout="bw">
+      <BattleBackground scene={battleScene(biome)} layout="bw" bleed />
+      {children}
+    </div>
+  )
+}
+
+/** Capturas, treinadores, insígnias e quem caiu (Nuzlocke). Igual ao app. */
+const summaryLines = (sum) => [
+  `🎯 ${t('Capturas')}: ${sum.captures ?? 0}`,
+  `⚔️ ${t('Treinadores')}: ${sum.defeated ?? 0}`,
+  ...(sum.badges > 0 ? [`🏅 ${t('Insígnias')}: ${sum.badges}`] : []),
+  ...(sum.fallen != null ? [`🪦 ${t('Caídos')}: ${sum.fallen}`] : []),
+]
+
+/** O resumo em texto, para mandar para alguém (sem o compartilhar do navegador, copia). Igual ao app. */
+function shareSummary(last, byId) {
+  const sum = last.summary
+  const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
+  const text = [
+    '🎲 Pokelike · PocketDex',
+    `🏁 ${t('Andar {0} · +{1} moedas').replace('{0}', last.floor).replace('{1}', last.coins)}`,
+    summaryLines(sum).join(' · '),
+    ...(sum.mvp ? [`⭐ MVP: ${name(sum.mvp[0])} Lv${sum.mvp[1]}`] : []),
+    ...(sum.team.length ? [`🧩 ${sum.team.map((m) => name(m[0])).join(', ')}`] : []),
+  ].join('\n')
+  if (navigator.share) navigator.share({ title: 'Pokelike · PocketDex', text }).catch(() => {})
+  else navigator.clipboard?.writeText(text).catch(() => {})
+}
+
+/**
+ * Um Pokémon da corrida no campo, no mesmo lugar da batalha: o seu de costas
+ * (grande, na frente à esquerda) ou de frente lá atrás à direita, do tamanho
+ * dele (pela altura) e em cima da base dele.
+ */
+/**
+ * O Pokémon que segue você, ao lado do treinador, na altura de verdade: a da
+ * espécie perto de uma pessoa de PERSON_DM (o Pikachu, de 4 dm, chega a um
+ * quarto do treinador; o Koraidon, de 25, a uma vez e meia). Quem é grande
+ * demais para o campo deixa a cena menor (o treinador junto, até FOLLOW_MIN),
+ * sem cortar. k: o tamanho da cena (o do treinador); scale: o do Pokémon na
+ * caixa dele. Igual ao app.
+ */
+export const PERSON_DM = 16
+export const FOLLOW_MIN = 0.35
+/** O treinador na cidade, menor que o da batalha (o Pokémon ao lado aparece melhor). */
+export const FOLLOW_PERSON = 0.75
+/**
+ * O Pokémon perto do treinador: os grandes na altura de verdade; os pequenos maiores que a conta (raiz), para dar para
+ * ver (o Mudkip, de 4 dm, fica com metade do treinador em vez de um quarto). Igual ao app.
+ */
+export function followRatio(height) {
+  const r = (height ?? 10) / PERSON_DM
+  return r >= 1 ? r : Math.max(0.45, Math.sqrt(r))
+}
+export function followerFit(height, stand) {
+  const [w, h] = stand
+  // A altura do treinador, em caixas do Pokémon (nearPerson, na escala da cidade).
+  const person = 0.95 * battleScale(PERSON_DM) * FOLLOW_PERSON
+  const want = person * followRatio(height)
+  // Cabe no campo: até 0,95 caixa de altura e 1,3 de largura (um pouco por trás do treinador).
+  const room = Math.min(0.95, (1.3 * Math.max(h, 0.01)) / Math.max(w, 0.01))
+  const k = Math.max(FOLLOW_MIN, Math.min(1, room / want))
+  // Mesmo com a cena no mínimo, o Pokémon não passa do campo (o Wailord fica do tamanho que cabe).
+  return { k, scale: Math.min(want * k, room) / (0.95 * Math.max(h, 0.01)) }
+}
+
+function FieldMon({ mon, byId, back = false, follower = false, scene, followScale = null, emote = null, say = null, onPet = null }) {
+  const p = byId?.get(mon.id)
+  if (!p) return null
+  const scale = follower && followScale != null ? followScale : battleScale(p.height)
+  // follower: andando com você na cidade (de frente, do tamanho dele perto de você, sem base).
+  const place = follower ? 'absolute bottom-[20%] left-[30%] w-[36%]' : back ? 'absolute bottom-[18%] left-[4%] w-[36%]' : 'absolute right-[14%] w-[20%]'
+  return (
+    <div className={place} style={back || follower ? undefined : { bottom: `${foeBottom(battleScene(scene)) * 100}%` }} data-testid={follower ? 'follower' : undefined}>
+      {!follower && <PlatformBase scene={battleScene(scene)} side={back ? 'mine' : 'foe'} scale={scale} />}
+      <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
+        {/* Andando com você (follower): o tamanho normal da figura, como fora da batalha (na batalha, a animação inteira
+            cabe na caixa e quem é largo, como o Koraidon, encolhe). */}
+        <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle={!follower} alt={p.name} />
+      </div>
+      {/* O Pokémon que segue você: tocando nele, ele reage (o balão e o grito), como em HeartGold/SoulSilver. */}
+      {onPet && <button type="button" className="absolute inset-0 z-10 cursor-pointer" onClick={onPet} aria-label={t('Ver como ele está')} data-testid="follower-pet" />}
+      {emote && (
+        <div key={say ?? 'emote'} className="mood-bubble pointer-events-none absolute bottom-[80%] left-[2%] z-20 flex w-max max-w-[46%] items-center gap-1 rounded-2xl border-2 border-slate-800 bg-white px-2 py-0.5 text-slate-900 shadow-lg" data-testid="follower-emote" data-no-translate>
+          <span className="text-xl leading-none">{emote}</span>
+          {say && <span className="text-[11px] font-bold leading-tight sm:text-xs">{say}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * A evolução, como nos jogos: o Pokémon fica branco e pisca alternando com a
+ * forma nova, cada vez mais rápido, até ela aparecer com brilho.
+ */
+function EvolutionFx({ from, to, byId }) {
+  const sprite = (id, cls) => {
+    const p = byId?.get(id)
+    return p ? <div className={`absolute inset-0 ${cls}`}><Sprite path={p.sprite} box={p.box} fill={0.9} align="bottom" battle alt={p.name} /></div> : null
+  }
+  // A tela escurece e o Pokémon fica grande no meio, girando e piscando até virar a forma nova; depois a tela volta.
+  return (
+    <div className="evo-stage pointer-events-none absolute inset-0 z-30 flex items-center justify-center" data-testid="evolution-fx">
+      <div className="evo-glow absolute aspect-square w-[70%] rounded-full" />
+      <div className="evo-spin relative aspect-square w-[55%]">
+        {sprite(from, 'evo-from')}
+        {sprite(to, 'evo-to')}
+      </div>
+    </div>
+  )
+}
+/** Quem evolui para id (a forma anterior), pelos dados da Factory. */
+const preEvolution = (data, id) => Number(Object.keys(data?.evolutions ?? {}).find((k) => data.evolutions[k].some((e) => e[0] === id))) || null
+
+/** Alguém de pé na base de cima (Enfermeira Joy, o chefe, os vendedores...). */
+/** Alguém lá atrás (vendedor, Enfermeira...) da altura de uma pessoa perto dos Pokémon. Igual ao app. */
+function FarPerson({ id, trainers, width }) {
+  const t = trainers?.find((x) => x.id === id)
+  if (t) return <TrainerSprite trainer={t} height={farPerson(width)} />
+  return <img src={spriteUrl(`trainers/${id}.png`)} alt="" className="pixelated max-w-none object-contain object-bottom" style={{ height: (farPerson(width) * 80) / TRAINER_ADULT_PX }} />
+}
+
+function FarStand({ children, scene, plain = false }) {
+  return (
+    <div className="absolute right-[6%] flex w-[36%] items-end justify-center" style={{ bottom: `${foeBottom(battleScene(scene)) * 100}%` }}>
+      {scene && !plain && <PlatformBase scene={battleScene(scene)} side="foe" scale={0.8} />}
+      <div className="relative flex w-full items-end justify-center">{children}</div>
+    </div>
+  )
+}
+
+/**
+ * O mapa da região: as cidades da história, na ordem, acendendo conforme você
+ * ganha as insígnias (a de agora piscando). Igual ao app.
+ */
+function RegionMap({ data, run, onClose, monName }) {
+  const game = data.bosses[run.boss.region]
+  const cities = []
+  game.leaders.forEach((l, k) => {
+    if (!l.city) return
+    const last = cities[cities.length - 1]
+    if (last?.city === l.city) last.steps.push(k)
+    else cities.push({ city: l.city, steps: [k], kind: l.kind })
+  })
+  // Onde o lendário que foge foi visto e as cidades do plano da equipe vilã (e a base dela).
+  const roam = roamerSeen(data, run)
+  const plot = villainPlot(data, run)
+  const clock = clockOf()
+  const sky = weatherOf(run, shownScene(run, run.scene ?? 'grass', data), clock.season, data)
+  const hereIndex = cities.findIndex((c, i) => !c.steps.every((k) => k < run.boss.step) && (i === 0 || cities[i - 1].steps.every((k) => k < run.boss.step)))
+  const [pick, setPick] = useState(null)
+  const shown = pick ?? Math.max(0, hereIndex)
+  // O mapa em que está a cidade escolhida (Johto também mostra Kanto) e as outras vilas e cidades dele.
+  const map = regionMap(game.region, cities, cities[shown]?.city)
+  const towns = map ? Object.entries(REGION_MAPS[game.region].find((m) => m.id === map.id).cities).filter(([city]) => !cities.some((c) => c.city === city)) : []
+  // A imagem cabe inteira no espaço (na proporção dela).
+  const boxRef = useRef(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!el) return undefined
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [map?.id])
+  // O mapa ocupa a largura toda (sem faixas dos lados); mais alto que o espaço, rola na vertical.
+  // Tela única: o mapa inteiro cabe no espaço (pela largura ou pela altura), sem rolar.
+  const fit = map ? { w: box.w, h: Math.max(box.h, box.w / map.aspect) } : { w: 0, h: 0 }
+  // Onde está o treinador: na rota, entre a cidade de antes e a próxima (pelo andar); na cidade, nela.
+  const me = useMyTrainer()
+  const xyOf = (k) => map?.spots.find((c) => c.i === k)?.xy
+  const target = xyOf(hereIndex)
+  const before = xyOf(hereIndex - 1) ?? (target ? [target[0] - 6, target[1] + 6] : null)
+  const walk = Math.max(0, Math.min(1, routePos(run) / ROUTE_LENGTH))
+  const meAt = target && before ? [before[0] + (target[0] - before[0]) * walk, before[1] + (target[1] - before[1]) * walk] : null
+  // Abre o mapa com o treinador no meio (quando ele rola).
+  const meY = meAt ? meAt[1] : null
+  const mapId = map?.id
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (el && meY != null && fit.h > el.clientHeight) el.scrollTop = Math.max(0, (meY / 100) * fit.h - el.clientHeight / 2)
+  }, [mapId, fit.h, meY])
+  const label = 'pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap text-[8px] font-black leading-none text-white sm:text-[10px]'
+  const outline = { textShadow: '0 0 2px #000, 0 0 2px #000, 0 1px 2px #000' }
+  // O nome curto no mapa (sem "City", "Town"...); o completo fica na faixa de baixo.
+  const short = (name) => name.replace(/ (City|Town|Island|Village)$/, '')
+  // Os nomes que esbarrariam em outro vão para cima do círculo.
+  const side = {}
+  if (map && fit.w) {
+    const all = [...towns.map(([city, xy]) => ({ city, xy })), ...map.spots.map((c) => ({ city: c.city, xy: c.xy }))].sort((a, b) => a.xy[1] - b.xy[1])
+    const placed = []
+    const px = fit.w < 500 ? 5.2 : 6.2
+    for (const { city, xy } of all) {
+      const w = (short(city).length * px) / fit.w * 100
+      const h = 12 / Math.max(1, fit.h) * 100
+      const dx = 14 / Math.max(1, fit.w) * 100
+      const boxes = {
+        below: [xy[0] - w / 2, xy[1] + h * 0.4, w, h], above: [xy[0] - w / 2, xy[1] - 2 * h, w, h],
+        right: [xy[0] + dx, xy[1] - h / 2, w, h], left: [xy[0] - dx - w, xy[1] - h / 2, w, h],
+      }
+      const hits = (b) => b[0] < 0 || b[0] + b[2] > 100 || placed.some((q) => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])
+      const order = xy[1] > 90 ? ['above', 'right', 'left', 'below'] : ['below', 'above', 'right', 'left']
+      const pick = order.find((k) => !hits(boxes[k])) ?? order[0]
+      side[city] = pick
+      placed.push(boxes[pick])
+    }
+  }
+  const SIDES = {
+    below: label,
+    above: label.replace('top-full mt-0.5', 'bottom-full mb-0.5'),
+    right: label.replace('left-1/2 top-full mt-0.5 -translate-x-1/2', 'left-full top-1/2 ml-1 -translate-y-1/2'),
+    left: label.replace('left-1/2 top-full mt-0.5 -translate-x-1/2', 'right-full top-1/2 mr-1 -translate-y-1/2'),
+  }
+  const labelAt = (city) => SIDES[side[city] ?? 'below']
+  return (
+    <div className={`port-panel ${map ? 'relative h-full overflow-hidden' : 'min-h-full space-y-2 p-2'}`} data-testid="region-map">
+      {/* O título e as etiquetas flutuam por cima do mapa (o desenho ocupa a tela inteira). */}
+      <div className={map ? 'pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 p-2 [&_button]:pointer-events-auto' : ''}>
+      <OverlayClose onClose={onClose} title={`🗺️ ${game.region} · ${game.game}`} />
+      <p className={map ? 'flex shrink-0 gap-1 overflow-x-auto whitespace-nowrap text-[10px] font-bold sm:text-xs' : 'flex flex-wrap gap-1 text-xs font-bold'} data-testid="region-hud">
+        <span className="port-chip px-1.5">{clock.night ? `🌙 ${t('Noite')}` : `☀️ ${t('Dia')}`}</span>
+        <span className="port-chip px-1.5">{sky ? t(WEATHER_LABEL[sky] ?? sky) : `🌤️ ${t('Tempo bom')}`}</span>
+        <span className="port-chip px-1.5">{t(SEASON_LABEL[clock.season])}</span>
+        {plot && <span className="port-chip px-1.5 text-red-300" data-testid="region-plot">🚨 {t('Plano da {0}: {1}/{2} atrapalhados').replace('{0}', TEAM_NAMES[plot.team] ?? 'Equipe Rocket').replace('{1}', plot.foiled).replace('{2}', plot.chapters.length)}</span>}
+      </p>
+      </div>
+      {map ? (
+        // O Town Map (como nos jogos): o desenho da região na tela inteira, as cidades em círculos; tocando numa, o nome
+        // dela embaixo. Mais alto que a tela: arrasta para ver o resto (sem sair da tela).
+        <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#14396f]" data-testid="town-map-region">
+          <div ref={boxRef} className="no-scrollbar relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden" data-testid="town-map-scroll">
+            <div className="relative" style={{ width: fit.w, height: fit.h }}>
+              <img src={spriteUrl(`maps/${map.id}.webp`)} alt="" className="absolute inset-0 h-full w-full select-none" draggable={false} data-testid="town-map-image" />
+              {/* As vilas e cidades que não são da história (só o círculo). */}
+              {towns.map(([city, [x, y]]) => (
+                <span key={city} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }} title={city}>
+                  <span className="block h-2.5 w-2.5 rounded-full border-2 border-[#f6a834] bg-[#1e3a5f] sm:h-3 sm:w-3" />
+                  {!map.art && <span className={`${labelAt(city)} opacity-90`} style={outline} data-no-translate>{short(city)}</span>}
+                </span>
+              ))}
+              {map.spots.map((c) => {
+                const i = c.i
+                const done = c.steps.every((k) => k < run.boss.step)
+                const here = i === hereIndex
+                const marks = [
+                  roam && c.steps.includes(roam.at) ? '🐾' : '',
+                  ...(plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => (x.foiled ? '✔' : x.past ? '✖' : '🚨')) ?? []),
+                  plot && plot.base === c.city ? '🏴' : '',
+                ].filter(Boolean).join('')
+                return (
+                  <button key={i} type="button" onClick={() => setPick(i)} className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer" style={{ left: `${c.xy[0]}%`, top: `${c.xy[1]}%` }}
+                    data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'} title={c.city}>
+                    <span className={`block h-4 w-4 rounded-full border-[3px] sm:h-5 sm:w-5 ${here ? 'animate-pulse border-white bg-sky-400' : done ? 'border-[#f6a834] bg-amber-300' : 'border-[#f6a834] bg-[#1d5e8c]'} ${i === shown ? 'ring-2 ring-yellow-300' : ''}`} />
+                    {marks && <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] leading-none drop-shadow">{marks}</span>}
+                    {!map.art && <span className={labelAt(c.city)} style={outline} data-no-translate>{short(c.city)}</span>}
+                  </button>
+                )
+              })}
+              {/* O treinador: onde você está agora. */}
+              {meAt && (
+                <span className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full" style={{ left: `${meAt[0]}%`, top: `${meAt[1]}%` }} data-testid="town-map-me">
+                  {me ? <TrainerSprite trainer={me} height={Math.min(36, Math.max(24, fit.w * 0.06))} /> : <span className="text-lg leading-none">📍</span>}
+                </span>
+              )}
+            </div>
+          </div>
+          {/* A faixa de baixo (como no Town Map): o nome da cidade escolhida e o que tem nela. */}
+          {cities[shown] && (() => {
+            const c = cities[shown]
+            const done = c.steps.every((k) => k < run.boss.step)
+            return (
+              <p className="port-titlebar absolute inset-x-0 bottom-0 z-20 px-2 py-1 text-xs sm:text-sm" data-testid="town-map-name">
+                <span data-no-translate>{c.city}</span>
+                {shown === hereIndex ? ` · ◀ ${t('você está indo para cá')}` : done ? ' · ✔' : ''}
+                {roam && c.steps.includes(roam.at) && <span className="text-amber-300" data-testid="region-roamer"> · 🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
+                {plot?.chapters.some((x) => c.steps.includes(x.step)) && <span className="text-red-300" data-testid="region-plot-city"> · 🚨 {TEAM_NAMES[plot.team] ?? ''}</span>}
+                {plot && plot.base === c.city && <span className="text-red-300"> · 🏴 {t('Base')}</span>}
+              </p>
+            )
+          })()}
+        </div>
+      ) : (
+      <div className="port-card relative p-3">
+        <div className="absolute bottom-6 left-7 top-6 w-1 rounded bg-slate-500/40" />
+        {cities.map((c, i) => {
+          const done = c.steps.every((k) => k < run.boss.step)
+          const here = !done && c.steps.some((k) => k >= run.boss.step) && (i === 0 || cities[i - 1].steps.every((k) => k < run.boss.step))
+          return (
+            <div key={i} className="relative flex items-center gap-3 py-1" data-testid={done ? 'city-lit' : here ? 'city-here' : 'city-dark'}>
+              <span className={`z-10 inline-block h-5 w-5 rounded-full border-2 ${done ? 'border-amber-300 bg-amber-400 shadow-[0_0_8px_#fbbf24]' : here ? 'animate-pulse border-white bg-sky-400' : 'border-slate-500 bg-slate-700'}`} />
+              <span className="flex flex-col">
+                <span className={`text-sm font-bold ${done ? '' : 'text-muted'}`} data-no-translate>{c.city}</span>
+                {/* Onde o lendário que foge foi visto (embaixo do nome da cidade). */}
+                {roam && c.steps.includes(roam.at) && <span className="text-xs font-bold text-amber-600" data-testid="region-roamer">🐾 <span data-no-translate>{roamName(monName(roam.id))}</span> {t('foi visto aqui')}</span>}
+              </span>
+              {here && <span className="text-xs text-sky-500">◀ {t('você está indo para cá')}</span>}
+              {plot?.chapters.filter((x) => c.steps.includes(x.step)).map((x) => <span key={x.step} className="text-xs font-bold text-red-600" data-testid="region-plot-city">{x.foiled ? '✔' : x.past ? '✖' : '🚨'}</span>)}
+              {plot && plot.base === c.city && <span className="text-xs font-bold text-red-700">🏴 {t('Base')}</span>}
+            </div>
+          )
+        })}
+      </div>
+      )}
+    </div>
+  )
+}
+
+/** A ajuda para quem está começando: tipos, clima, efeitos, status, mecânicas e captura. Igual ao app. */
+const HELP = [
+  ['🔥', 'Tipos', 'Cada golpe tem um tipo. Contra um tipo fraco a ele, causa o dobro (super efetivo); contra um que resiste, a metade. Alguns tipos são imunes (Normal não acerta Fantasma). A tabela de tipos fica na Enciclopédia.'],
+  ['🌦️', 'Clima', 'Sol fortalece Fogo e enfraquece Água; chuva faz o contrário; areia e neve machucam quem não é do tipo certo a cada turno. Alguns lugares já têm clima.'],
+  ['🌿', 'Terrenos e efeitos do lugar', 'Terrenos (Grassy, Electric, Psychic, Misty) mudam o poder de alguns golpes. Alguns lugares têm efeitos próprios, como ventos fortes ou névoa tóxica.'],
+  ['💤', 'Status', 'Queimado perde HP e bate mais fraco; envenenado perde HP; paralisado fica lento e às vezes não se mexe; dormindo e congelado não atacam. Status ajuda a capturar.'],
+  ['✨', 'Mega, Z, Dynamax e Tera', 'Com o item certo, o botão no meio dos golpes ativa a mecânica uma vez por batalha: Mega Evolução, Movimento Z (só em Alola), Dynamax (Dynamax Band) e Terastal (Tera Orb).'],
+  ['🎯', 'Captura', 'Quanto menos HP e com status, mais fácil. Selvagens de nível baixo são mais fáceis; de nível acima do seu Pokémon, bem mais difíceis. Bolas melhores ajudam.'],
+  ['🏙️', 'Cidades e lugares', 'A cada rota de 10 andares você chega numa cidade: ginásio, Poké Mart, Centro Pokémon e Creche. Perto dela há um lugar com 10 andares e um chefe; depois, de volta à cidade.'],
+  ['💞', 'Amizade e habilidades', 'Quem fica no time ganha amizade e alguns evoluem por ela. Pickup acha itens, Intimidate espanta selvagens e Synchronize passa a Nature para o capturado.'],
+]
+/** As dicas da primeira vez (o tutorial curto). Igual ao app. */
+const TIPS = {
+  paths: 'Escolha um caminho: cada carta é um andar (treinador, selvagem, lugar...). No fim da rota, o chefe.',
+  actions: 'Em AÇÕES: pescar, sacudir árvores, passar mel, usar o Repelente e mais.',
+  cards: 'Depois de cada chefe, escolha 1 de 3 cartas: o bônus vale para a corrida toda.',
+  puzzle: 'Antes do líder, vença o desafio do ginásio. Perdendo, tenta de novo com outro sorteio.',
+  help: 'Dúvidas? Em AJUDA tem a explicação de tudo, o cartão do treinador e a Pokédex.',
+}
+
+/** Os créditos depois do Campeão (como nos jogos): o time campeão passando, o treinador, a região, os números da corrida,
+ * "Obrigado por jogar!" e FIM, subindo devagar; no fim (ou PULAR) segue para o resultado. Igual ao app. */
+function Credits({ run, data, name, onEnd }) {
+  const me = useMyTrainer()
+  const box = useRef(null)
+  const inner = useRef(null)
+  useEffect(() => {
+    playSound('victory', 0.6)
+    const el = box.current, c = inner.current
+    if (!el || !c?.animate) return
+    const dist = c.scrollHeight - el.clientHeight * 0.55
+    const anim = c.animate([{ transform: `translateY(${el.clientHeight}px)` }, { transform: `translateY(${-dist}px)` }], { duration: Math.min(30000, Math.max(4000, dist * 28)), easing: 'linear', fill: 'forwards' })
+    let timer
+    anim.finished.then(() => { timer = setTimeout(onEnd, 1500) }).catch(() => {})
+    return () => { anim.cancel(); clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const game = data?.bosses?.[run.boss.region]
+  return (
+    <div ref={box} className="absolute inset-0 overflow-hidden bg-[#020617f2]" data-testid="credits">
+      <div ref={inner} className="flex flex-col items-center gap-[1.2cqw] text-center text-white" style={{ transform: 'translateY(100%)' }}>
+        <p className="text-[3.4cqw] font-black text-yellow-400">🏆 {t('Campeão de {0}!').replace('{0}', game?.region ?? '')}</p>
+        {run.team.map((m, i) => (
+          <div key={i} className="flex flex-col items-center"><PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-[9cqw] w-[9cqw]" /><span className="text-[2cqw] font-bold" data-no-translate>{m.nick ?? name(m.id)} · Nv. {m.level}</span></div>
+        ))}
+        {me && <div className="mt-[2cqw] flex flex-col items-center"><TrainerSprite trainer={me} height={90} still /><span className="text-[2.2cqw] font-black">{me.name}</span></div>}
+        <p className="mt-[2cqw] text-[2cqw] text-slate-300">🏅 {t('Insígnias')}: {run.badges ?? 0}</p>
+        <p className="text-[2cqw] text-slate-300">📖 {t('Pokédex')}: {dexOf(run).length}</p>
+        <p className="text-[2cqw] text-slate-300">🧗 {t('Andar')}: {run.floor}</p>
+        <p className="text-[2cqw] text-slate-300">⏱️ {t('Tempo de jogo')}: {playTimeText(run.playMs)}</p>
+        <p className="mt-[3cqw] text-[3cqw] font-black">PocketDex</p>
+        <p className="text-[2.2cqw]">{t('Obrigado por jogar!')}</p>
+        <p className="mt-[5cqw] text-[4.5cqw] font-black tracking-[0.4em]" data-testid="credits-end">{t('FIM')}</p>
+      </div>
+      <button type="button" className="port-chip absolute bottom-[3%] right-[2%] cursor-pointer px-4 py-1.5 text-sm font-black" onClick={onEnd} data-testid="credits-skip">▸ {t('PULAR')}</button>
+    </div>
+  )
+}
+
+/** Como o "Continuar" dos jogos: o treinador, a região, as insígnias, a Pokédex e o tempo de jogo. Igual ao app. */
+function ContinueCard({ run, data }) {
+  const me = useMyTrainer()
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-slate-200 bg-blue-900 px-3 py-2 font-['Pixelify_Sans',monospace] text-sm text-white" data-testid="factory-continue-card">
+      {me && <span>👤 {me.name}</span>}
+      {data?.bosses?.[run.boss.region] && <span>🗺️ {data.bosses[run.boss.region].region}</span>}
+      <span>🏅 {run.badges ?? 0}</span>
+      <span>📖 {dexOf(run).length}</span>
+      <span data-testid="factory-play-time">⏱️ {playTimeText(run.playMs)}</span>
+    </div>
+  )
+}
+
+/** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
+ * vitórias. Fica na AJUDA (🪪). Igual ao app. */
+function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null, charm = false }) {
+  const me = useMyTrainer()
+  const [ref, width] = useWidth()
+  const game = data?.bosses?.[run.boss.region]
+  const sum = runSummary(run)
+  const quest = data ? legendQuest(data, run) : null
+  const row = (icon, name, value, testid) => (
+    <div className="flex min-h-0 flex-1 items-center rounded bg-black/40 px-[1.5cqw] text-[1.9cqw]">
+      <span className="text-slate-300">{icon} {t(name)}</span>
+      <span className="ml-auto flex items-center gap-[1cqw] text-[2.2cqw]" data-testid={testid}>{value}</span>
+    </div>
+  )
+  return (
+    <div className="flex min-h-0 flex-1 gap-[1cqw] rounded-[1.5cqw] border-2 border-slate-200 bg-gradient-to-br from-blue-600 to-blue-900 p-[1cqw]" ref={ref} data-testid="trainer-card">
+      <div className="flex w-[28%] flex-col items-center justify-center rounded-[1cqw] bg-white/20">
+        {me && width > 0 && <TrainerSprite trainer={me} height={width * 0.19} still />}
+        {me && <p className="truncate text-[2cqw]">{me.name}</p>}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-[0.6cqw]">
+        {game && row('🗺️', 'Região', game.region)}
+        {row('🏅', 'Insígnias', <>{data && <Badges data={data} run={run} />}<span>{sum.badges}</span></>, 'card-badges')}
+        {row('💰', 'Dinheiro', run.money ?? 0, 'card-money')}
+        {row('📖', 'Pokédex', <>{dexOf(run).length}{onDex && <button type="button" className="cursor-pointer text-yellow-400" onClick={onDex} data-testid="card-open-dex">{t('ABRIR')} ▸</button>}</>, 'card-dex')}
+        {row('🧗', 'Andar', run.floor ?? 0, 'card-floor')}
+        {row('⏱️', 'Tempo de jogo', playTimeText(run.playMs), 'card-time')}
+        {row('✨', 'Shiny Charm', charm ? `✅ ${SHINY_CHARM}×` : '—', 'card-charm')}
+        {quest && row('🌟', 'Lendários', <>{quest.list.map((id) => <span key={id} style={quest.done.includes(id) ? undefined : { filter: 'brightness(0)', opacity: id === quest.id ? 1 : 0.4 }}><PokeIcon id={id} className="h-[3.4cqw] w-[3.4cqw]" /></span>)}<span>{quest.done.length}/{quest.list.length}</span></>, 'card-legends')}
+        {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
+        {/* Perguntar o apelido ao capturar (vem desligado: a captura segue direto). Igual ao app. */}
+        {onAskNick && row('✏️', 'Apelido ao capturar', <button type="button" className="cursor-pointer text-yellow-400" onClick={onAskNick} data-testid="card-ask-nick">{askNick ? `✅ ${t('SIM')}` : `⬜ ${t('NÃO')}`}</button>)}
+      </div>
+    </div>
+  )
+}
+
+const DEX_GENS = [1, 152, 252, 387, 494, 650, 722, 810, 906]
+const DEX_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
+
+/**
+ * A Pokédex (como nos jogos): todos os Pokémon pelo número; à direita a lista (em páginas, com as gerações), à esquerda o
+ * tocado. Capturado (na conta ou nesta corrida): inteiro, com nome e tipos; o resto, só a silhueta (visto: com o nome;
+ * nunca visto: ???). Igual ao app.
+ */
+function DexPanel({ factory, data, run, name, onClose }) {
+  const book = dexBook(factory, data)
+  // A busca e os filtros (como nos jogos): pelo nome (dos já vistos), pelo tipo (dos capturados) e só os capturados ou
+  // só os que faltam. Igual ao app.
+  const [query, setQuery] = useState('')
+  const [type, setType] = useState('')
+  const [showing, setShowing] = useState('all')
+  const q = query.trim().toLowerCase()
+  const filtered = book.all.filter((id) => (!q || (book.seen.has(id) && name(id).toLowerCase().includes(q)))
+    && (!type || (book.caught.has(id) && (data.species[id]?.[4] ?? []).includes(type)))
+    && (showing === 'all' || (showing === 'caught') === book.caught.has(id)))
+  const all = filtered.length ? filtered : book.all
+  const cols = 8
+  const per = cols * 4
+  const pages = Math.ceil(all.length / per)
+  const [pickAt, setPick] = useState(() => dexOf(run)[0] ?? all[0])
+  const pick = all.includes(pickAt) ? pickAt : all[0]
+  const [pageAt, setPage] = useState(() => Math.floor(Math.max(0, all.indexOf(dexOf(run)[0] ?? all[0])) / per))
+  const page = Math.min(Math.max(0, pageAt), pages - 1)
+  const shown = all.slice(page * per, page * per + per)
+  const caught = book.caught.has(pick)
+  const seen = book.seen.has(pick)
+  const types = caught ? data.species[pick]?.[4] ?? [] : []
+  const first = shown[0] ?? 1
+  const black = { filter: 'brightness(0)' }
+  // O texto da Pokédex (só de quem você já capturou), como nos jogos: a espécie, a descrição, a altura e o peso.
+  const [entry, setEntry] = useState(null)
+  useEffect(() => {
+    let live = true
+    setEntry(null)
+    if (caught) getSpecies(pick).then((sp) => live && sp && setEntry({ id: pick, genus: pickText(sp.genus, sp.genera), flavor: pickText(sp.flavor, sp.flavors), height: sp.forms?.[0]?.height ?? 0, weight: sp.forms?.[0]?.weight ?? 0 })).catch(() => {})
+    return () => { live = false }
+  }, [pick, caught])
+  const num1 = (v) => (v / 10).toFixed(1).replace('.', ',')
+  return (
+    <div className="flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size', background: '#b3262b' }} data-testid="dex-panel">
+      <OverlayClose onClose={onClose} title={`📖 ${t('Pokédex')} · ✔ ${book.caught.size} · 👁 ${book.seen.size} / ${all.length}`} />
+      <div className="flex min-h-0 flex-1 gap-[1cqw]">
+        <div className="flex w-[28%] flex-col items-center rounded-[0.8cqw] border-2 border-[#8b93a1] bg-[#14161c] p-[1cqw]" data-testid="dex-detail">
+          <p className="text-[1.6cqw] text-slate-300">Nº {String(pick).padStart(3, '0')}</p>
+          <div className="my-[0.8cqw] flex min-h-0 w-full flex-1 items-center justify-center rounded-[0.8cqw]" style={{ background: 'radial-gradient(#9fd8c8, #3f7f74)' }}>
+            <div className="h-full w-full" style={caught ? undefined : black}><PokeIcon key={pick} id={pick} fill={0.85} className="h-full w-full" /></div>
+          </div>
+          <p className="w-full truncate text-center text-[2.2cqw]" data-testid="dex-name">{seen ? name(pick) : '???'}</p>
+          <div className="flex h-[2.6cqw] items-center justify-center gap-1">{types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
+          {caught && entry?.id === pick && (
+            <div className="w-full text-center" data-testid="dex-entry">
+              {entry.genus && <p className="truncate text-[1.3cqw] text-slate-300">{t('Pokémon')} {entry.genus}</p>}
+              <p className="text-[1.3cqw]" data-testid="dex-size">📏 {num1(entry.height)} m · ⚖️ {num1(entry.weight)} kg</p>
+              {entry.flavor && <p className="line-clamp-3 text-[1.15cqw] leading-snug text-slate-200" data-testid="dex-flavor">{entry.flavor}</p>}
+            </div>
+          )}
+          {/* O habitat (de quem você já viu): onde vive, dia ou noite e o surto de hoje. Igual ao app. */}
+          {seen && (() => {
+            const h = habitatOf(data, pick, clockOf().day)
+            return (
+              // Numa linha só (os lugares pelos ícones; o nome de cada um ao passar o mouse), para caber com o resto.
+              <p className="w-full truncate text-center text-[1.2cqw] leading-snug text-slate-200" data-testid="dex-habitat" title={h.places.map((b) => t(BIOME_INFO[b]?.label ?? b)).join(' · ')}>
+                {h.places.length > 0 && `🗺️ ${h.places.map((b) => BIOME_INFO[b]?.icon ?? '').join('')}`}
+                {h.time && <span className="text-amber-200">{` · ${h.time === 'day' ? `☀️ ${t('Só de dia')}` : `🌙 ${t('Só à noite')}`}`}</span>}
+                {h.outbreak && <span className="font-black text-orange-300" data-testid="dex-outbreak">{` · 🔥 ${t('Surto hoje!')}`}</span>}
+              </p>
+            )
+          })()}
+          <p className={`text-[1.6cqw] ${caught ? 'text-green-300' : 'text-slate-300'}`} data-testid="dex-status">{caught ? `✔ ${t('Capturado')}` : seen ? `👁 ${t('Visto')}` : `❔ ${t('Não visto')}`}</p>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[0.5cqw]">
+        {/* A busca e os filtros, numa linha em cima da grade. */}
+        <div className="flex shrink-0 items-center gap-[0.6cqw] text-[1.5cqw]">
+          <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(0) }} placeholder={`🔍 ${t('Nome')}`} className="min-w-0 flex-1 rounded border border-[#8b93a1] bg-[#14161c] px-2 py-0.5 text-white" data-testid="dex-search" />
+          <select value={type} onChange={(e) => { setType(e.target.value); setPage(0) }} className="rounded border border-[#8b93a1] bg-[#14161c] px-1 py-0.5 text-white" data-testid="dex-type">
+            <option value="">{t('Tipo')}</option>
+            {Object.keys(TYPE_PT).map((k) => <option key={k} value={k}>{t(TYPE_PT[k])}</option>)}
+          </select>
+          <button type="button" className={`port-chip cursor-pointer px-[1cqw] ${showing !== 'all' ? '!bg-yellow-400 !text-slate-900' : ''}`} onClick={() => { setShowing(showing === 'all' ? 'caught' : showing === 'caught' ? 'missing' : 'all'); setPage(0) }} data-testid="dex-show">{showing === 'caught' ? '✔' : showing === 'missing' ? '❔' : t('Todos')}</button>
+        </div>
+        {!filtered.length && <p className="text-[1.3cqw]" data-testid="dex-none">{t('Nenhum com esse filtro: mostrando todos.')}</p>}
+        <div className="grid min-h-0 flex-1 grid-cols-8 grid-rows-4 gap-[0.3cqw]">
+          {shown.map((id) => {
+            const c = book.caught.has(id)
+            const on = id === pick
+            return (
+              <button key={id} type="button" onClick={() => { setPick(id); setPage(page); if (c) playCry(id) }} data-testid={`dex-${id}`}
+                className={`relative min-h-0 cursor-pointer overflow-hidden rounded-[0.5cqw] ${on ? 'border-2 border-yellow-400 bg-[#3b4252]' : 'border border-[#4b5563] bg-[#14161ccc]'}`}>
+                <span className={`absolute left-[0.3cqw] top-0 text-[1.1cqw] ${c ? 'text-white' : 'text-slate-400'}`}>{id}</span>
+                {c && <span className="absolute right-[0.3cqw] top-0 text-[1.1cqw] text-red-500">●</span>}
+                <div className="absolute inset-x-[0.3cqw] bottom-0 top-[1cqw]" style={c ? undefined : black}><PokeIcon id={id} fill={0.9} lite className="h-full w-full" /></div>
+              </button>
+            )
+          })}
+        </div>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-[0.5cqw] text-[1.5cqw]">
+        {DEX_GENS.map((g, k) => {
+          const on = first >= g && (k === DEX_GENS.length - 1 || first < DEX_GENS[k + 1])
+          return <button key={g} type="button" className={`port-chip cursor-pointer px-[1cqw] ${on ? '!bg-yellow-400 !text-slate-900' : ''}`} onClick={() => setPage(Math.floor(Math.max(0, all.findIndex((id) => id >= g)) / per))} data-testid={`dex-gen-${k + 1}`}>{DEX_ROMAN[k]}</button>
+        })}
+        <span className="ml-auto" />
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} data-testid="dex-prev">◀</button>
+        <span className="tabular-nums">{page + 1}/{pages}</span>
+        <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} data-testid="dex-next">▶</button>
+      </div>
+    </div>
+  )
+}
+
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null, charm = false }) {
+  // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
+  const [page, setPage] = useState(0)
+  const [card, setCard] = useState(false)
+  const per = 4
+  const pages = Math.ceil(HELP.length / per)
+  return (
+    <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
+      <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
+      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} charm={charm} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+        {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
+          <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
+            <p className="text-[2.2cqw]">{icon} {t(title)}</p>
+            <p className="text-[1.6cqw] leading-snug text-slate-300">{t(text)}</p>
+          </div>
+        ))}
+      </div>}
+      {/* Sair (a corrida fica salva) e Desistir ficam aqui, dentro do jogo (nada embaixo da tela). Igual ao app. */}
+      <div className="flex shrink-0 items-center justify-center gap-4 text-[1.8cqw]">
+        {onExit && <button type="button" className="port-chip mr-auto cursor-pointer px-3" onClick={onExit} data-testid="factory-exit">⏏ {t('SAIR')}</button>}
+        {!card && <>
+          <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t('Anterior')} data-testid="help-prev">◀</button>
+          <span className="tabular-nums">{page + 1}/{pages}</span>
+          <button type="button" className="port-chip cursor-pointer px-3 disabled:opacity-30" disabled={page === pages - 1} onClick={() => setPage(page + 1)} aria-label={t('Próxima')} data-testid="help-next">▶</button>
+        </>}
+        {run && <button type="button" className="port-chip cursor-pointer px-3" onClick={() => setCard(!card)} data-testid="help-card">{card ? `❓ ${t('AJUDA')}` : `🪪 ${t('CARTÃO')}`}</button>}
+        {onGiveUp && <button type="button" className="port-chip ml-auto cursor-pointer px-3" onClick={onGiveUp} data-testid="factory-give-up">🏳 {t('DESISTIR')}</button>}
+      </div>
+    </div>
+  )
+}
+
+/** As molduras da caixa de texto (loja de cosméticos). */
+const FRAME_NAMES = { gold: 'Dourada', crystal: 'Cristal', night: 'Noite', sakura: 'Sakura' }
+/** As regras da corrida da semana. */
+const WEEKLY_RULE_TEXT = {
+  normal: 'Sem regra especial: chegue o mais longe que puder.',
+  nuzlocke: 'Nuzlocke: quem desmaia vai embora e só um capturado por área (rota, cidade e cada lugar).',
+  noItems: 'Sem itens: a corrida começa com a Bolsa vazia.',
+}
+
+/**
+ * A corrida da semana (o torneio entre amigos): a mesma semente, o mesmo
+ * inicial e a mesma regra para todo mundo; o ranking é o andar alcançado.
+ */
+function WeeklyCard({ factory, data, byId, onContinue }) {
+  const week = weekKey()
+  const w = weeklyOf(data, week)
+  const [list, setList] = useState([])
+  const user = useAuth((a) => a.user)
+  useEffect(() => {
+    if (!user) return undefined
+    let stop = null, live = true
+    watchRanking(10, 'factory', week, (rows) => live && setList(rows), () => {}).then((s) => (live ? (stop = s) : s?.()))
+    return () => { live = false; stop?.() }
+  }, [user, week])
+  return (
+    <div className="space-y-2 rounded-2xl bg-bg p-3" data-testid="factory-weekly">
+      <p className="font-bold">🏆 {t('Corrida da semana')}</p>
+      <div className="flex items-center gap-2">
+        <PokeIcon id={w.starter} className="h-12 w-12" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-bold" data-no-translate>{t(prettyName(byId?.get(w.starter)?.name ?? ''))}</p>
+          <p className="text-xs text-muted">{t(WEEKLY_RULE_TEXT[w.rule])}</p>
+          <p className="text-xs text-muted">{t('A mesma corrida para todo mundo nesta semana: veja quem chega mais longe.')}</p>
+        </div>
+        <Button data-testid="factory-weekly-start" onClick={() => { const next = startWeekly(factory, data, week); if (next) { saveFactory({ ...factory, run: next }); onContinue() } }}>{t('Jogar')}</Button>
+      </div>
+      {user ? (
+        <ol className="space-y-0.5 text-xs" data-testid="factory-weekly-ranking">
+          {list.map((row, k) => (
+            <li key={row.uid} className={`flex justify-between rounded px-2 py-0.5 ${row.uid === user.uid ? 'bg-amber-500/15 font-bold' : 'bg-card'}`}>
+              <span data-no-translate>{k + 1}. {row.name}</span>
+              <span>{t('Andar {0}').replace('{0}', row.score)}</span>
+            </li>
+          ))}
+          {!list.length && <li className="text-muted">{t('Ninguém jogou ainda nesta semana.')}</li>}
+        </ol>
+      ) : (
+        <p className="text-xs text-muted">{t('Entre na conta para aparecer no ranking.')}</p>
+      )}
+    </div>
+  )
+}
+
+/** O nome de cada equipe vilã (nomes dos jogos). */
+const TEAM_NAMES = {
+  yell: 'Equipe Yell', macro: 'Macro Cosmos',
+  rocket: 'Equipe Rocket', aqua: 'Equipe Aqua', magma: 'Equipe Magma', galactic: 'Equipe Galáctica', plasma: 'Equipe Plasma',
+  flare: 'Equipe Flare', skull: 'Equipe Skull', aether: 'Fundação Aether', star: 'Equipe Star',
+}
+
+/** As falas em sequência (a caixa de fala mostra 2 linhas por vez e passa sozinha ou tocando). Sem falas, o fallback. */
+function Dialogue({ lines, fallback = null }) {
+  if (!lines.length) return fallback ? <p>{fallback}</p> : null
+  // Uma fala da história ({who, text}): quem fala aparece na plaquinha em cima da caixa (e no cenário). Igual ao app.
+  return <div data-testid="factory-dialogue">{lines.map((l, i) => (l?.text != null ? <p key={i} data-who={l.who}>{l.text}</p> : <p key={i} data-who="">{l}</p>))}</div>
+}
+/** O treinador (sprite) de quem fala na história, pelo nome (Bill → sd-bill, Lorelei, Prof. Oak...). Igual ao app. */
+export function speakerTrainer(trainers, who) {
+  if (!who || !trainers?.length) return null
+  const key = who.toLowerCase().replace(/^prof(\.|essora|essor)?\s+/, '').replace(/[^a-z0-9]/g, '')
+  return trainers.find((x) => x.name?.toLowerCase() === who.toLowerCase()) ?? trainers.find((x) => x.id === key) ?? trainers.find((x) => x.id === `sd-${key}`) ?? null
+}
+
+/**
+ * A caixa de fala como nos jogos: o tamanho não muda e mostra PAGE_LINES linhas por vez; o texto aparece letra por letra
+ * (na velocidade das Opções). Tocar enquanto escreve mostra tudo; com tudo escrito, tocar passa (▼) e, sem tocar, passa
+ * sozinho depois de AUTO_MS. Igual ao app.
+ */
+const PAGE_LINES = 2
+const CHAR_MS = 28
+const AUTO_MS = 2400
+const SPEED = { slow: 1.6, normal: 1, fast: 0.55 }
+/** Nos testes no navegador automatizado, o texto já vem escrito e as escolhas aparecem logo (como nos testes do app). */
+const INSTANT_TEXT = typeof navigator !== 'undefined' && Boolean(navigator.webdriver)
+function PagedText({ className, children, onDone = null, onSpeaker = null }) {
+  const win = useRef(null)
+  const body = useRef(null)
+  const [view, setView] = useState({ page: 0, pages: 1, line: 0, sig: '', chars: 0 })
+  // Quem fala na página de agora (a fala que está no alto da caixa).
+  useLayoutEffect(() => {
+    const b = body.current
+    if (!b || !onSpeaker) return
+    const top = view.page * view.line * PAGE_LINES, bottom = top + view.line * PAGE_LINES
+    const p = [...b.querySelectorAll('[data-who]')].find((x) => x.dataset.who && x.offsetTop < bottom - 1 && x.offsetTop + x.offsetHeight > top + 1)
+    onSpeaker(p?.dataset.who ?? '')
+  })
+  const [shown, setShown] = useState(PAGE_LINES)
+  const factor = SPEED[usePrefs((s) => s.textSpeed)] ?? 1
+  // Mede de novo quando o texto muda (volta para o começo e escreve de novo).
+  useLayoutEffect(() => {
+    const w = win.current, b = body.current
+    if (!w || !b) return
+    const line = parseFloat(getComputedStyle(w).lineHeight) || 0
+    const sig = b.textContent ?? ''
+    const pages = line ? Math.max(1, Math.ceil((b.scrollHeight - 1) / (line * PAGE_LINES))) : 1
+    if (sig !== view.sig || line !== view.line || pages !== view.pages) {
+      setView((v) => ({ page: sig !== v.sig ? 0 : Math.min(v.page, pages - 1), pages, line, sig, chars: sig.length }))
+      if (sig !== view.sig) setShown(INSTANT_TEXT ? PAGE_LINES : 0)
+    }
+  })
+  // Letra por letra: as 2 linhas da página vão aparecendo da esquerda para a direita, uma depois da outra.
+  useEffect(() => {
+    if (shown >= PAGE_LINES) return undefined
+    const perLine = Math.max(8, view.chars / Math.max(1, view.pages * PAGE_LINES))
+    const ms = Math.max(120, perLine * CHAR_MS * factor)
+    const start = performance.now() - (shown % 1) * ms
+    let id
+    const tick = (now) => {
+      const next = Math.min(PAGE_LINES, Math.floor(shown) + (now - start) / ms)
+      setShown(next)
+      if (next < PAGE_LINES) id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [shown >= PAGE_LINES, view.page, view.sig]) // eslint-disable-line react-hooks/exhaustive-deps
+  const more = view.page < view.pages - 1
+  const next = () => {
+    setView((v) => ({ ...v, page: Math.min(v.pages - 1, v.page + 1) }))
+    setShown(INSTANT_TEXT ? PAGE_LINES : 0)
+  }
+  // Com tudo escrito, passa sozinho.
+  useEffect(() => {
+    if (shown < PAGE_LINES || !more) return undefined
+    const id = setTimeout(next, AUTO_MS * factor)
+    return () => clearTimeout(id)
+  }, [shown, more, view.page, factor]) // eslint-disable-line react-hooks/exhaustive-deps
+  const typing = shown < PAGE_LINES
+  // Toda a fala já apareceu: as escolhas (os botões e as cartas) aparecem.
+  const done = INSTANT_TEXT || !view.line || (!typing && !more)
+  useEffect(() => { onDone?.(done) }, [done, onDone])
+  const a = Math.min(1, shown) * 100, c = Math.max(0, shown - 1) * 100
+  return (
+    <div className={className} data-testid="factory-text" onClick={() => (typing ? setShown(PAGE_LINES) : more && next())}>
+      <div ref={win} className="paged-text relative overflow-hidden" style={{ height: view.line ? view.line * PAGE_LINES : undefined, clipPath: typing && view.line ? `polygon(0 0, ${a}% 0, ${a}% 50%, ${c}% 50%, ${c}% 100%, 0 100%)` : undefined }}>
+        <div ref={body} style={{ transform: `translateY(${-view.page * view.line * PAGE_LINES}px)` }}>{children}</div>
+      </div>
+      {more && !typing && <span className="absolute bottom-[4%] right-[1.5%] animate-bounce text-[1.6cqw] leading-none" data-testid="factory-text-more">▼</span>}
+    </div>
+  )
+}
+
+/** Os botões do menu, como os da batalha ("▸ LUTAR"); sub: uma linha menor embaixo. */
+/** Um botão da linha fixa de ferramentas (BOLSA, TIME, MAPA, AJUDA). Igual ao app. */
+function ToolButton({ icon, children, onClick, testid, active = false }) {
+  return (
+    <button type="button" onClick={onClick} data-testid={testid} data-k={testid?.replace('factory-menu-', '')}
+      title={typeof children === 'string' ? children : undefined}
+      className={`dlg-btn tool-btn cursor-pointer truncate rounded-lg px-1 text-xs font-black ${active ? 'active' : ''}`}>
+      {icon}<span className="tool-label"> {children}</span>
+    </button>
+  )
+}
+
+/** O celular de cabeça para baixo (o topo para o chão): vira a tela para o Inkay. */
+function FlipSensor({ onFlip }) {
+  const fire = useRef(onFlip)
+  fire.current = onFlip
+  useEffect(() => {
+    const on = (e) => { if (e.beta != null && e.beta < -60) fire.current() }
+    window.addEventListener('deviceorientation', on)
+    return () => window.removeEventListener('deviceorientation', on)
+  }, [])
+  return null
+}
+
+/** Quantos botões tem o menu (um fragmento conta os de dentro): com mais de 4 (a cidade), um por linha; senão, 2 colunas. Igual ao app. */
+function menuCount(menu) {
+  const flat = (n) => Children.toArray(n).flatMap((c) => (c?.type === Fragment ? flat(c.props.children) : [c]))
+  return flat(menu).length
+}
+
+function MenuButton({ children, sub, onClick, disabled = false, testid, active = false }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid} title={typeof sub === 'string' ? sub : undefined}
+      className={`dlg-btn cursor-pointer rounded-lg px-2 py-2 text-left disabled:cursor-default disabled:opacity-40 ${active ? 'active' : ''}`}>
+      <span className="block font-black">▸ {children}</span>
+      {sub && <span className="dlg-sub block pl-3 text-[11px] font-semibold leading-tight">{sub}</span>}
+    </button>
+  )
+}
+
+
+/** As cores das cartas dos caminhos, pelo que tem nelas (batalha vermelha, selvagem verde, loja azul, chefe roxo...). */
+const CARD_COLORS = {
+  wild: ['#22c55e', '#15803d'], trainer: ['#ef4444', '#b91c1c'], ace: ['#f97316', '#c2410c'], rival: ['#f43f5e', '#9f1239'],
+  boss: ['#a855f7', '#6b21a8'], dboss: ['#7c3aed', '#4c1d95'], area: ['#a855f7', '#6b21a8'], wildboss: ['#d946ef', '#86198f'],
+  mart: ['#3b82f6', '#1d4ed8'], center: ['#ec4899', '#be185d'], event: ['#eab308', '#a16207'], trade: ['#06b6d4', '#0e7490'],
+  safari: ['#84cc16', '#4d7c0f'], meteor: ['#f59e0b', '#b45309'], mythic: ['#f0abfc', '#a21caf'], bike: ['#14b8a6', '#0f766e'], clue: ['#a78bfa', '#6d28d9'], grotto: ['#78716c', '#44403c'],
+  rematch: ['#facc15', '#a16207'], leave: ['#64748b', '#334155'], dungeon: ['#78716c', '#44403c'],
+  raidmax: ['#dc2626', '#7f1d1d'], raidtera: ['#06b6d4', '#155e75'],
+}
+
+/** Um caminho como carta: o ícone grande, o nome e o que tem nele; virada (❔) quando, sem o Mapa, não dá para saber. */
+function PathCard({ children, sub, onClick, disabled = false, testid, kind, hidden = false, i = 0 }) {
+  const [c1, c2] = hidden ? ['#475569', '#1e293b'] : CARD_COLORS[kind] ?? ['#64748b', '#334155']
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
+      className="path-card flex min-w-0 max-w-[24%] flex-1 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border-4 border-white/90 p-1.5 text-center text-white shadow-[0_6px_0_rgba(0,0,0,0.35)] disabled:cursor-default disabled:opacity-50"
+      style={{ animationDelay: `${i * 90}ms`, background: hidden ? `repeating-linear-gradient(45deg, ${c1} 0 10px, ${c2} 10px 20px)` : `linear-gradient(160deg, ${c1}, ${c2})` }}>
+      <span className="flex aspect-square w-[46%] shrink-0 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-2xl drop-shadow sm:text-4xl">{hidden ? '❔' : kind === 'dungeon' ? '🕳️' : NODE_INFO[kind]?.icon ?? '❔'}</span>
+      <span className={`line-clamp-3 font-black leading-tight drop-shadow ${hidden ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base'}`}>{children}</span>
+      {sub && !hidden && <span className="line-clamp-3 text-[9px] font-semibold leading-tight opacity-90 sm:text-[11px]">{sub}</span>}
+    </button>
+  )
+}
+
+/**
+ * Os botões de baixo da corrida como os da batalha: cada um sempre no mesmo lugar, sem rolar. O que não cabe na caixa
+ * vai para a página seguinte (◀ 1/2 ▶ embaixo), com as fileiras inteiras (nunca um botão cortado). Igual ao app.
+ */
+function PagedMenu({ children, wide = false }) {
+  const box = useRef(null)
+  const grid = useRef(null)
+  const [pages, setPages] = useState([])
+  const [page, setPage] = useState(0)
+  const nav = 30
+  useLayoutEffect(() => {
+    const b = box.current, g = grid.current
+    if (!b || !g) return
+    const limit = b.clientHeight - nav
+    const items = [...g.children].map((el) => [el.offsetTop, el.offsetTop + el.offsetHeight]).sort((x, y) => x[0] - y[0])
+    const total = g.scrollHeight
+    let next = []
+    if (total <= b.clientHeight + 0.5 || !items.length || !(limit > 0)) next = [[0, total]]
+    else {
+      let start = 0, end = 0
+      for (const [top, bottom] of items) {
+        if (bottom - start > limit + 0.5 && end > start) { next.push([start, end]); start = top }
+        end = Math.max(end, bottom)
+      }
+      next.push([start, Math.max(end, start)])
+    }
+    const at = Math.min(page, next.length - 1)
+    // Fora da página: não dá para tocar nem chegar pelo teclado.
+    for (const el of g.children) el.inert = next.length > 1 && (el.offsetTop < next[at][0] - 0.5 || el.offsetTop + el.offsetHeight > next[at][1] + 0.5)
+    if (JSON.stringify(next) !== JSON.stringify(pages)) setPages(next)
+  })
+  const paged = pages.length > 1
+  const at = Math.min(page, Math.max(0, pages.length - 1))
+  const [start, end] = paged ? pages[at] : [0, 0]
+  return (
+    <div ref={box} className="flex h-full flex-col">
+      <div className="relative overflow-hidden" style={{ height: paged ? Math.min(end - start, 9999) : '100%' }}>
+        <div ref={grid} className={`relative grid content-start gap-1 ${wide ? '' : 'grid-cols-2'}`} style={{ transform: `translateY(${-start}px)` }}>{children}</div>
+      </div>
+      {paged && (
+        <div className="mt-auto flex h-[30px] shrink-0 items-center justify-center gap-4 font-black">
+          <button type="button" className="cursor-pointer px-2 disabled:opacity-30" disabled={at === 0} onClick={() => setPage(at - 1)} data-testid="factory-menu-prev" aria-label={t('Anterior')}>◀</button>
+          <span className="text-xs tabular-nums" data-testid="factory-menu-page">{at + 1}/{pages.length}</span>
+          <button type="button" className="cursor-pointer px-2 disabled:opacity-30" disabled={at === pages.length - 1} onClick={() => setPage(at + 1)} data-testid="factory-menu-next" aria-label={t('Próxima')}>▶</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Ao entrar na rota: uma frase do lugar. */
+const ROUTE_FLAVOR = {
+  grass: 'O vento balança o mato alto: tem Pokémon por toda parte.',
+  forest: 'As árvores fecham o céu; algo se mexe entre as folhas.',
+  water: 'As ondas batem forte; os Pokémon de Água estão agitados.',
+  beach: 'A areia esquenta os pés e o mar brilha ao longe.',
+  underwater: 'Tudo fica azul e silencioso lá embaixo.',
+  swamp: 'O pântano cheira a veneno e a lama prende os passos.',
+  sewer: 'Canos pingando e olhos brilhando no escuro.',
+  cave: 'Está escuro e frio; ecos vêm do fundo da caverna.',
+  icecave: 'O gelo estala sob os pés; cuidado para não escorregar.',
+  lavacave: 'O calor sobe do chão e rios de lava iluminam as paredes.',
+  poisoncave: 'Uma névoa roxa cobre o chão; melhor não respirar fundo.',
+  seacave: 'A água bate nas pedras e ecoa por toda a caverna.',
+  waterfall: 'O barulho da cachoeira enche a gruta; a névoa molha tudo.',
+  mountain: 'O caminho sobe pelas pedras; o ar fica mais fino.',
+  desert: 'O sol queima e a areia apaga as pegadas.',
+  volcano: 'O chão treme e a lava borbulha por perto.',
+  snow: 'A neve cai sem parar e cobre o caminho.',
+  city: 'Ruas cheias de treinadores querendo um desafio.',
+  sky: 'Nuvens por todo lado: só os que voam passam por aqui.',
+  tower: 'Velas acesas e um frio estranho: dizem que a torre é assombrada.',
+  ruins: 'Colunas quebradas e inscrições antigas: dizem que algo dorme aqui.',
+  flowers: 'Um mar de flores balança com o vento; o pólen deixa tudo sonolento.',
+  plant: 'Máquinas zumbem e faíscas pulam dos cabos: cuidado com os raios.',
+  crystal: 'Cristais brilham nas paredes da mina; às vezes eles caem do teto.',
+  dunes: 'A lua ilumina as dunas e a areia engole os passos.',
+  bamboo: 'Os bambus estalam ao vento e a luz entra em faixas.',
+  temple: 'Incenso e silêncio: o templo guarda Pokémon antigos.',
+}
+/** O rival e os vilões antes da luta. */
+/** O rival de surpresa na rota (fora os da história). */
+/** Jessie e James de surpresa na rota (falas originais). Igual ao app. */
+const ROCKET_LINES = [
+  'Achamos você! Esses Pokémon vão direto para o chefe!',
+  'Desta vez o plano não tem como dar errado!',
+  'A Equipe Rocket nunca desiste. Passa esses Pokémon pra cá!',
+]
+const RIVAL_RACE_LINES = [
+  'Ei! Te alcancei! Vamos ver quem treinou mais desde a última vez!',
+  'Você de novo? Ótimo, eu estava te procurando!',
+  'Não vou deixar você chegar no próximo ginásio sem uma revanche!',
+]
+const RIVAL_LINES = [
+  'Achou que ia passar sem me enfrentar? Mostre o que aprendeu!',
+  'Treinei sem parar desde a última vez. Agora é a minha vez de ganhar!',
+  'O seu time melhorou... mas o meu também!',
+  'Só um de nós vai chegar ao Campeão. Vamos decidir aqui!',
+]
+const VILLAIN_LINES = [
+  'Os seus Pokémon seriam muito úteis para os nossos planos...',
+  'Saia do caminho, criança! Não temos tempo para heróis.',
+  'Ninguém atrapalha a nossa equipe e sai ileso!',
+]
+
+/**
+ * O mapa da cidade (como o Town Map do Black & White) na bifurcação: a rota da
+ * cidade de onde veio até a do chefe, você no andar de agora e os caminhos
+ * abrindo na frente; toque num caminho para ir por ele.
+ */
+function TownMap({ route, pos, from, to, title, me, width, fieldRef, onPick, blocked, placeName, monName, hud = null }) {
+  const W = 160
+  const H = 120
+  const END = ROUTE_LENGTH + 1
+  const here = pos + 1
+  const y0 = 64
+  // O que já passou à esquerda; os caminhos com espaço no meio; o resto até a cidade do chefe.
+  const left = 14
+  const hx = left + (here / END) * 70
+  const ox = hx + 30
+  const x = (k) => (k <= here ? left + (k / END) * 70 : ox + 14 + ((k - here - 1) / Math.max(1, END - here - 1)) * (W - 14 - ox - 14))
+  const n = route.options.length
+  const ys = route.options.map((_, k) => y0 + (k - (n - 1) / 2) * Math.min(30, 84 / n))
+  return (
+    <div ref={fieldRef} className="town-map absolute inset-0 overflow-clip" data-testid="factory-map" data-fork="1">
+      <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" aria-hidden="true">
+        {/* A rota (o que já passou mais clara) e as cidades nas pontas. */}
+        <line x1={x(0)} y1={y0} x2={x(here)} y2={y0} stroke="#fde68a" strokeWidth="3" strokeLinecap="round" />
+        <line x1={ox + 14} y1={y0} x2={x(END)} y2={y0} stroke="#93c5fd" strokeWidth="3" strokeDasharray="3 2" strokeLinecap="round" />
+        {ys.map((y, k) => (
+          <path key={k} d={`M${x(here)} ${y0} C ${x(here) + 12} ${y0}, ${ox - 12} ${y}, ${ox} ${y} C ${ox + 8} ${y}, ${ox + 6} ${y0}, ${ox + 14} ${y0}`} stroke="#fbbf24" strokeWidth="2" fill="none" strokeDasharray="2 1.5" />
+        ))}
+        {Array.from({ length: END + 1 }, (_, k) => {
+          const city = k === 0 || k === END
+          return city
+            ? <rect key={k} x={x(k) - 5} y={y0 - 5} width="10" height="10" rx="2" fill="#ef4444" stroke="#fff" strokeWidth="1.2" />
+            : <circle key={k} cx={x(k)} cy={y0} r="2.4" fill={k < here ? '#fde68a' : '#bfdbfe'} stroke="#1e3a8a" strokeWidth="0.8" />
+        })}
+      </svg>
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-slate-900/80 px-3 py-1 text-xs font-black text-white sm:text-sm">
+        <span data-no-translate>🗺️ {title}</span>
+        <span>{t('O caminho se divide')}</span>
+      </div>
+      <span className="absolute -translate-x-1/2 rounded bg-white/90 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${(x(0) / W) * 100}%`, top: `${((y0 + 8) / H) * 100}%` }} data-no-translate>🏠 {from ?? t('Início')}</span>
+      <span className="absolute -translate-x-1/2 rounded bg-white/90 px-1 text-[10px] font-bold text-slate-900 sm:text-xs" style={{ left: `${(x(END) / W) * 100}%`, top: `${((y0 + 8) / H) * 100}%` }} data-no-translate>👑 {to}</span>
+      {me && (
+        <span className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${(x(here) / W) * 100}%`, top: `${((y0 + 2) / H) * 100}%` }}>
+          <TrainerSprite trainer={me} box={width * 0.17} />
+        </span>
+      )}
+      {/* Os caminhos: botões no próprio mapa. */}
+      {route.options.map((node, k) => {
+        const info = node.kind === 'dungeon' ? { icon: (BIOME_INFO[node.scene] ?? BIOME_INFO.cave).icon, label: placeName(node.place) } : node.raid ? NODE_INFO[`raid${node.raid}`] : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+        const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
+        return (
+          <button key={k} type="button" disabled={!onPick || blocked(node)} onClick={() => onPick(k)} data-testid={`map-pin-${k}`}
+            className="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-full border-2 border-white bg-blue-900/90 py-0.5 pl-0.5 pr-2 text-[10px] font-black text-white shadow-lg hover:bg-amber-500 disabled:cursor-default disabled:opacity-50 sm:text-xs"
+            style={{ left: `${(ox / W) * 100}%`, top: `${(ys[k] / H) * 100}%` }}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm sm:h-7 sm:w-7 sm:text-base">{b ? b.icon : info.icon}</span>
+            {node.quest ? <span data-no-translate>{LEGEND_LAIR_NAME(node.legend)}</span> : node.placeLegend || node.routeLegend ? <span data-no-translate>{monName?.(node.legend)}</span> : t(info.label).replace('{0}', node.blocker ? monName?.(node.legend) ?? '' : '')}{node.hidden ? ' 📡' : ''}
+          </button>
+        )
+      })}
+      {hud}
+    </div>
+  )
+}
+
+/** O título e o "fechar" do que abre por cima do campo. */
+function OverlayClose({ title, onClose }) {
+  return (
+    <div className="port-titlebar sticky top-0 z-10 -mx-2 -mt-2 mb-2 flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+      <span className="truncate">{title}</span>
+      <button type="button" onClick={onClose} className="port-chip cursor-pointer px-2" aria-label={t('Fechar')} data-testid="overlay-close">✕</button>
+    </div>
+  )
+}
+
+/** A moldura da batalha: o campo, a barra da corrida (dinheiro, Bolsa e time) e a caixa de texto com o menu. */
+/**
+ * As insígnias da região de agora: uma por líder de ginásio, na cor do tipo
+ * dele; as ganhas acesas, as que faltam apagadas. Igual ao app.
+ */
+function Badges({ data, run, onClick = null }) {
+  const leaders = data.bosses[run.boss.region]?.leaders ?? []
+  const gyms = leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym')
+  if (!gyms.length) return null
+  return (
+    <span className={`flex items-center gap-0.5 rounded bg-slate-900/50 px-1 py-0.5 ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick ?? undefined} data-testid="factory-badges" title={t('Insígnias')}>
+      {gyms.map(([l, k]) => {
+        const won = k < run.boss.step
+        return (
+          <span key={k} title={`${t('Insígnia de {0}').replace('{0}', l.name)}${won ? '' : ` (${t('falta')})`}`} data-testid={won ? 'badge-won' : 'badge-missing'}
+            className={`inline-block h-3.5 w-3.5 rotate-45 rounded-[3px] border ${won ? 'border-white shadow-[0_0_4px_#fff8]' : 'border-white/30 opacity-40'}`}
+            style={{ background: won ? typeColor(leaderType(data, l)) : 'transparent' }} />
+        )
+      })}
+    </span>
+  )
+}
+
+/**
+ * O estojo de insígnias (como no Black & White): as da região, cada uma girando como moeda; as que faltam, só a
+ * silhueta. Tocar numa mostra o líder e o andar da vitória e dá polimento (ela brilha mais a cada toque). Igual ao app.
+ */
+export const POLISH_MAX = 3
+function BadgeCase({ data, run, trainers, onClose }) {
+  const leaders = data?.bosses?.[run.boss.region]?.leaders ?? []
+  const gyms = leaders.map((l, k) => [l, k]).filter(([l]) => l.kind === 'gym')
+  const [pick, setPick] = useState(null)
+  const [shine, setShine] = useState({})
+  const [rub, setRub] = useState(0)
+  const won = (k) => k < run.boss.step
+  const chosen = gyms.find(([, k]) => k === pick)
+  const leader = chosen?.[0]
+  const floor = leader ? (run.diary ?? []).find(([kind, , who]) => kind === 'b' && who === leader.name)?.[1] : null
+  const coach = leader ? trainers?.find((x) => x.id === leader.trainer) ?? speakerTrainer(trainers, leader.name) : null
+  const tap = (l, k) => {
+    if (!won(k)) return
+    setPick(k)
+    // Polir: cada toque deixa ela mais brilhante (até POLISH_MAX) e o brilho passa de novo.
+    if (pick === k) setShine((s) => ({ ...s, [k]: Math.min(POLISH_MAX, (s[k] ?? 0) + 1) }))
+    setRub((n) => n + 1)
+  }
+  return (
+    <div className="flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size', background: 'linear-gradient(#4a5466, #2c333f)' }} data-testid="badge-case">
+      <OverlayClose onClose={onClose} title={`🏅 ${t('Estojo de insígnias')} · ${gyms.filter(([, k]) => won(k)).length}/${gyms.length}`} />
+      <div className="flex min-h-0 flex-1 gap-[1.2cqw]">
+        <div className="grid flex-[3] grid-cols-4 grid-rows-2 gap-[1cqw] rounded-[1cqw] border-[3px] border-[#a8b3c7] p-[1.2cqw]" style={{ background: 'repeating-linear-gradient(0deg, #fff1 0 1px, transparent 1px 4px), #262c37' }}>
+          {gyms.map(([l, k], i) => {
+            const art = badgeArt(l.name)
+            const on = won(k)
+            return (
+              <button key={k} type="button" onClick={() => tap(l, k)} data-testid={on ? `case-badge-${i}` : `case-empty-${i}`}
+                className={`relative flex items-center justify-center rounded-[0.8cqw] ${pick === k ? 'bg-[#ffffff22] ring-2 ring-yellow-300' : 'bg-[#0003]'} ${on ? 'cursor-pointer' : 'cursor-default'}`}>
+                <span className={`relative block h-[78%] w-[78%] ${on ? 'case-spin' : ''}`} style={on ? { animationDelay: `${i * 0.35}s`, filter: shine[k] ? `drop-shadow(0 0 ${4 + shine[k] * 5}px #fff)` : undefined } : undefined}>
+                  {art ? (
+                    <>
+                      <img src={spriteUrl(`badges/${art}.png`)} alt="" draggable={false} className="h-full w-full object-contain" style={on ? undefined : { filter: 'brightness(0)', opacity: 0.35 }} />
+                      {on && pick === k && <span key={rub} className="absolute inset-0 overflow-hidden" style={badgeMask(art)}><span className="badge-sweep case-sweep absolute" /></span>}
+                    </>
+                  ) : (
+                    <span className="absolute inset-[18%] rotate-45 rounded-[14%] border-[3px] border-white" style={{ background: on ? `linear-gradient(135deg, #fffb, ${typeColor(leaderType(data, l))} 45%, #0006)` : '#0006', opacity: on ? 1 : 0.35 }} />
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex flex-[2] flex-col items-center justify-end rounded-[1cqw] border-[3px] border-[#a8b3c7] bg-[#1c2029] p-[1.2cqw] text-center" data-testid="case-info">
+          {leader ? (
+            <>
+              <div className="flex min-h-0 flex-1 items-end justify-center">{coach && <TrainerSprite trainer={coach} height={110} />}</div>
+              <p className="text-[2.2cqw] font-black" data-no-translate>{leader.name}</p>
+              <p className="text-[1.7cqw] text-amber-200">🏅 {t('Insígnia de {0}').replace('{0}', leader.name)}</p>
+              {floor != null && <p className="text-[1.6cqw] text-slate-300">{t('Vencido no andar {0}').replace('{0}', floor)}</p>}
+              <p className="mt-1 text-[1.4cqw] text-slate-400">{'✨'.repeat(shine[pick] ?? 0) || t('Toque de novo para polir!')}</p>
+            </>
+          ) : (
+            <p className="my-auto text-[1.7cqw] text-slate-300">{t('Toque numa insígnia para ver o líder e polir ela.')}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// tools: BOLSA, TIME, MAPA e AJUDA numa linha fixa no alto da tela de baixo; os caminhos e o resto, nas páginas (◀ ▶).
+function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, panel = null, tools = null, menuFill = false, onDex = null, onBadges = null, hideHp = false, menuWait = true, cast = false }) {
+  // A HUD da batalha (o port de Black & White), igual: o campo 16:9, a caixa de texto à esquerda, os botões à direita
+  // dela e a faixa de dica embaixo, tudo dentro da tela (nada embaixo dela). Igual ao app.
+  // Como nos jogos: as escolhas só aparecem depois de toda a fala aparecer.
+  const [textDone, setTextDone] = useState(true)
+  // Quem fala na história: a plaquinha com o nome e (cast: sem chefe já no campo) o sprite dele no cenário.
+  const [speaker, setSpeaker] = useState('')
+  const trainers = useTrainers()
+  const speakerSprite = cast ? speakerTrainer(trainers, speaker) : null
+  const [frameRef, frameWidth] = useWidth()
+  return (
+    <div ref={frameRef} className={`battle-field port-field factory-port relative aspect-video select-none overflow-clip rounded-2xl border-4 hud-edge ${textDone ? '' : 'text-busy'}`} style={{ background: '#9fdcff' }}>
+      {/* Sem corte seco: a tela do lugar troca com um fade (mapa, loja, resultado...). */}
+      <div key={field?.props?.testid ?? ''} className="page-in absolute inset-0">{field}</div>
+      {speakerSprite && (
+        <div key={speakerSprite.id} className="page-in pointer-events-none absolute right-[12%] bottom-[38%] z-20 flex items-end" data-testid="speaker-sprite">
+          <TrainerSprite trainer={speakerSprite} height={farPerson(frameWidth)} />
+        </div>
+      )}
+      {speaker && <span className={`speaker-plate absolute left-[2%] bottom-[23%] z-30 ${frame ? `frame-${frame}` : ''}`} data-testid="speaker-plate" data-no-translate>{t(speaker)}</span>}
+      {/* A caixa de texto no lugar da da batalha (o que não cabe: tocar passa). */}
+      <PagedText onDone={setTextDone} onSpeaker={setSpeaker} className={`bw-message absolute left-[1.25%] ${menu ? 'right-[37.3%]' : 'right-[1.25%]'} bottom-[8.5%] z-30 h-[14.5%] cursor-pointer overflow-hidden px-[2.2%] py-[0.8%] text-left text-[2.3cqw] leading-snug font-bold ${frame ? `frame-${frame}` : ''}`}>
+        {text}
+      </PagedText>
+      {/* A vida do Pokémon da frente, no mesmo lugar da sua caixa de HP na batalha (os botões ficam embaixo dela). */}
+      {run && menu && !hideHp && <LeadHp run={run} data={data} byId={byId} />}
+      {/* Os botões no lugar dos da batalha, à direita da caixa de texto (o que não cabe vai para a próxima página). */}
+      {menu && <div className={`port-controls ${menuWait ? 'choice-wait' : ''} absolute right-[1.25%] bottom-[8.5%] z-30 h-[14.5%] w-[36%]`} data-testid="factory-bottom">{menuFill ? menu : <PagedMenu wide={menuCount(menu) > 4} key={field?.props?.testid ?? ''}>{menu}</PagedMenu>}</div>}
+      {/* A faixa de dica da batalha: o andar, o dinheiro, a Bolsa, as insígnias, BOLSA/TIME/MAPA/AJUDA e o time. */}
+      <div className="port-hint absolute inset-x-0 bottom-0 z-30 flex h-[6.7%] items-center gap-[1.2cqw] whitespace-nowrap px-2 text-[1.5cqw] font-bold" data-testid="factory-bar">
+        {run && (
+          <span className="flex min-w-0 flex-1 items-center gap-x-[1.2cqw] overflow-x-auto">
+            <span>🎲 {t('Andar {0}').replace('{0}', run.floor)}</span>
+            <span title={t('Jogo {0} da corrida: adversários +{1}% em todos os atributos').replace('{0}', gameOf(run)).replace('{1}', Math.round(foeBoostAt(tierOf(run)) * 100))} data-testid="factory-game">🎮 {gameOf(run)}</span>
+            <span>💰 {run.money}</span>
+            <span title={t('Bolsa')} data-testid="factory-bag-count">🎒 {BAG_ITEMS.reduce((n, id) => n + (run.bag[id] ?? 0), 0)}</span>
+            {(run.eggs ?? []).map((e, i) => <span key={i} title={t(e.mystery ? 'Ovo misterioso: choca em {0} vitórias' : 'Choca em {0} vitórias').replace('{0}', e.left)} data-testid="factory-egg">{e.mystery ? '❔' : '🥚'}{e.left}</span>)}
+            <span title={t('Pokédex da corrida')} className={onDex ? 'cursor-pointer' : ''} onClick={onDex ?? undefined} data-testid="factory-dex">📖 {dexOf(run).length}</span>
+            {data && <Badges data={data} run={run} onClick={onBadges} />}
+            {(run.hms ?? []).map((hm) => <span key={hm} title={HM_INFO[hm]?.name}>{HM_INFO[hm]?.icon}</span>)}
+            {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
+            {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
+            {(run.gimmiCoins ?? 0) > 0 && <span title={t('Moedas de Gimmighoul: com {0}, o Gimmighoul vira Gholdengo').replace('{0}', GIMMI_COINS)} data-testid="factory-gimmi">🪙 {run.gimmiCoins}/{GIMMI_COINS}</span>}
+            {repelOn(run) && <span title={t('Repelente')} data-testid="factory-repel-on">🧴{repelLeft(run)}</span>}
+            {SEASON_EVENTS[run.event] && <span title={`${t(SEASON_EVENTS[run.event].label)}: ${t(SEASON_EVENTS[run.event].help)}`} data-testid="factory-event">{SEASON_EVENTS[run.event].icon}</span>}
+            {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
+            {run.berry && <span title={t('Vaso de frutas')} data-testid="factory-berry">🌱{Math.max(0, run.berry.need - (run.floor - run.berry.floor))}</span>}
+            {run.daycare && <span title={t('Creche')}>🏡</span>}
+          </span>
+        )}
+        {!run && <span className="flex-1" />}
+        {tools && <span className="bar-tools flex shrink-0 gap-1" data-testid="factory-tools">{tools}</span>}
+        {run && (
+          <span className="flex shrink-0 gap-0.5">
+            {run.team.map((m, i) => (
+              <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
+                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-[2.6cqw] w-[2.6cqw] ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
+                <span className="block h-[0.4cqw] w-[2.8cqw] overflow-hidden rounded bg-slate-900">
+                  <span className={`block h-full ${(m.hp ?? 1) > 0.5 ? 'bg-emerald-400' : (m.hp ?? 1) > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.max(0, Math.min(1, m.hp ?? 1)) * 100}%` }} />
+                </span>
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
+      {panel && <div key={panel?.key ?? panel?.props?.testid ?? 'panel'} className="field-overlay factory-overlay panel-in border-0 bg-bg text-text" data-testid="factory-panel">{panel}</div>}
+    </div>
+  )
+}
+
+/**
+ * A corrida em tela cheia, no lugar da batalha e com a cara dela: o campo, a
+ * caixa de texto e o menu. O resultado do andar, o capturado, a carta, a loja
+ * (com "Continuar") e o mapa com os caminhos do próximo andar.
+ * onBattle(run): começa a batalha do caminho escolhido.
+ */
+export function FactoryScreen({ onBattle, onExit, busy = false }) {
+  const factory = useFactory()
+  const data = useFactoryData()
+  const byId = usePokemonIndex()
+  const trainers = useTrainers()
+  const me = useMyTrainer()
+  const [fieldRef, width] = useWidth()
+  const sprites = useAnimated()
+  const [panel, setPanel] = useState(null) // embaixo do menu: 'bag' | 'team' (na loja, a lista de compras)
+  // Tocou no Pokémon que segue você: o balão fica um pouco (PET_MS) e some.
+  const [pet, setPet] = useState(0)
+  useEffect(() => {
+    if (!pet) return undefined
+    const id = setTimeout(() => setPet(0), PET_MS)
+    return () => clearTimeout(id)
+  }, [pet])
+  // Os golpes que o time aprende subindo de nível (como nos jogos), um de cada vez: queue [[posição, golpe, entrou sozinho]];
+  // step 'ask' (quer aprender?) ou 'forget' (a tela dos 5 golpes); msg: o que aconteceu (com CONTINUAR); pick: o golpe tocado.
+  const [learn, setLearn] = useState(null)
+  // O resumo do andar que passou direto (XP, dinheiro, níveis, itens, golpes aprendidos sozinhos), na caixa de texto da
+  // tela seguinte. noteKeep: o próximo save ainda mostra.
+  const [note, setNote] = useState(null)
+  const noteKeep = useRef(false)
+  const autoResult = useRef(false)
+  const autoCapture = useRef(false)
+  // Subiu de nível (como nos jogos): quem subiu, um de cada vez, com os atributos antes e depois; passa sozinho em
+  // alguns segundos (ou com um toque). { key, list, at, stats }. Igual ao app.
+  const [lv, setLv] = useState(null)
+  const lvShown = useRef(null)
+  const lvDone = useRef(null)
+  const lvNext = () => setLv((l) => {
+    if (!l) return null
+    if (l.at + 1 < l.list.length) return { ...l, at: l.at + 1 }
+    lvDone.current = l.key
+    return null
+  })
+  useEffect(() => {
+    if (!lv || !run) return
+    const l = lv.list[lv.at]
+    const m = run.team[l.index]
+    playSound('statup', 0.6)
+    let live = true
+    Promise.all([statsAtLevel(run, m, l.from, data), statsAtLevel(run, m, l.to, data)])
+      .then(([before, after]) => live && before && after && setLv((x) => (x && x.key === lv.key && x.at === lv.at ? { ...x, stats: { before, after } } : x)))
+      .catch(() => {})
+    const timer = setTimeout(lvNext, 3200)
+    return () => { live = false; clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lv?.key, lv?.at])
+  // A evolução (como nos jogos): "O quê? Fulano está evoluindo!", o brilho trocando as formas e PARAR (o B dos jogos);
+  // terminando, a musiquinha e "Parabéns!". Uma de cada vez, antes do resultado. { list: [[posição, de, para]], at, phase }.
+  const [evo, setEvo] = useState(null)
+  const evoShown = useRef(null)
+  useEffect(() => {
+    if (!evo || evo.phase !== 'run') return
+    const timer = setTimeout(() => {
+      setEvo((e) => (e && e.at === evo.at && e.phase === 'run' ? { ...e, phase: 'done' } : e))
+      playSound('evolve', 0.7)
+    }, 2600)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evo?.at, evo?.phase])
+  // A fanfarra da insígnia (uma vez).
+  const badgeShown = useRef(null)
+  // A cena da insígnia que está passando (a chave do andar e do líder).
+  const [badgeFly, setBadgeFly] = useState(null)
+  // A dica mostrada agora ([id, a tela]).
+  const tipNow = useRef(null)
+  // Os créditos do Campeão já passaram (a chave do andar).
+  const [creditsDone, setCreditsDone] = useState(null)
+  // O PC no Centro Pokémon da cidade (aberto).
+  const [pcOpen, setPcOpen] = useState(false)
+  // O concurso: os dados dos golpes (o tipo) e os golpes do nível de quem nunca mudou de golpes.
+  const [moveInfo, setMoveInfo] = useState(null)
+  const [contestMoves, setContestMoves] = useState({})
+  const [unlocked, setUnlocked] = useState(null)
+  const [target, setTarget] = useState(0)
+  // O item tocado na loja (a descrição e o COMPRAR aparecem embaixo, como na Bolsa).
+  const [shopSel, setShopSel] = useState(null)
+  // Conquistas novas (com as moedas) e o Hall da Fama, conforme a corrida anda.
+  const [earned, setEarned] = useState([])
+  useEffect(() => {
+    if (!factory.run) return
+    const [next, ids] = progress(factory, factory.run)
+    if (next === factory) return
+    saveFactory(next)
+    if (ids.length) setEarned((list) => [...list, ...ids])
+  }, [factory])
+  // Saiu no meio da batalha do andar: voltando, ela continua de onde parou (direto, sem passar pelo mapa). Igual ao app.
+  const resumeAsked = useRef(false)
+  useEffect(() => {
+    const r = factory.run
+    if (resumeAsked.current || busy || !r?.encounter || stepOf(r.pending) || r.battle?.floor !== r.floor) return
+    resumeAsked.current = true
+    onBattle(r)
+  }, [factory.run, busy, onBattle])
+  // A música do mapa (map_<região>); a batalha troca pela dela e, voltando, o mapa começa de novo. Igual ao app.
+  const track = data && factory.run ? mapMusic(data, factory.run) : null
+  useEffect(() => {
+    if (!track) return
+    startMusic(track)
+    return () => stopMusic(track)
+  }, [track])
+  const run = factory.run
+  if (!data) return <p className="text-sm text-muted">...</p>
+  const name = (id) => t(prettyName(byId?.get(id)?.name ?? ''))
+  const save = (next) => {
+    if (!next) return
+    // O time curado (Centro Pokémon, Enfermeira Joy ou quem cuida no caminho): a musiquinha da cura, como nos jogos. Igual ao app.
+    const healed = next.pending && !next.pending.seen && (next.pending.center || next.pending.joy)
+    if (healed && !(run?.pending?.center || run?.pending?.joy)) playSound('center', 0.7)
+    // Fez uma ação (ou seguiu): a lista de ações fecha.
+    if (panel === 'actions') setPanel(null)
+    // O resumo do andar fica só na tela seguinte.
+    if (noteKeep.current) noteKeep.current = false
+    else setNote(null)
+    const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
+    saveFactory({ ...factory, run: out })
+  }
+  const lead = run?.team.find((m) => (m.hp ?? 1) > 0) ?? run?.team[0]
+  // O Pokémon que segue você na cidade, na altura de verdade perto do treinador (followerFit).
+  const leadInfo = lead && byId?.get(lead.id)
+  const follow = leadInfo ? followerFit(leadInfo.height, standOf(lead.shiny ? shinyPath(leadInfo.sprite) : leadInfo.sprite, sprites, leadInfo.box)) : { k: 1, scale: null }
+  const contestAt = String(panel ?? '').startsWith('contest:') ? Number(String(panel).slice(8)) : null
+  const extras = run && (panel === 'bag' || panel === 'team' || panel === 'region' || panel === 'help' || panel === 'dex' || panel === 'badges' || (String(panel ?? '').startsWith('contest') && contestOpen(run))) && (
+    String(panel ?? '').startsWith('contest') ? (
+      // O Concurso Pokémon: primeiro quem se apresenta (a tela do time), depois a categoria. Igual ao app.
+      contestAt == null || !run.team[contestAt] ? (
+        <BwParty title={`🎀 ${t('Concurso Pokémon: quem vai se apresentar?')}`} team={partyOf(run, byId)} testid="contest-team" onPick={(i) => setPanel(`contest:${i}`)} onCancel={() => setPanel(null)} />
+      ) : (
+        <div className="port-panel flex h-full flex-col gap-2 p-2" style={{ containerType: 'inline-size' }} data-testid="contest-cats">
+          <OverlayClose onClose={() => setPanel('contest')} title={`🎀 ${t('Concurso de {0}').replace('{0}', name(run.team[contestAt].id))}`} />
+          <p className="text-[1.8cqw]">{t('Escolha a categoria. Golpes do tipo dela agradam mais; repetir o mesmo golpe agrada menos.')}</p>
+          <div className="grid flex-1 grid-cols-3 gap-2">
+            {Object.entries(CONTEST_CATS).map(([cat, [icon, label]]) => (
+              <MenuButton key={cat} testid={`contest-cat-${cat}`} disabled={busy} onClick={() => { setPanel(null); save(startContest(run, contestAt, cat)) }}
+                sub={Object.entries(CONTEST_OF_TYPE).filter(([, c]) => c === cat).map(([type]) => t(TYPE_PT[type])).join(', ')}>{icon} {t(label)}</MenuButton>
+            ))}
+          </div>
+        </div>
+      )
+    ) : panel === 'dex' ? (
+      <DexPanel factory={factory} data={data} run={run} name={name} onClose={() => setPanel(null)} />
+    ) : panel === 'badges' ? (
+      <BadgeCase data={data} run={run} trainers={trainers} onClose={() => setPanel(null)} />
+    ) : panel === 'region' ? (
+      <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
+    ) : panel === 'help' ? (
+      <HelpPanel data={data} run={run} charm={Boolean(factory.charm)} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+    ) : panel === 'bag' ? (
+      <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
+    ) : (
+      // O time com o tamanho do campo (sem rolar): a lista e as páginas cabem nele.
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1"><TeamView run={run} data={data} byId={byId} save={save} onClose={() => setPanel(null)} /></div>
+      </div>
+    )
+  )
+  // As ferramentas (numa linha fixa da tela de baixo, sempre no mesmo lugar). Igual ao app.
+  const tools = (
+    <>
+      <ToolButton icon="🎒" onClick={() => setPanel(panel === 'bag' ? null : 'bag')} active={panel === 'bag'} testid="factory-menu-bag">{t('BOLSA')}</ToolButton>
+      <ToolButton icon="🧩" onClick={() => setPanel(panel === 'team' ? null : 'team')} active={panel === 'team'} testid="factory-menu-team">{t('TIME')}</ToolButton>
+      <ToolButton icon="🗺️" onClick={() => setPanel(panel === 'region' ? null : 'region')} active={panel === 'region'} testid="factory-menu-region">{t('MAPA')}</ToolButton>
+      <ToolButton icon="❓" onClick={() => setPanel(panel === 'help' ? null : 'help')} active={panel === 'help'} testid="factory-menu-help">{t('AJUDA')}</ToolButton>
+    </>
+  )
+
+  // Acabou: o resumo da corrida (andar, capturas, quem caiu no Nuzlocke, o time e o MVP), as moedas e o recorde. Igual ao app.
+  if (!run) {
+    const last = factory.last
+    const sum = last?.summary
+    const mvp = sum?.mvp
+    const mini = ([id, , shiny], cls) => {
+      const p = byId?.get(id)
+      return p ? <Sprite path={shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.9} align="bottom" battle alt={p.name} className={cls} /> : null
+    }
+    return (
+      <section data-testid="factory-over">
+        <BattleFrame
+          field={<Field biome="over" fieldRef={fieldRef}>
+            {!mvp ? <div className="absolute inset-0 flex items-center justify-center text-7xl">🏁</div> : <>
+              {/* Os números da corrida à esquerda, o MVP no meio e o time embaixo. */}
+              <div className="absolute left-[3%] top-[4%] flex max-w-[40%] flex-col items-start gap-0.5" data-testid="factory-over-summary">
+                {summaryLines(sum).map((l) => <span key={l} className="whitespace-nowrap rounded-md bg-black/45 px-1.5 py-0.5 text-[11px] font-bold text-white">{l}</span>)}
+              </div>
+              <div className="absolute left-[30%] top-[4%] flex h-[58%] w-[40%] flex-col items-center" data-testid="factory-over-mvp">
+                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-black text-white">⭐ MVP</span>
+                <div className="min-h-0 w-full flex-1">{mini(mvp)}</div>
+              </div>
+              <div className="absolute inset-x-[4%] bottom-[4%] flex h-[30%] justify-center">
+                {sum.team.map((m, i) => (
+                  <div key={i} className="flex min-w-0 flex-1 flex-col items-center" style={{ maxWidth: '16%' }}>
+                    <div className="min-h-0 w-full flex-1">{mini(m)}</div>
+                    <span className="text-[10px] font-black text-white [text-shadow:0_0_3px_#000]">Lv{m[1]}</span>
+                  </div>
+                ))}
+              </div>
+            </>}
+          </Field>}
+          text={<>
+            <p>{t('A corrida acabou')}</p>
+            {last && <p className="text-sm">{t('Andar {0} · +{1} moedas').replace('{0}', last.floor).replace('{1}', last.coins)}{last.pieces && piecesLine(piecesOf(last)) ? ` · ${piecesLine(piecesOf(last))}` : ''}</p>}
+            <p className="dlg-sub text-sm">{t('Recorde: andar {0}').replace('{0}', factory.best)} · 🪙 {factory.coins} {t('moedas')}</p>
+          </>}
+          menu={<>
+            {sum && <MenuButton onClick={() => shareSummary(last, byId)} testid="factory-over-share">{t('ENVIAR')}</MenuButton>}
+            <MenuButton onClick={onExit} testid="factory-over-exit">{t('VOLTAR')}</MenuButton>
+          </>}
+        />
+      </section>
+    )
+  }
+
+  const p = run.pending
+  // Depois do resultado do andar: os golpes novos de quem subiu de nível. Com vaga, aprende sozinho; com 4, pergunta.
+  // Os golpes de quem subiu ficam guardados (não mudam mais sozinhos). Igual ao app.
+  // O resultado do andar numa linha: XP, dinheiro, quem subiu de nível e os itens achados.
+  const resultLine = () => [
+    `🏆 ${t('Andar vencido!')} +${p.exp} XP · +💰${p.money}`,
+    ...(p.levels ?? []).filter((l) => run.team[l.index]).map((l) => `${name(run.team[l.index].id)}: Nv. ${l.from} → ${l.to}`),
+    ...[p.drop, p.reward, p.dowsed].filter(Boolean).map((id) => `🎁 ${itemName(id)}`),
+    ...(p.picked ?? []).map((x) => `🎒 ${name(x.id)}: ${itemName(x.item)}`),
+  ].join(' · ')
+  const afterResult = async (quick = false) => {
+    const moves = await getMoves()
+    let next = run
+    const queue = []
+    for (const l of p.levels ?? []) {
+      if (l.friend) continue
+      const i = l.index
+      const m = next.team[i]
+      if (!m) continue
+      const form = await learnsetOf(m.id)
+      let current = m.moves?.length ? m.moves : await movesFor(m.id, l.from)
+      // Evoluiu: primeiro os golpes da evolução (como nos jogos novos). Igual ao app.
+      const prev = l.evolved ? preEvolution(data, m.id) : null
+      const evoMoves = prev ? evolutionMoves(form, await learnsetOf(prev), moves) : []
+      for (const move of new Set([...evoMoves, ...movesLearnedBetween(form, l.from, l.to, moves)])) {
+        if (current.includes(move)) continue
+        if (current.length < 4) {
+          current = [...current, move]
+          queue.push([i, move, true])
+        } else queue.push([i, move, false])
+      }
+      next = { ...next, team: next.team.map((x, k) => (k === i ? { ...x, moves: current } : x)) }
+    }
+    // Quem aprendeu sozinho (tinha vaga) não precisa de tela: vai no resumo. Só pergunta quem já tem 4 golpes.
+    const learned = queue.filter((q) => q[2]).map(([i, move]) => `✨ ${t('{0} aprendeu {1}!').replace('{0}', name(next.team[i].id)).replace('{1}', prettySlug(move))}`)
+    const ask = queue.filter((q) => !q[2])
+    const line = [...(quick ? [resultLine()] : []), ...learned].join(' · ')
+    setNote(line || null)
+    noteKeep.current = Boolean(line)
+    if (!ask.length) return save({ ...next, pending: { ...p, seen: true } })
+    setLearn({ queue: ask, step: 'ask', msg: null, pick: null, moves })
+    save(next)
+  }
+  // O próximo golpe da fila (sem mais nenhum, segue o andar).
+  const nextLearn = () => {
+    const queue = learn.queue.slice(1)
+    if (!queue.length) {
+      setLearn(null)
+      save({ ...run, pending: { ...p, seen: true } })
+    } else setLearn({ ...learn, queue, step: 'ask', msg: null, pick: null })
+  }
+  // Confirma o golpe tocado na tela dos 5 golpes: esquece ele e aprende o novo (o novo tocado: não aprende).
+  const confirmForget = () => {
+    const [i, move] = learn.queue[0]
+    const m = run.team[i]
+    const current = m.moves ?? []
+    const nm = name(m.id)
+    const mv = prettySlug(move)
+    if (learn.pick >= current.length) return setLearn({ ...learn, step: 'ask', pick: null, msg: t('{0} não aprendeu {1}.').replace('{0}', nm).replace('{1}', mv) })
+    setLearn({ ...learn, step: 'ask', pick: null, msg: t('1, 2 e... Pronto! {0} esqueceu {1} e aprendeu {2}!').replace('{0}', nm).replace('{1}', prettySlug(current[learn.pick])).replace('{2}', mv) })
+    save(learnMove(run, i, move, current, learn.pick))
+  }
+  const step = stepOf(p)
+  // Completou a Pokédex: o aviso do Shiny Charm, uma vez (fica na conta para sempre). Igual ao app.
+  if (factory.charmNew) {
+    const { charmNew: _seen, ...rest } = factory
+    setTimeout(() => {
+      noteKeep.current = true
+      setNote(`✨ ${t('Pokédex completa! Você ganhou o Shiny Charm: {0}× de chance de shiny para sempre.').replace('{0}', SHINY_CHARM)}`)
+      saveFactory(rest)
+    }, 0)
+  }
+  // As dicas da primeira vez (como o tutorial dos jogos): uma linha 💡 na caixa de texto, uma vez cada. Igual ao app.
+  const seenTips = factory.tips ?? []
+  const screen = run ? `${run.floor}-${step}-${!p}` : ''
+  const tipId = !run ? null : step === 'cards' ? 'cards' : step === 'puzzle' ? 'puzzle'
+    : !p && !run.encounter ? ['paths', ...(run.floor >= 2 ? ['actions'] : []), ...(run.floor >= 4 ? ['help'] : [])].find((id) => !seenTips.includes(id)) ?? null : null
+  if (tipId && !seenTips.includes(tipId) && tipNow.current?.[0] !== tipId) {
+    tipNow.current = [tipId, screen]
+    setTimeout(() => saveFactory({ ...factoryOf(useStore.getState().league), tips: [...seenTips, tipId] }), 0)
+  }
+  const tipLine = tipNow.current && tipNow.current[1] === screen ? tipNow.current[0] : null
+  // Subiu de nível: o quadro com os atributos novos antes de seguir (como nos jogos).
+  const lvUps = step === 'result' && !learn && !evo && quickResult(p) ? (p.levels ?? []).filter((l) => !l.friend && run.team[l.index] && l.to > l.from) : []
+  const lvKey = step === 'result' ? `${run.floor}-${JSON.stringify(p.levels ?? [])}` : null
+  if (lvUps.length && lvShown.current !== lvKey) {
+    lvShown.current = lvKey
+    setLv({ key: lvKey, list: lvUps, at: 0, stats: null })
+  }
+  // A evolução, uma de cada vez, antes do resultado do andar (saiu do resultado: acabou).
+  if (evo && step !== 'result') setEvo(null)
+  const evoKey = step === 'result' && !learn && !p.seen ? `${run.floor}-${p.exp}-${run.leg}` : null
+  if (evoKey && evoShown.current !== evoKey) {
+    const list = (p.levels ?? []).filter((l) => l.evolved && preEvolution(data, l.evolved)).map((l) => [l.index, preEvolution(data, l.evolved), l.evolved])
+    if (list.length) {
+      evoShown.current = evoKey
+      setEvo({ list, at: 0, phase: 'run' })
+    }
+  }
+  // Vencer um andar sem nada importante: segue sozinho (sem CONTINUAR); com nível, depois do quadro.
+  if (step === 'result' && !learn && !lv && !evo && !autoResult.current && quickResult(p) && (!lvUps.length || lvDone.current === lvKey)) {
+    autoResult.current = true
+    setTimeout(() => afterResult(true).finally(() => { autoResult.current = false }), 0)
+  }
+  // A Enfermeira Joy só na cidade; na rota, quem cura é alguém do caminho (Pokémon Breeder, Doctor...).
+  const town = run && inTown(run.scene ?? 'grass')
+  const [healerSprite, healerName] = run ? (town ? ['sd-nurse', 'Enfermeira Joy'] : healerOf(run)) : ['sd-nurse', '']
+  const nurse = <FarPerson id={healerSprite} trainers={trainers} width={width} />
+  // menuWait: os botões ao lado da caixa esperam a fala (não quando são só BOLSA/TIME/MAPA/AJUDA).
+  let field, text, menu, below = null, toolRow = false, menuFill = false, hideHp = false, menuWait = true
+  // cast: quem fala na história aparece no cenário (sem um chefe já no campo).
+  let cast = false
+  // A Creche (um lugar da cidade, separado do Poké Mart): quem fica e o ovo.
+  const daycareView = () => {
+      const care = run.daycare
+      const steps = care ? Math.max(0, run.floor - care.floor) : 0
+      return care ? (
+        <div className="space-y-2 p-2" data-testid="daycare">
+          <OverlayClose onClose={() => setPanel(null)} title={`🏡 ${t('Creche')}`} />
+          <div className="flex items-center gap-2 rounded-xl bg-surface p-2">
+            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} className="h-12 w-12" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-bold" data-no-translate>{name(care.mon.id)} · Nv. {care.mon.level} → {care.mon.level + steps}</p>
+              <p className="text-xs text-muted">{steps >= DAYCARE_EGG ? t('Tem um ovo esperando por você! Ele vai no time (ocupa uma vaga) e choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES) : t('Mais {0} andares e aparece um ovo.').replace('{0}', DAYCARE_EGG - steps)}</p>
+            </div>
+            <Button data-testid="daycare-take" disabled={!takeDaycare(run, data)} onClick={() => { setPanel(null); save(takeDaycare(run, data)) }}>{t('BUSCAR')}</Button>
+          </div>
+          {/* Sem vaga (o ovo pronto também precisa de uma): não dá para buscar. */}
+          {!takeDaycare(run, data) && <p className="text-xs text-red-600">{t('Time cheio: abra espaço para buscar.')}</p>}
+        </div>
+      ) : (
+        <BwParty title={t('Creche: quem fica? Ganha um nível por andar e, depois de {0} andares, aparece um ovo.').replace('{0}', DAYCARE_EGG)} team={partyOf(run, byId)} testid="daycare"
+          disabled={() => run.team.length < 2} onPick={(i) => { setPanel(null); save(leaveDaycare(run, i, data)) }} onCancel={() => setPanel(null)} />
+      )
+  }
+
+  if (step === 'result' && p.champion && !evo && creditsDone !== `${run.floor}-${run.leg}`) {
+    const done = () => setCreditsDone(`${run.floor}-${run.leg}`)
+    field = <Field biome="town-league" fieldRef={fieldRef} testid="factory-credits" />
+    // Por cima de tudo (a caixa de HP também), como a tela dos créditos dos jogos.
+    below = <div className="relative h-full overflow-hidden"><Credits key={`${run.floor}-${run.leg}`} run={run} data={data} name={name} onEnd={done} /></div>
+    text = <p className="font-black">🎬 {t('Créditos')}</p>
+    menu = null
+  } else if (step === 'result' && evo) {
+    const [i, from, to] = evo.list[evo.at]
+    const mon = run.team[i]
+    const nm = mon?.nick ?? name(from)
+    const pe = byId?.get(evo.phase === 'done' ? to : from)
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-evolution">
+        {evo.phase === 'run' ? <EvolutionFx key={evo.at} from={from} to={to} byId={byId} /> : (
+          <div className="absolute inset-0 z-30 flex items-center justify-center" style={{ background: 'radial-gradient(#1e293bbf, #020617f2)' }}>
+            <div className="relative aspect-square w-[40%]" data-testid={`evo-${evo.phase}`}>{pe && <Sprite path={mon?.shiny ? shinyPath(pe.sprite) : pe.sprite} box={pe.box} fill={0.9} align="bottom" battle alt={pe.name} />}</div>
+          </div>
+        )}
+      </Field>
+    )
+    text = (
+      <>
+        <p className="font-black" data-testid="evo-text" data-no-translate>{evo.phase === 'run' ? t('O quê? {0} está evoluindo!').replace('{0}', nm) : evo.phase === 'done' ? t('Parabéns! {0} evoluiu para {1}!').replace('{0}', nm).replace('{1}', name(to)) : t('Hã? {0} parou de evoluir.').replace('{0}', nm)}</p>
+        {evo.phase === 'run' && <p className="dlg-sub text-sm">{t('Toque em PARAR para ele não evoluir agora.')}</p>}
+      </>
+    )
+    // A evolução sem a caixa de vida por cima (como nos jogos). Igual ao app.
+    hideHp = true
+    menu = evo.phase === 'run' ? (
+      <MenuButton disabled={busy} onClick={() => { setEvo({ ...evo, phase: 'stopped' }); save(cancelEvolution(run, i, from)) }} testid="evo-stop">{t('PARAR')}</MenuButton>
+    ) : (
+      <MenuButton onClick={() => setEvo(evo.at + 1 < evo.list.length ? { ...evo, at: evo.at + 1, phase: 'run' } : null)} testid="evo-continue">{t('CONTINUAR')}</MenuButton>
+    )
+  } else if (step === 'result' && lv) {
+    const l = lv.list[lv.at]
+    const mon = run.team[l.index]
+    const st = lv.stats
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-level">
+        <FieldMon mon={mon} byId={byId} back scene={run.scene} />
+        {/* O quadro dos atributos (como nos jogos): o valor novo e quanto subiu. */}
+        <div className="absolute right-[3%] top-[10%] z-20 w-[38%] rounded-md border-2 border-[#8b93a1] bg-[#181a1eeb] px-[1.5cqw] py-[0.8cqw] font-['Pixelify_Sans',monospace] text-[2.4cqw] text-white" data-testid="level-stats">
+          {[['hp', 'HP'], ['atk', 'Ataque'], ['def', 'Defesa'], ['spa', 'At. Esp.'], ['spd', 'Def. Esp.'], ['spe', 'Velocidade']].map(([k, label]) => (
+            <p key={k} className="flex items-center"><span className="flex-1">{t(label)}</span><span className="text-amber-200">{st ? st.after[k] : '…'}</span><span className="w-[6.5cqw] text-right text-green-400">{st ? `+${st.after[k] - st.before[k]}` : ''}</span></p>
+          ))}
+        </div>
+      </Field>
+    )
+    text = <p data-testid="level-text">🎉 {t('{0} subiu para o nível {1}!').replace('{0}', mon.nick ?? name(mon.id)).replace('{1}', l.to)}</p>
+    menu = <MenuButton onClick={lvNext} testid="level-continue">{t('CONTINUAR')}</MenuButton>
+  } else   if (step === 'result' && learn?.queue?.length) {
+    // "Fulano quer aprender X": aprendeu sozinho (tinha vaga), ou a pergunta (SIM abre a tela dos 5 golpes).
+    const [i, move, auto] = learn.queue[0]
+    const mon = run.team[i]
+    const nm = name(mon.id)
+    const mv = prettySlug(move)
+    const msg = learn.msg ?? (auto ? `✨ ${t('{0} aprendeu {1}!').replace('{0}', nm).replace('{1}', mv)}` : null)
+    field = <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-learn"><FieldMon mon={mon} byId={byId} back scene={run.scene} /></Field>
+    text = <p data-testid="factory-learn-text">{msg ?? t('{0} quer aprender {1}, mas já sabe 4 golpes. Esquecer um?').replace('{0}', nm).replace('{1}', mv)}</p>
+    const current = mon.moves ?? []
+    menu = msg ? (
+      <MenuButton onClick={nextLearn} testid="learn-continue">{t('CONTINUAR')}</MenuButton>
+    ) : learn.step === 'forget' ? (
+      // Na tela dos 5 golpes os botões ficam dentro dela (ela cobre a tela toda).
+      null
+    ) : (
+      <>
+        <MenuButton onClick={() => setLearn({ ...learn, step: 'forget' })} testid="learn-yes">{t('SIM')}</MenuButton>
+        <MenuButton onClick={() => setLearn({ ...learn, msg: t('{0} não aprendeu {1}.').replace('{0}', nm).replace('{1}', mv) })} testid="learn-no">{t('NÃO')}</MenuButton>
+      </>
+    )
+    if (learn.step === 'forget' && !msg) {
+      below = <ForgetPanel mon={mon} move={move} moves={learn.moves} name={nm} types={data.species[mon.id]?.[4] ?? []} pick={learn.pick} onPick={(k) => setLearn({ ...learn, pick: k })}
+        actions={<>
+          <MenuButton disabled={learn.pick == null} onClick={confirmForget} testid="forget-confirm">
+            {learn.pick == null ? t('Escolha um golpe') : learn.pick >= current.length ? t('NÃO APRENDER') : `${t('ESQUECER')} ${prettySlug(current[learn.pick])}`}
+          </MenuButton>
+          <MenuButton onClick={() => setLearn({ ...learn, step: 'ask', pick: null })} testid="forget-back">{t('VOLTAR')}</MenuButton>
+        </>} />
+    }
+  } else if (step === 'result') {
+    const event = p.event
+    const here = run.scene ?? 'grass'
+    const shown = p.center || p.joy ? nurse : [p.drop, p.reward].filter(Boolean).length ? <img src={itemIcon(p.drop ?? p.reward)} alt="" className="pixelated w-1/2" onError={hide} /> : null
+    // A evolução do andar (a cena dela veio antes).
+    const evo = p.levels?.find((l) => l.evolved)
+    const evoFrom = evo ? preEvolution(data, evo.evolved) : null
+    if (p.badge && badgeShown.current !== `${run.floor}-${p.badge.name}`) {
+      badgeShown.current = `${run.floor}-${p.badge.name}`
+      playSound('badge', 0.7)
+      // A cena da insígnia (girando e ganhando cor até o meio), uma vez.
+      setBadgeFly(badgeShown.current)
+    }
+    field = (
+      <Field biome={here} fieldRef={fieldRef} testid="factory-result">
+        {shown && <FarStand scene={here}>{shown}</FarStand>}
+        {!shown && event && <FarStand scene={here}>{event.kind === 'clue' ? <span data-testid="quest-silhouette" style={event.clues >= QUEST_CLUES ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={event.legend} className="h-28 w-28" /></span> : <span className="text-7xl">{EVENT_ICON[event.kind] ?? '🎁'}</span>}</FarStand>}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={here} />}
+        {/* A insígnia (como nos jogos): grande, brilhando, no alto do campo. */}
+        {p.badge && badgeFly === `${run.floor}-${p.badge.name}` && <BadgeScene badge={p.badge} trainer={trainers?.find((x) => x.id === gymLeaderOf(data, p.badge.name)?.trainer) ?? speakerTrainer(trainers, p.badge.name)} onDone={() => setBadgeFly(null)} />}
+        {p.badge && badgeFly !== `${run.floor}-${p.badge.name}` && <div className="absolute inset-x-0 top-[8%] z-20 flex justify-center" data-testid="badge-shine"><span className="badge-shine inline-block w-[14%]" style={{ aspectRatio: '1' }}>{badgeArt(p.badge.name) ? <img src={spriteUrl(`badges/${badgeArt(p.badge.name)}.png`)} alt="" className="h-full w-full object-contain" draggable={false} /> : <span className="block h-full w-full rounded-[12%] border-[3px] border-white" style={{ transform: 'rotate(45deg)', background: `linear-gradient(135deg, #fff8, ${typeColor(p.badge.type)} 50%, #0004)` }} />}</span></div>}
+      </Field>
+    )
+    // O chefe vencido fala depois (a história segue): ele aparece no cenário.
+    cast = Boolean(p.beat?.city) && !shown && !event && !(p.badge && badgeFly === `${run.floor}-${p.badge.name}`)
+    // Durante a cena da insígnia, a caixa de HP some (a tela é toda dela, como no Black & White).
+    if (p.badge && badgeFly === `${run.floor}-${p.badge.name}`) hideHp = true
+    text = (
+      <>
+        {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
+        {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
+        {/* As moedas de Gimmighoul achadas depois da vitória. Igual ao app. */}
+        {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
+        {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
+        {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
+        {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
+        {p.badge?.z && <p className="text-sm font-semibold text-sky-400" data-testid="factory-badge-z" data-no-translate>💎 {t('{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.z))}</p>}
+        {p.scale && <p className="text-sm font-semibold text-pink-400" data-testid="factory-scale">💗 {t('Você achou uma Heart Scale! Ela paga o Move Reminder.')}</p>}
+        {p.badge?.tm && <p className="text-sm font-semibold" data-testid="factory-badge-tm" data-no-translate>💿 {t('{0} te deu o TM {1}!').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.tm))}</p>}
+        {evo && evoFrom && <p className="text-sm font-semibold text-amber-600" data-testid="factory-evolved" data-no-translate>✨ {t('{0} evoluiu para {1}!').replace('{0}', name(evoFrom)).replace('{1}', name(evo.evolved))}</p>}
+        {p.center ? (
+          <p data-testid="factory-center">{town ? `🏥 ${t('Centro Pokémon: o seu time foi curado!')}` : <>⛺ {t('{0} cuidou do seu time: todos curados!').replace('{0}', healerName)}</>}</p>
+        ) : event ? (
+          <p data-testid="factory-event">{eventText(event)}</p>
+        ) : (
+          <>
+            <p>🏆 {t('Andar vencido!')} +{p.exp} XP · +💰{p.money}</p>
+            {p.levels?.map((l, k) => (
+              <p key={k} className="text-sm" data-no-translate>{l.friend ? `💞 ${name(l.evolved)}: ${t('evoluiu pela amizade!')}` : `${name(run.team[l.index]?.id)}: Nv. ${l.from} → ${l.to}${l.evolved ? ` · ${t('evoluiu!')}` : ''}`}</p>
+            ))}
+          </>
+        )}
+        {p.shed && <p className="text-sm" data-testid="factory-shed">🐚 {t('Shedinja apareceu na vaga do time!')}</p>}
+        {Object.entries(p.pieces ?? {}).map(([item, n]) => (
+          <p key={item} className="text-sm" data-testid={`factory-pieces-drop-${item}`}>{PIECE_INFO[item][0]} {t('+{0} {1} (para a árvore, no fim da corrida)').replace('{0}', n).replace('{1}', PIECE_INFO[item][1])}</p>
+        ))}
+        {p.picked?.map((x, k) => <p key={k} className="text-sm" data-testid="factory-pickup">{x.follow ? `🐾 ${t('{0}, que segue você, achou {1}!').replace('{0}', name(x.id)).replace('{1}', itemName(x.item))}` : `🎒 ${t('{0} achou {1} (Pickup)!').replace('{0}', name(x.id)).replace('{1}', itemName(x.item))}`}</p>)}
+        {p.lost?.map((id) => <p key={id} className="text-sm text-red-600" data-testid="factory-lost">🕯️ {t('Nuzlocke: {0} desmaiou e foi embora.').replace('{0}', name(id))}</p>)}
+        {p.joy && <p className="text-sm" data-testid="factory-joy">💗 {town ? t('A Enfermeira Joy apareceu e curou o time todo!') : t('{0} apareceu e curou o time todo!').replace('{0}', healerName)}</p>}
+        {[p.drop, p.reward].filter(Boolean).map((id) => <p key={id} className="text-sm" data-testid="factory-drop">🎁 {t('Ganhou {0}!').replace('{0}', itemName(id))}{itemHelp(id) && <span className="block text-xs text-muted">{itemHelp(id)}</span>}</p>)}
+        {p.beat && (
+          <p className="text-sm italic" data-testid="factory-beat-line">
+            💬 <span data-no-translate>{p.beat.name}</span>: {t(p.beat.kind === 'rival' ? RIVAL_BEAT[Math.min(RIVAL_BEAT.length, run.rivalWins ?? 1) - 1] : BEAT_LINES[p.beat.kind] ?? BEAT_LINES.gym)}
+          </p>
+        )}
+        {p.fled != null && <p className="text-sm" data-testid="factory-fled">🐾 {t('{0} fugiu! Ele continua andando pela região (com o HP que ficou): veja no mapa onde foi visto.').replace('{0}', name(p.fled))}</p>}
+        {p.plot && <p className="text-sm" data-testid="factory-plot">🚨 {t('Você atrapalhou o plano da {0} ({1})! Ganhou {2}; o chefe da equipe vai estar mais fraco.').replace('{0}', TEAM_NAMES[p.plot.team] ?? 'Equipe Rocket').replace('{1}', p.plot.chapter).replace('{2}', itemName(p.plot.item))}</p>}
+        {p.flawless && <p className="text-sm" data-testid="factory-flawless">🏆 {t('Liga sem nenhum desmaio! Prêmio: {0}.').replace('{0}', itemName(p.flawless))}</p>}
+        {p.dowsed && <p className="text-sm" data-testid="factory-dowsed">📡 {t('Você achou {0} escondido no caminho!').replace('{0}', itemName(p.dowsed))}</p>}
+        {p.key && (
+          <p className="text-sm text-amber-600" data-testid="factory-key">
+            {KEY_INFO[p.key]?.icon} {t('Você recebeu {0}!').replace('{0}', KEY_ITEMS[p.key] ?? p.key)} {t(KEY_INFO[p.key]?.help ?? '')}
+          </p>
+        )}
+        {p.placeReward && <p className="text-sm text-amber-600" data-testid="factory-place-reward">🎁 {t('Pela ajuda, te deram {0}!').replace('{0}', itemName(p.placeReward))}</p>}
+        {p.hm && (
+          <p className="text-sm text-amber-600" data-testid="factory-hm">
+            {HM_INFO[p.hm].icon} {t('Com a insígnia, você ganhou a MO {0}!').replace('{0}', HM_INFO[p.hm].name)} {t(HM_INFO[p.hm].help)}
+          </p>
+        )}
+        {p.mission && (
+          <p className="text-sm text-amber-600" data-testid="factory-mission-done">
+            📋 {t('Missão cumprida: {0}!').replace('{0}', missionText(p.mission))} +💰{p.mission.money} · 🎁 {itemName(p.mission.item)}
+          </p>
+        )}
+        {/* O que o chefe diz depois de perder (a história segue). */}
+        {p.beat?.city && sceneLines(data, p.beat.region ? sceneRegion(p.beat) : sceneRegion(data.bosses[run.boss.region]), 'after', `${p.beat.name}@${p.beat.city}`, language).map(([who, text], k) => (
+          <p key={`after-${k}`} className="text-sm" data-testid="factory-scene-after" data-who={who || ''}>{who ? '' : '📖 '}{text}</p>
+        ))}
+        {p.story && p.story.split('\n\n').map((line, k) => <p key={k} className="text-sm font-semibold" data-testid="factory-story-end">📖 {line}</p>)}
+      </>
+    )
+    // O PC do Centro Pokémon (como nos jogos): o time à esquerda e a caixa 6×6 à direita (PcPanel).
+    if (pcOpen && atPc(run)) below = <PcPanel run={run} data={data} nameOf={name} onSave={save} onClose={() => setPcOpen(false)} />
+    menu = pcOpen && atPc(run) ? (
+      <MenuButton onClick={() => setPcOpen(false)} testid="factory-pc-close">{t('FECHAR')}</MenuButton>
+    ) : (
+      <>
+        {atPc(run) && <MenuButton onClick={() => setPcOpen(true)} testid="factory-pc-open">💻 {t('PC')}</MenuButton>}
+        {photoNow(run) && <MenuButton disabled={!takePhoto(run, photoNow(run))} onClick={() => save(takePhoto(run, photoNow(run)))} testid="factory-photo">📸 {t(takePhoto(run, photoNow(run)) ? 'FOTO' : 'FOTO GUARDADA')}</MenuButton>}
+        <MenuButton onClick={() => { setPcOpen(false); afterResult() }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+      </>
+    )
+  } else if (step === 'choice') {
+    // Uma escolha na rota: aceitar ou seguir o caminho.
+    const choice = p.choice
+    const info = CHOICE_INFO[choice.kind]
+    const poor = ['help', 'merchant', 'bet'].includes(choice.kind) && run.money < choice.cost
+    const decide = (accept) => {
+      const next = resolveChoice(run, data, accept)
+      if (next.encounter) {
+        saveFactory({ ...factoryOf(useStore.getState().league), run: next })
+        onBattle(next)
+      } else save(next)
+    }
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-choice">
+        {choice.mon ? <FieldMon mon={choice.mon} byId={byId} scene={run.scene} /> : <FarStand scene={run.scene ?? 'grass'}><span className="text-7xl">{info.icon}</span></FarStand>}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = (
+      <>
+        <p data-testid={`factory-choice-${choice.kind}`}>{info.icon} {t(info.text).replace('{0}', choice.cost ?? '').replace('{1}', choice.mon ? `${choice.mon.shiny ? '✨ ' : ''}${name(choice.mon.id)}` : '').replace('{2}', choice.item ? itemName(choice.item) : '')}</p>
+        {choice.kind === 'secret' && !run.flash && <p className="dlg-sub text-sm">{t('Está escuro lá dentro: sem Flash, pode não achar nada.')}</p>}
+        {poor && <p className="text-sm text-red-600">{t('Você não tem dinheiro suficiente.')}</p>}
+      </>
+    )
+    menu = (
+      <>
+        <MenuButton onClick={() => decide(true)} disabled={busy || poor || (choice.kind === 'follow' && teamDown(run))} testid="choice-yes">{t(info.yes)}</MenuButton>
+        <MenuButton onClick={() => decide(false)} disabled={busy} testid="choice-no">{t(info.no)}</MenuButton>
+      </>
+    )
+  } else if (step === 'capture') {
+    const mon = p.capture
+    // Cada ovo no time ocupa uma vaga.
+    const full = run.team.length >= teamRoom(run)
+    const dexReward = dexRewardFor(run, mon.id)
+    // Perguntar o apelido na captura (a opção do cartão do treinador; vem desligada). Igual ao app.
+    const askNick = Boolean(factory.askNick)
+    const keep = (replace, nick = null) => {
+      let next = capture(run, replace)
+      if (next === run) return
+      if (nick?.trim() && replace == null) next = setNick(next, { where: 'team', index: next.team.length - 1 }, nick)
+      const meta = unlockShiny(factory, data, mon)
+      if (meta !== factory) setUnlocked(mon.id)
+      const out = next.pending && !stepOf(next.pending) ? nextFloor(next, data) : next
+      saveFactory({ ...meta, run: out })
+      // O ovo da Creche: os golpes do pai que o filhote aprende vêm junto (como nos jogos). Igual ao app.
+      const bornAt = next.team.length - 1
+      if (mon.parent && replace == null && next.team.length > run.team.length) {
+        Promise.all([learnsetOf(mon.id), movesFor(mon.id, mon.level)]).then(([learnset, own]) => {
+          const f = factoryOf(useStore.getState().league)
+          if (!f.run || f.run.team[bornAt]?.id !== next.team[bornAt].id) return
+          saveFactory({ ...f, run: { ...f.run, team: f.run.team.map((m, k) => (k === bornAt ? { ...m, moves: eggMoves(mon.parent.moves, learnset, own) } : m)) } })
+        }).catch(() => {})
+      }
+    }
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-capture">
+        {/* Capturado: ele está dentro da Poké Ball (na base dele), não mais no campo. Do ovo da Creche, ele mesmo. */}
+        {mon.egg || mon.fossil ? <FieldMon mon={mon} byId={byId} scene={run.scene} /> : (
+          <FarStand scene={run.scene ?? 'grass'}><img src={spriteUrl(`items/${p.ball ?? 'poke-ball'}.png`)} alt="" className="pixelated w-[22%]" data-testid="captured-ball" /></FarStand>
+        )}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = (
+      <>
+        <p>{mon.shiny ? '✨ ' : ''}{(mon.egg ? t(mon.mystery ? 'O ovo misterioso chocou: é um {0}!' : 'O ovo da Creche chocou: é um {0}!') : mon.fossil ? t('O museu reviveu um fóssil para você: é um {0}!') : t('Pegou! {0} foi capturado!')).replace('{0}', name(mon.id))} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        {!dexOf(run).includes(mon.id) && (
+          <p className="text-sm" data-testid="factory-dex-new">
+            📖 {t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}
+            {dexReward && <> · 🎁 {dexReward.count}× {itemName(dexReward.item)} +💰{dexReward.money}</>}
+          </p>
+        )}
+        {mon.parent && <p className="text-sm text-violet-500" data-testid="egg-inherit" data-no-translate>🧬 {t('Herdou de {0}: os melhores IVs e os golpes que ele aprende.').replace('{0}', name(mon.parent.id))}</p>}
+        {mon.shiny && <p className="text-sm text-amber-600">{t('É shiny! (+25% em todos os atributos)')}</p>}
+        {/* Quem entra: o gênero e a Nature (para decidir se fica com ele). Igual ao app. */}
+        {capturedMon(run) && (() => {
+          const c = capturedMon(run)
+          return <p className="text-sm text-sky-700 dark:text-sky-300" data-testid="capture-preview">{({ F: '♀ ', M: '♂ ' })[genderOf(data, c)] ?? ''}{t('Nature')}: {c.nature}{isRegionalForm(c.id) ? ` · 🌍 ${t('forma regional')}` : ''}</p>
+        })()}
+        {full && <p className="text-sm">{t('Time cheio: escolha quem sai ou mande para o PC.')}</p>}
+        {!full && askNick && <p className="text-sm" data-testid="capture-ask-nick">{t('Dar um apelido a {0}?').replace('{0}', name(mon.id))}</p>}
+      </>
+    )
+    // Com vaga no time: entra sozinho (sem CONTINUAR); a captura vai numa linha do resumo da tela seguinte. Só para
+    // escolher (time cheio), ver o shiny (e tirar a foto) ou o ovo chocando e o fóssil revivido. Igual ao app.
+    if (!full && !askNick && !mon.egg && !mon.fossil && !mon.shiny && !autoCapture.current) {
+      autoCapture.current = true
+      const isNew = !dexOf(run).includes(mon.id)
+      const line = [
+        `${mon.shiny ? '✨ ' : ''}${t('Pegou! {0} foi capturado!').replace('{0}', name(mon.id))}`,
+        ...(isNew ? [`📖 ${t('Novo na Pokédex da corrida ({0})').replace('{0}', dexOf(run).length + 1)}`] : []),
+        ...(isNew && dexReward ? [`🎁 ${dexReward.count}× ${itemName(dexReward.item)} +💰${dexReward.money}`] : []),
+      ].join(' · ')
+      setTimeout(() => {
+        autoCapture.current = false
+        // keep() salva direto (sem save()), então a nota já fica para a tela seguinte.
+        setNote((n) => [n, line].filter(Boolean).join(' · '))
+        keep(null)
+      }, 0)
+    }
+    // Time cheio: a tela do time do Black & White, por cima do campo, para escolher quem sai.
+    if (full && !panel) {
+      below = <BwParty title={t('Time cheio: escolha quem sai para {0} entrar.').replace('{0}', name(mon.id))} team={partyOf(run, byId)} testid="replace" eggs={(run.eggs ?? []).map((e) => (e.mystery ? { left: e.left, mystery: true } : e.left))} onPick={keep} onCancel={() => save(skipCapture(run))} cancelLabel={t('SOLTAR')} />
+    }
+    menu = full ? (
+      <>
+        {pcOf(run).length < PC_SIZE && <MenuButton onClick={() => keep('pc')} testid="factory-to-pc">💻 {t('PARA O PC')}</MenuButton>}
+        <MenuButton onClick={() => save(skipCapture(run))} testid="factory-release">{t('SOLTAR')}</MenuButton>
+      </>
+    ) : (
+      <>
+        {askNick && <MenuButton onClick={() => { const nick = window.prompt(t('Dar um apelido a {0}?').replace('{0}', name(mon.id)), ''); if (nick != null) keep(null, nick.slice(0, 12)) }} testid="capture-nick">✏️ {t('APELIDO')}</MenuButton>}
+        <MenuButton onClick={() => keep(null)} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+        {photoNow(run) && <MenuButton disabled={!takePhoto(run, photoNow(run))} onClick={() => save(takePhoto(run, photoNow(run)))} testid="factory-photo">📸 {t(takePhoto(run, photoNow(run)) ? 'FOTO' : 'FOTO GUARDADA')}</MenuButton>}
+      </>
+    )
+    toolRow = full
+  } else if (step === 'cards') {
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-cards">
+        <div className="absolute inset-0 grid grid-cols-3 items-center gap-2 p-3 sm:gap-4 sm:p-6">
+          {p.cards.map((c) => (
+            <button key={c} type="button" data-testid={`card-${c}`} onClick={() => save(takeCard(run, c, data))}
+              className={`flex h-[85%] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-4 p-1 text-center text-[11px] font-black shadow-lg transition hover:-translate-y-1 sm:text-sm ${RELICS[c] ? 'border-violet-900 bg-gradient-to-b from-violet-300 to-fuchsia-100 text-violet-950' : 'border-slate-800 bg-gradient-to-b from-amber-200 to-white text-slate-900'}`}>
+              <span className="text-2xl sm:text-4xl">{RELICS[c] ? RELICS[c].icon : '🃏'}</span>
+              {RELICS[c] && <span className="text-[10px] tracking-widest uppercase">{t('Relíquia')}</span>}
+              {cardText(t(cardLabel(c)), c, run.floor)}
+            </button>
+          ))}
+        </div>
+      </Field>
+    )
+    text = <p>🃏 {t(p.cards.some((c) => RELICS[c]) ? 'Escolha uma carta de bônus (ou a relíquia: muda a regra da corrida)' : 'Escolha uma carta de bônus')}</p>
+  } else if (step === 'safari') {
+    // Safari Zone: sem batalha; em cada Pokémon, a Safari Ball, a isca ou a pedra.
+    const s = p.safari
+    const mon = s.mon
+    const rates = safariRates(data, s)
+    const pct = (v) => `${Math.round(v * 100)}%`
+    const lastName = s.lastId != null ? name(s.lastId) : ''
+    // Uma linha para o que aconteceu e outra para as chances (a caixa de texto tem duas linhas).
+    const LAST = { broke: 'Ah, não! {0} escapou da Safari Ball!', bait: '{0} está comendo a isca.', rock: '{0} ficou bravo!', fled: '{0} fugiu! Apareceu um {1}!', left: 'Você deixou {0} para lá. Apareceu um {1}!' }
+    const act = (action) => save(safariAct(run, data, action))
+    const shown = mon ? `${mon.shiny ? '✨ ' : ''}${name(mon.id)}` : ''
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-safari">
+        {mon && <FieldMon mon={mon} byId={byId} scene={run.scene} />}
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = mon ? (
+      <>
+        <p data-testid="safari-last">🦒 {LAST[s.last] ? t(LAST[s.last]).replace('{0}', lastName).replace('{1}', shown) : t('Um {0} selvagem apareceu!').replace('{0}', shown)} <span className="dlg-sub">Nv. {mon.level}</span></p>
+        <p className="text-sm" data-testid="safari-info">{t('Pegar: {0} · Fugir: {1} · Ainda aparecem: {2}').replace('{0}', pct(rates.catch)).replace('{1}', pct(rates.flee)).replace('{2}', s.left)}</p>
+      </>
+    ) : (
+      <>
+        {s.last === 'fled' && <p className="text-sm">{t('{0} fugiu!').replace('{0}', lastName)}</p>}
+        <p data-testid="safari-over">🦒 {t('O Safari acabou! Você pegou {0} Pokémon.').replace('{0}', s.caught ?? 0)}</p>
+      </>
+    )
+    // Os botões cabem numa página só: a bola, a isca e a pedra em cima; procurar outro e sair embaixo.
+    menu = mon ? (
+      <>
+        <div className="grid grid-cols-3 gap-1">
+          <MenuButton testid="safari-ball" disabled={busy} onClick={() => act('ball')}>🟢 {t('BOLA')} ×{s.balls}</MenuButton>
+          <MenuButton testid="safari-bait" disabled={busy} onClick={() => act('bait')}>🍖 {t('ISCA')}</MenuButton>
+          <MenuButton testid="safari-rock" disabled={busy} onClick={() => act('rock')}>🪨 {t('PEDRA')}</MenuButton>
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          <MenuButton testid="safari-next" disabled={busy} onClick={() => act('run')}>🔎 {t('PROCURAR OUTRO')}</MenuButton>
+          <MenuButton testid="safari-leave" disabled={busy} onClick={() => save(leaveSafari(run))}>🚪 {t('SAIR')}</MenuButton>
+        </div>
+      </>
+    ) : (
+      <MenuButton testid="safari-leave" disabled={busy} onClick={() => save(leaveSafari(run))}>{t('CONTINUAR')}</MenuButton>
+    )
+  } else if (step === 'trade') {
+    // Troca: escolhe quem dar; o oferecido vem TRADE_LEVELS níveis acima, com o item de quem foi.
+    const offer = p.trade
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-trade">
+        <FieldMon mon={offer} byId={byId} scene={run.scene} />
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = (
+      <>
+        <p>🔁 {t('Um treinador quer trocar o {0} dele com você!').replace('{0}', `${offer.shiny ? '✨ ' : ''}${name(offer.id)}`)}</p>
+        <p className="text-sm">{t('Quem você der vai embora; o {0} vem {1} níveis acima, com o item de quem foi.').replace('{0}', name(offer.id)).replace('{1}', TRADE_LEVELS)} {t('Trocado ganha mais XP.')}</p>
+      </>
+    )
+    // Quem dar: a tela do time, por cima do campo.
+    if (panel === 'trade') {
+      below = (
+        <BwParty title={t('Quem você dá em troca do {0}?').replace('{0}', name(offer.id))} testid="trade"
+          team={partyOf(run, byId).map((m, i) => ({ ...m, sub: `Lv${run.team[i].level} → Lv${run.team[i].level + TRADE_LEVELS}` }))}
+          onPick={(i) => { setPanel(null); save(tradeMon(run, i, data)) }} onCancel={() => setPanel(null)} />
+      )
+    }
+    menu = (
+      <>
+        <MenuButton onClick={() => setPanel(panel === 'trade' ? null : 'trade')} active={panel === 'trade'} testid="trade-open">{t('TROCAR')}</MenuButton>
+        <MenuButton onClick={() => save(skipTrade(run))} testid="trade-skip">{t('NÃO TROCAR')}</MenuButton>
+      </>
+    )
+  } else if (step === 'contest') {
+    // O Concurso Pokémon: 3 rodadas, um golpe por rodada; os corações de cada um e o resultado. Igual ao app.
+    const c = p.contest
+    const mon = run.team[c.index] ?? run.team[0]
+    const nm = mon.nick ?? name(mon.id)
+    const [icon, label] = CONTEST_CATS[c.cat]
+    const sum = (l) => l.reduce((a, b) => a + b, 0)
+    if (!moveInfo) getMoves().then(setMoveInfo).catch(() => {})
+    const key = `${mon.id}-${mon.level}`
+    const moves = mon.moves?.length ? mon.moves : contestMoves[key] ?? []
+    if (!mon.moves?.length && !(key in contestMoves)) {
+      setContestMoves((m) => ({ ...m, [key]: [] }))
+      movesFor(mon.id, mon.level).then((list) => setContestMoves((m) => ({ ...m, [key]: list }))).catch(() => {})
+    }
+    const typeOfMove = (m) => moveInfo?.[m]?.type ?? ''
+    field = (
+      <Field biome="town-metro" fieldRef={fieldRef} testid="factory-contest">
+        <div className="absolute left-[3%] top-[5%] z-20 rounded-md border-2 border-[#8b93a1] bg-[#14161ceb] px-2 py-1 text-xs font-bold text-white" data-testid="contest-board">
+          <p>{icon} {t('Concurso de {0}').replace('{0}', t(label))} · {t('Rodada {0} de {1}').replace('{0}', Math.min(c.round + 1, CONTEST_ROUNDS)).replace('{1}', CONTEST_ROUNDS)}</p>
+          <p data-testid="contest-me" data-no-translate>{nm}: {'❤️'.repeat(sum(c.hearts))} ({sum(c.hearts)})</p>
+          {c.rivals.map((r, k) => <p key={k} className="text-slate-300" data-no-translate>{r.name}: {sum(r.rounds.slice(0, c.round))}</p>)}
+        </div>
+        <FieldMon mon={mon} byId={byId} back scene="town-metro" />
+      </Field>
+    )
+    const last = c.last
+    text = (
+      <>
+        {last && <p data-testid="contest-last" data-no-translate>{t('{0} apresentou {1}!').replace('{0}', nm).replace('{1}', prettySlug(last.move))} +{last.hearts}❤️{last.match ? ` · ${t('Combina com a categoria!')}` : ''}{last.repeat ? ` · ${t('De novo? A plateia cansou.')}` : ''}{last.cheer ? ` · ${t('A plateia vibrou!')}` : ''}</p>}
+        {c.done ? (
+          <p className="font-black" data-testid="contest-result" data-no-translate>🏆 {t('Você ficou em {0}º lugar!').replace('{0}', c.place)}{c.prize > 0 ? ` +💰${c.prize}` : ''}{c.place === 1 ? ` · 🎀 ${t('{0} ganhou a fita de {1}!').replace('{0}', nm).replace('{1}', t(label))}` : ''}</p>
+        ) : !last && <p data-no-translate>{t('Concurso de {0}! Escolha um golpe para {1} apresentar.').replace('{0}', t(label)).replace('{1}', nm)}</p>}
+      </>
+    )
+    menu = c.done ? (
+      <MenuButton onClick={() => save(finishContest(run))} testid="contest-done">{t('CONTINUAR')}</MenuButton>
+    ) : (
+      // Os 4 golpes de uma vez (2 × 2, como o LUTAR da batalha).
+      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[4%]">
+        {moves.slice(0, 4).map((m, k) => <MenuButton key={m} testid={`contest-move-${k}`} disabled={busy} onClick={() => save(contestAct(run, m, typeOfMove(m)))}>{CONTEST_CATS[CONTEST_OF_TYPE[typeOfMove(m)]]?.[0] ?? '·'} {prettySlug(m)}</MenuButton>)}
+      </div>
+    )
+    if (!c.done) menuFill = true
+  } else if (step === 'puzzle') {
+    const v = puzzleView(run)
+    const title = puzzleTitle(v.gym) ?? PUZZLE_INFO[v.type].title
+    const skin = { ...PUZZLE_CELL, ...(PUZZLE_SKIN[v.type] ?? {}), ...(GYM_CHALLENGES[v.gym]?.[3] ?? {}) }
+    const symbols = PUZZLE_SYMBOLS[v.type] ?? PUZZLE_SYMBOLS.psychic
+    const act = (i) => save(puzzleAct(run, data, i))
+    field = <Field biome={`gym-${v.type}`} fieldRef={fieldRef} testid="factory-puzzle" />
+    // O que fazer: o da mecânica (o do tipo, no desafio sem líder).
+    const help = v.gym ? t(PUZZLE_HELP[v.kind === 'maze' && v.hidden ? 'hidden' : v.kind === 'maze' && v.dark ? 'dark' : v.kind]).replace('{0}', v.need ?? '').replace('{1}', v.total ?? '') : t(PUZZLE_INFO[v.type].intro)
+    const q = v.prompt?.q
+    const question = v.prompt ? t(PUZZLE_QUESTION[q]).replace('{0}', PUZZLE_MON_Q.includes(q) ? name(v.prompt.mon) : q === 'math' ? `${v.prompt.a} ${v.prompt.op} ${v.prompt.b}` : t(TYPE_PT[v.prompt.type] ?? '')) : null
+    const left = (text) => t(text).replace('{0}', v.left)
+    const status = (
+        <p className="text-center text-xs font-bold text-amber-500" data-testid="puzzle-status">
+          {v.done ? (v.won ? `🎉 ${t('Você venceu o desafio! O líder do ginásio te espera.')}` : `💥 ${t('Não foi desta vez: tente de novo para enfrentar o líder.')}`)
+            : v.kind === 'quiz' || v.kind === 'silhouette' ? t('Pergunta {0} de {1} · acertos: {2}').replace('{0}', Math.min(v.total, v.at + 1)).replace('{1}', v.total).replace('{2}', v.right)
+              : v.kind === 'memory' ? (v.seq ? t('Memorize a ordem.') : t('Repita a ordem: {0} de {1}.').replace('{0}', v.at).replace('{1}', v.total))
+                : v.kind === 'tiles' ? left('Faltam {0}.') : v.kind === 'switches' ? t('Tentativas: {0} · achados: {1} de 2').replace('{0}', v.left).replace('{1}', v.found)
+                  : v.kind === 'teleport' ? t('Sala {0} de {1} · o líder está na sala {1} · jogadas: {2}').replace('{0}', v.room).replaceAll('{1}', v.rooms).replace('{2}', v.left)
+                    : v.kind === 'pairs' ? left('Erros que ainda pode: {0}') : v.kind === 'lights' ? left('Toques: {0}')
+                      : v.kind === 'maze' && v.hidden ? left('Batidas que ainda aguenta: {0}') : left('Jogadas: {0}')}
+        </p>
+    )
+    const small = v.cells.length / v.cols >= 5 || v.cells.length > 16
+    const look = (cell) => ({
+      me: 'border-amber-400 bg-amber-100 text-slate-900', goal: 'border-emerald-400 bg-emerald-100 text-slate-900', target: 'border-emerald-400 bg-emerald-100 text-slate-900', pair: 'border-emerald-400 bg-emerald-100 text-slate-900',
+      wall: 'border-slate-500 bg-slate-600 text-white', rock: 'border-slate-500 bg-slate-600 text-white', boulder: 'border-amber-700 bg-amber-300 text-slate-900', done: 'border-sky-300 bg-sky-200 text-slate-900',
+      dark: 'border-slate-700 bg-slate-900', off: 'border-slate-700 bg-slate-900', on: 'border-amber-500 bg-amber-200 text-slate-900',
+      red: cell.up ? 'border-red-800 bg-red-600 text-white' : 'border-red-300 bg-red-200', blue: cell.up ? 'border-blue-900 bg-blue-600 text-white' : 'border-blue-300 bg-blue-200',
+      switch: 'border-purple-500 bg-purple-200 text-slate-900', pad: 'border-purple-500 bg-purple-200 text-slate-900', arrow: 'border-sky-400 bg-sky-100 text-slate-900', back: 'border-indigo-900 bg-indigo-700 text-white',
+    })[cell.c] ?? 'border-white/60 bg-white/90 text-slate-900 hover:bg-amber-200'
+    text = <p className="font-black">🧩 {t(title)}</p>
+    below = (
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 p-2" data-testid="puzzle">
+        <p className="text-center text-sm font-black" data-testid="puzzle-title">🧩 {t(title)}</p>
+        <p className="text-center text-xs text-muted" data-testid="puzzle-help">{help}</p>
+        {status}
+        {question && (
+          <div className="flex items-center gap-2">
+            {q === 'who' && <div data-testid="puzzle-silhouette" style={v.done ? undefined : { filter: 'brightness(0)' }}><PokeIcon id={v.prompt.mon} className="h-20 w-20" /></div>}
+            {PUZZLE_MON_Q.includes(q) && <PokeIcon id={v.prompt.mon} className="h-14 w-14" />}
+            <p className="text-center text-sm font-black" data-testid="puzzle-question">{question}</p>
+          </div>
+        )}
+        {v.kind === 'memory' && <p className="text-3xl tracking-widest" data-testid="puzzle-seq" data-no-translate>{v.seq ? v.seq.map((n) => symbols[n]).join(' ') : '❔ '.repeat(v.total).trim()}</p>}
+        <div className={`grid w-full ${v.kind === 'teleport' ? 'max-w-[14rem]' : v.cols >= 6 ? 'max-w-md' : 'max-w-sm'} ${small ? 'gap-0.5' : 'gap-1'}`} style={{ gridTemplateColumns: `repeat(${v.cols}, minmax(0, 1fr))` }}>
+          {v.cells.map((cell, i) => (
+            <button key={i} type="button" data-testid={`puzzle-cell-${i}`} disabled={busy || v.done || (v.kind === 'memory' && Boolean(v.seq)) || cell.c === 'num' || cell.c === 'hit' || cell.c === 'pair'} onClick={() => act(i)}
+              className={`flex cursor-pointer items-center justify-center border-2 px-0.5 py-0.5 text-sm font-black disabled:cursor-default ${v.kind === 'teleport' ? 'min-h-12' : small ? 'min-h-7 rounded-md' : 'min-h-10 rounded-lg'} ${look(cell)}`}>
+              {cell.c === 'type' ? t(TYPE_PT[cell.type])
+                : cell.c === 'mon' ? <span className="flex items-center gap-1" data-no-translate>{v.kind !== 'silhouette' && <PokeIcon id={cell.mon} className="h-7 w-7" />}{name(cell.mon)}</span>
+                  : cell.c === 'card' || cell.c === 'pair' ? <PokeIcon id={cell.mon} className="h-8 w-8" />
+                    : cell.c === 'num' || cell.c === 'ans' ? cell.n
+                      : cell.c === 'sym' ? <span className="text-2xl">{symbols[cell.n]}</span>
+                        : cell.c === 'arrow' ? <span className={small ? 'text-base' : 'text-xl'}>{PUZZLE_ARROWS[cell.n]}</span>
+                          : cell.c === 'pad' ? <span className="text-base">🌀{cell.n ?? '?'}</span>
+                            : cell.c === 'red' || cell.c === 'blue' ? (cell.up ? '▮' : '')
+                              : <span className={small ? 'text-base' : 'text-xl'}>{skin[cell.c]}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          {v.done && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => save(finishPuzzle(run))} data-testid="factory-continue">▸ {t('CONTINUAR')}</button>}
+          {!v.done && v.kind === 'memory' && v.seq && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => act(-1)} data-testid="puzzle-ready">▸ {t('MEMORIZEI')}</button>}
+          {!v.done && <button type="button" className="port-chip cursor-pointer px-4 py-1.5 text-sm font-black disabled:opacity-40" disabled={busy} onClick={() => save(finishPuzzle(run))} data-testid="puzzle-quit">▸ {t('DESISTIR DO DESAFIO')}</button>}
+        </div>
+      </div>
+    )
+    // Os botões (memorizei, desistir, continuar) ficam dentro da tela do desafio, que cobre o campo. Igual ao app.
+    menu = null
+  } else if (step === 'shop') {
+    const pick = Math.min(target, run.team.length - 1)
+    // O Poké Mart só na cidade; na rota, o vendedor ambulante (vende o mesmo), no próprio lugar.
+    const vendor = Boolean(p.mart)
+    field = vendor ? (
+      // O vendedor aparece no próprio lugar (o cenário não muda e não tem as plataformas da batalha).
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-shop">
+        <FarStand scene={run.scene ?? 'grass'} plain><FarPerson id="sd-backpacker" trainers={trainers} width={width} /></FarStand>
+        {me && <div className="absolute bottom-[23%] left-[6%] flex"><TrainerSprite trainer={me} height={nearPerson(width)} /></div>}
+        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900">🎒 {t('Vendedor ambulante')}</div>
+      </Field>
+    ) : (
+      <Field biome={shownScene(run, 'city', data)} fieldRef={fieldRef} testid="factory-shop">
+        <div className="absolute inset-x-0 bottom-[22%] flex items-end justify-center gap-1">
+          <img src={spriteUrl('trainers/sd-clerk.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
+          <img src={spriteUrl('trainers/sd-clerkf.png')} alt="" className="pixelated object-contain object-bottom" style={{ height: width * 0.4 }} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-[26%] border-t-[6px] border-amber-400 bg-gradient-to-b from-amber-600 to-amber-800" />
+        <div className="absolute left-3 top-2 rounded-lg bg-white/80 px-2 py-0.5 text-sm font-black text-slate-900" data-no-translate>{p.store ? `🏬 ${p.store}` : '🛒 Poké Mart'}</div>
+      </Field>
+    )
+    text = <p>{vendor ? t('Um vendedor ambulante! Tenho o mesmo que o Poké Mart. Do que você precisa?') : t('Bem-vindo! Do que você precisa?')} <span className="dlg-sub">💰{run.money}</span></p>
+    menu = (
+      <>
+        <MenuButton onClick={() => setPanel(panel === 'buy' ? null : 'buy')} active={panel === 'buy'} testid="factory-menu-buy">{t('COMPRAR')}</MenuButton>
+        <MenuButton onClick={() => { setPanel(null); save({ ...run, pending: { ...p, shop: null } }) }} testid="factory-continue">{t('CONTINUAR')}</MenuButton>
+      </>
+    )
+    toolRow = true
+    if (panel === 'buy') {
+      // A loja com a cara da Bolsa do Black & White: os bolsos à esquerda (um embaixo do outro), a lista escura com o
+      // preço, e embaixo o item tocado com a descrição e o COMPRAR. Para quem é a compra: o time, embaixo da lista.
+      const pocketOf = (id) => (/ball/.test(id) ? 'balls' : /potion|revive|heal|restore|elixir|ether|full|berry/.test(id) ? 'medicine' : /^tm|tutor|^evo:|reminder|deleter/i.test(id) ? 'moves' : 'items')
+      const item = (id) => {
+        const blocked = run.money < shopPrice(run, id) || shopOwned(run, id) || (id.startsWith('evo:') && !canEvolveWith(data, run.team[pick], id.slice(4), regionOf(data, run)).length)
+        return { id, name: itemName(id), icon: itemIcon(id), price: shopPrice(run, id), help: shopOwned(run, id) ? t('Você já tem') : itemHelp(id), disabled: blocked,
+          use: `${t('COMPRAR')} · 💰${shopPrice(run, id)}`, onUse: () => save(buyItem(run, id, pick, data)) }
+      }
+      const pockets = [
+        { id: 'balls', label: 'Poké Balls', img: 'poke-ball', items: [] },
+        { id: 'medicine', label: 'Remédios', img: 'potion', items: [] },
+        { id: 'items', label: 'Itens', img: 'leftovers', items: [] },
+        { id: 'moves', label: 'TMs e golpes', img: 'tm-normal', items: [] },
+      ]
+      for (const id of p.shop) pockets.find((x) => x.id === pocketOf(id)).items.push(item(id))
+      below = (
+        <BwBag pockets={pockets.filter((x) => x.items.length)} onClose={() => setPanel(null)} selected={shopSel} onSelect={setShopSel} testid="factory-shop-bag">
+          <div className="mt-auto flex flex-wrap items-center gap-1 border-t border-white/10 pt-1 text-xs font-bold">
+            <span className="text-slate-300">{t('Para:')}</span>
+            {run.team.map((m, i) => <MonChip key={i} mon={m} byId={byId} selected={pick === i} onClick={() => setTarget(i)} testid={`target-${i}`} />)}
+            <span className="ml-auto text-amber-300">💰{run.money}</span>
+          </div>
+        </BwBag>
+      )
+    }
+  } else if (!p && run.route) {
+    const boss = bossOf(data, run)
+    const target = targetOf(data, run)
+    const { from, to } = routeCities(data, run)
+    const route = run.route
+    const biome = BIOME_INFO[route.biome] ?? BIOME_INFO.grass
+    const pos = routePos(run)
+    const down = teamDown(run)
+    // Na cidade (o ginásio, o Poké Mart, o Centro, a Creche e o lugar perto dela) ou dentro de um lugar (10 andares e um chefe).
+    const town = Boolean(route.town)
+    const baseName = t('Base da {0}').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')
+    const inside = run.dungeon ? (run.dungeon.place === 'base' ? { name: baseName, scene: run.dungeon.scene } : placeInfo(data, run, run.dungeon.place)) : null
+    // Saindo de um lugar, você volta para o andar em que entrou (na rota ou na cidade).
+    const entered = run.dungeon ? routePos({ ...run, floor: run.dungeon.entry ?? run.dungeon.start }) : pos
+    const backTo = entered >= ROUTE_LENGTH ? t('a cidade, no mesmo andar') : t('a rota, no mesmo andar')
+    // O nome da rota do jogo (Route 1 · Route 2...).
+    const routeName = routeInfo(data, run)?.name
+    const meeting = !town && route.options.length === 1 && route.options[0].kind === 'boss'
+    // O rival de surpresa no meio da rota.
+    // Ou Jessie e James (Equipe Rocket), de surpresa.
+    const rival = route.options.length === 1 && route.options[0].kind === 'rival' ? (route.options[0].rocket ? rocketBoss(data, run) : rivalBoss(data, run)) : null
+    const coach = trainers?.find((x) => x.id === (rival ?? boss).trainer) ?? null
+    const intro = run.boss.step === 0 && pos === 0 ? storyLine(data, sceneRegion(boss), 'intro') : ''
+    const legend = regionLegend(data, run)
+    const quest = run.floor >= 1 ? legendQuest(data, run) : null
+    const mood = followerMood(data, run, clockOf().night)
+    // Tocando no Pokémon que segue você: o balão com o que ele sente (e o grito). Ao chegar numa rota, só o balão.
+    const petProps = mood && !meeting ? {
+      emote: pet || (!town && !inside && pos === 0) ? MOOD_EMOTE[mood.mood] : null,
+      say: pet ? `${name(mood.id)} ${t(MOOD_TEXT[mood.mood])}` : null,
+      onPet: () => { playCry(byId?.get(mood.id)?.species ?? mood.id); setPet((n) => n + 1) },
+    } : {}
+    const clock = clockOf()
+    const pickNode = (index) => {
+      // Antes da Elite dos Quatro (como nos jogos): depois dela, as lutas da Liga vêm uma atrás da outra.
+      if (route.options[index]?.kind === 'boss' && leagueAhead(data, run) && !window.confirm(t('A Liga começa aqui: depois da primeira da Elite dos Quatro, as lutas vêm uma atrás da outra, sem Centro Pokémon e sem a Enfermeira Joy; só a Bolsa cura. Sem nenhum desmaio até o Campeão, você ganha uma Master Ball. Quer seguir?'))) return
+      const next = chooseNode(run, data, index, clockOf())
+      if (next === run) return
+      saveFactory({ ...factoryOf(useStore.getState().league), run: next })
+      if (next.encounter) onBattle(next)
+    }
+    const fork = !town && route.options.length > 1
+    // O líder no ginásio do tipo dele, a Elite dos Quatro na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
+    const meetScene = town ? shownScene(run, 'city', data) : meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
+    // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
+    const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
+    const cut = !meeting && !town ? cutPath(run) : null
+    const smash = !meeting && !town ? smashPath(run) : null
+    const strength = !meeting && !town ? strengthPath(run) : null
+    const forecast = town ? '' : weatherOf(run, shownScene(run, route.biome, data), clock.season, data)
+    const burst = outbreakOf(data, clock.day)
+    // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
+    // O HUD do mapa: hora, clima, efeito do lugar, estação, o lendário que foge e o plano vilão.
+    const hudProps = { run, data, scene: shownScene(run, town ? 'city' : route.biome, data), clock, monName: name }
+    const hud = <MapHud {...hudProps} />
+    const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
+    // Os caminhos viram cartas que deslizam por cima do campo (na rota); na cidade, os botões do menu de sempre.
+    // Em todo lugar (rota, cidade, rival), os caminhos são cartas; só a conversa (meeting) fica nos botões. Igual ao app.
+    const asCards = !meeting
+    const Btn = asCards ? PathCard : MenuButton
+    // A entrada de um lugar: a base vilã e o lugar da cidade (na cidade) ou o lugar no caminho (na rota).
+    const placeButton = (node, k) => (
+      <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || down || nodeBlocked(run, node)} onClick={() => pickNode(k)}
+        sub={nodeBlocked(run, node) ? hmHint(run, node) : node.place === 'base' ? t('A equipe vilã está na cidade: {0} andares e o chefe dela no fim.').replace('{0}', DUNGEON_LENGTH)
+          : node.deeper ? t('Mais {0} andares e um chefe.').replace('{0}', DUNGEON_LENGTH)
+          : town ? t('{0} andares e um chefe; depois volta para a cidade, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)
+          : t('{0} andares e um chefe; depois volta para a rota, no mesmo andar.').replace('{0}', DUNGEON_LENGTH)}>
+        {RARE_PLACES[node.place] ? '✨' : '🕳️'} {(BIOME_INFO[node.scene] ?? biome).icon} {node.place === 'base' ? baseName : <span data-no-translate>{placeInfo(data, run, node.place).name}</span>}
+      </Btn>
+    )
+    const pathItems = [
+      ...((fork && !hasMap && route.options.map((node, k) => node.kind === 'dungeon' ? placeButton(node, k) : node.kind === 'safari' ? (
+          <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(NODE_INFO.safari.help)}>
+            {NODE_INFO.safari.icon} <span data-no-translate>{node.name ?? 'Safari Zone'}</span>
+          </Btn>
+        ) : hmPathInfo(node) ? (
+          // O caminho aberto com uma MO (Cut, Rock Smash, Strength): você sabe o que tem nele, mesmo sem o Mapa.
+          <Btn key={k} i={k} kind={node.kind} testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)} sub={nodeBlocked(run, node) ? hmHint(run, node) : t(hmPathInfo(node).help)}>
+            {hmPathInfo(node).icon} {t(hmPathInfo(node).label).replace('{0}', node.blocker ? name(node.legend) : '')}
+          </Btn>
+        ) : (
+          <Btn key={k} i={k} kind={node.kind} hidden testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
+            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
+            {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
+          </Btn>
+        ))) || []),
+      ...(((hasMap || !fork) && route.options.map((node, k) => {
+          if (node.kind === 'dungeon') return placeButton(node, k)
+          const info = node.raid ? { ...NODE_INFO[`raid${node.raid}`], label: `${NODE_INFO[`raid${node.raid}`].label} ${'★'.repeat(node.stars ?? 1)}` } : node.area ? NODE_INFO.area : node.mythic ? NODE_INFO.mythic : node.meteor ? NODE_INFO.meteor : node.roam ? ROAM_INFO : node.plot ? PLOT_INFO : hmPathInfo(node) ?? (node.quest ? { icon: '🌟', label: LEGEND_LAIR_NAME(node.legend), help: QUEST_HELP } : node.legend != null ? LEGEND_INFO : NODE_INFO[node.kind])
+          const b = node.biome && !hmPathInfo(node) && !node.quest ? BIOME_INFO[node.biome] : null
+          const noSurf = nodeBlocked(run, node)
+          // O desafio do ginásio é obrigatório: no lugar do líder, a carta do desafio (vencendo, o líder aparece). Igual ao app.
+          if (gymLocked(data, run, node)) {
+            const puzzle = gymPuzzleOf(data, run)
+            return (
+              <Btn key={k} i={k} kind="event" testid="town-puzzle" disabled={busy} onClick={() => save(startPuzzle(run, data))}
+                sub={t('Obrigatório: vença para enfrentar {0} (e ganhe um prêmio). Perdendo, tenta de novo.').replace('{0}', boss.name)}>
+                🧩 {t('DESAFIO DO GINÁSIO')}: {t(puzzleTitle(puzzle.gym) ?? PUZZLE_INFO[puzzle.type].title)}
+              </Btn>
+            )
+          }
+          return (
+            <Btn key={k} i={k} kind={node.raid ? `raid${node.raid}` : node.kind} testid={`map-node-${k}`} disabled={busy || (isBattleNode(node) && down) || noSurf} onClick={() => pickNode(k)}
+              sub={noSurf ? hmHint(run, node) : node.kind === 'boss' ? `${bossKindLabel(boss.kind)}${CITY_KIND_SET.has(boss.kind) ? ` · ${to}` : ''}` : node.kind === 'dboss' ? (inside ? t('O chefe do lugar: vencendo, volta para {0}.').replace('{0}', backTo) : t('O chefe da rota: vencendo, você chega em {0}.').replace('{0}', to)) : node.hidden ? `📡 ${t('A Dowsing Machine apita: tem um item escondido aqui!')}` : node.quest ? t(QUEST_HELP).replace('{0}', QUEST_PRIZE) : t(node.placeLegend || node.routeLegend ? PLACE_LEGEND_HELP : info.help).replace('{0}', ROAM_TURNS)}>
+              {route.options.length === 1 && !['boss', 'rival', 'dboss'].includes(node.kind) ? `${t('SEGUIR')}: ` : ''}{node.biome === 'underwater' && route.biome !== 'underwater' ? `🤿 ${t('MERGULHAR')}: ` : ''}{town && node.kind === 'boss' ? '🏟️' : b ? b.icon : info.icon} {node.kind === 'boss' || (node.kind === 'rival' && rival) ? <span data-no-translate>{(node.kind === 'rival' ? rival : boss).name}</span> : t(info.label).replace('{0}', node.blocker ? name(node.legend) : '')}{node.quest ? <span data-no-translate> · {name(node.legend)}</span> : node.roam || node.placeLegend || node.routeLegend ? <span data-no-translate> · {node.forceShiny ? '✨ ' : ''}{name(node.legend)}</span> : ''}{b && !node.quest ? ` · ${t(b.label)}` : ''}{node.hidden ? ' 📡' : ''}
+            </Btn>
+          )
+        })) || []),
+    ]
+    field = (
+      // O líder espera no ginásio da cidade; a Elite dos Quatro e o Campeão, na Liga (nunca no meio da rota).
+      <Field biome={shownScene(run, meetScene)} fieldRef={fieldRef} testid="factory-map">
+        {/* O nome do lugar e, logo abaixo, o HUD (hora, clima, efeito, estação, lendário que foge, plano vilão). */}
+        <div className="absolute left-3 right-14 top-2 z-10 flex flex-col items-start gap-1">
+          <div className="rounded-lg bg-white/85 px-2 py-0.5 text-xs font-black text-slate-900 sm:text-sm">
+            {town ? <span data-no-translate>🏙️ {to}</span>
+              : inside ? <>{biome.icon} {t(inside.name)}</>
+              : <><span data-no-translate>{boss.region} · {boss.game}</span> · {biome.icon} {routeName ? <span data-no-translate>{routeName} → {to}</span> : t('Rota para {0}').replace('{0}', to)}</>}
+          </div>
+          <MapHud {...hudProps} inline />
+        </div>
+        {floorTag && <span className="absolute right-3 top-2 rounded bg-slate-900/70 px-1.5 text-[10px] font-black text-white sm:text-xs" data-testid="route-floor">{floorTag}</span>}
+        {coach && (meeting || rival) && <FarStand scene={meetScene}><TrainerSprite trainer={coach} height={farPerson(width)} /></FarStand>}
+        {town && me && <div className="absolute bottom-[23%] left-[2%] flex"><TrainerSprite trainer={me} height={nearPerson(width) * FOLLOW_PERSON * follow.k} /></div>}
+        {/* Quem vai na frente acompanha você na cidade (como o Pokémon que segue o treinador). */}
+        {town && lead && <FieldMon mon={lead} byId={byId} follower scene={run.scene} followScale={follow.scale} {...petProps} />}
+        {!town && lead && <FieldMon mon={lead} byId={byId} back scene={meetScene} {...petProps} />}
+      </Field>
+    )
+    // As cenas da história: ao chegar na cidade e antes da luta do chefe (o que ele diz naquele momento da trama).
+    // Quem fala aparece na plaquinha (e no cenário); a narração, com o livro.
+    cast = !meeting && !rival
+    const sceneText = ([who, text]) => (who ? { who, text } : `📖 ${text}`)
+    const arrival = town && pos === ROUTE_LENGTH ? sceneLines(data, sceneRegion(boss), 'city', to, language).map(sceneText) : []
+    const before = meeting ? sceneLines(data, sceneRegion(boss), 'before', `${boss.name}@${bossCity(data, run)}`, language).map(sceneText) : []
+    // As falas (uma por vez, tocando para passar, como nos jogos).
+    const lines = [
+      intro && `📖 ${intro}`,
+      ...arrival,
+      ...(town && pos === ROUTE_LENGTH ? (run.town?.got ?? []).map((k) => `${KEY_INFO[k]?.icon ?? '🔑'} ${t('Em {0} te deram {1}!').replace('{0}', to).replace('{1}', KEY_ITEMS[k] ?? k)} ${t(KEY_INFO[k]?.help ?? '')}`) : []),
+      !town && !inside && pos === 0 && !meeting && `🧭 ${t('Você sai de {0} e entra em {1}, rumo a {2}.').replace('{0}', from ?? t('casa')).replace('{1}', t(biome.label)).replace('{2}', to)} ${t(ROUTE_FLAVOR[route.biome] ?? ROUTE_FLAVOR.grass)}`,
+      !town && !inside && pos === 0 && !meeting && quest?.id != null && `📜 ${questLine(quest, name)}`,
+      !town && !inside && pos === 0 && !meeting && mood && `🐾 ${name(mood.id)} ${t(MOOD_TEXT[mood.mood])}`,
+      ...route.options.filter((o) => o.call).map((o) => `📞 ${o.caller}: ${t(CALL_TEXT[o.call])}`),
+      !meeting && run.chain && `📶 ${t('Corrente do Poké Radar')}: ${name(run.chain.id)} ×${run.chain.n} · ✨ ${radarShiny(run.chain)}×`,
+      !town && !inside && pos === 0 && !meeting && legend != null && target.kind === 'elite' && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
+      inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
+      ...before,
+      meeting && !before.length && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,
+      meeting && !before.length && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,
+      meeting && !before.length && boss.kind === 'villain' && `💬 ${t(VILLAIN_PLANS[villainTeam(boss.name)] ?? VILLAIN_PLANS.rocket)}`,
+      meeting && !before.length && boss.kind === 'gym' && `💬 ${boss.name}: ${t(LEADER_LINES[leaderType(data, boss)] ?? LEADER_LINES.normal)}`,
+      meeting && (boss.kind === 'rival' || boss.kind === 'villain') && t('{0} apareceu no caminho!').replace('{0}', boss.name),
+      meeting && !(boss.kind === 'rival' || boss.kind === 'villain') && t('O chefe espera'),
+      meeting && !before.length && storyLine(data, sceneRegion(boss), boss.kind, boss.name),
+      rival && `💬 ${rival.name}: ${t(rival.pair ? ROCKET_LINES[(run.rivalRaces ?? 0) % ROCKET_LINES.length] : RIVAL_RACE_LINES[(run.rivalRaces ?? 0) % RIVAL_RACE_LINES.length])}`,
+      rival && t('{0} apareceu no caminho!').replace('{0}', rival.name),
+      route.options.length === 1 && route.options[0].meteor && `☄️ ${t('Uma chuva de meteoros! Algo caiu bem perto daqui...')}`,
+      route.options.length === 1 && route.options[0].mythic && `✨ ${t('Uma presença misteriosa... um Pokémon mítico está aqui!')}`,
+      town && boss.kind === 'villain' && `💬 ${t('A {0} tomou conta da cidade! O líder do ginásio só volta quando ela for embora.').replace('{0}', TEAM_NAMES[villainTeam(boss.name)] ?? 'Equipe Rocket')}`,
+      town && pos === ROUTE_LENGTH && boss.kind !== 'villain' && t(daycareHere(data, run) ? 'Bem-vindo a {0}! O Poké Mart, o Centro Pokémon e a Creche ficam aqui; o líder espera no último andar da cidade.' : 'Bem-vindo a {0}! O Poké Mart e o Centro Pokémon ficam aqui; o líder espera no último andar da cidade.').replace('{0}', to),
+      inside && run.dungeon.cleared && `🌊 ${t('Você venceu o chefe daqui! Dá para seguir mais fundo ou voltar.')}`,
+      route.options.some((o) => o.roam) && `🐾 ${t('{0} passou correndo por aqui! Ele foge depois do primeiro turno (dormindo ou congelado, não foge).').replace('{0}', name(route.options.find((o) => o.roam).legend))}`,
+      route.options.some((o) => o.plot) && `🚨 ${t('Um capanga da {0} está agindo nesta cidade! Derrote-o para atrapalhar o plano.').replace('{0}', TEAM_NAMES[route.options.find((o) => o.plot).grunt] ?? 'Equipe Rocket')}`,
+      route.options.some((o) => o.hidden) && `📡 ${t('A Dowsing Machine apita: tem um item escondido num dos caminhos!')}`,
+    ].filter(Boolean)
+    text = (
+      <>
+        {flipWaiting(data, run) && !run.flip && <FlipSensor onFlip={() => save(flipScreen(run))} />}
+        <Dialogue key={`${run.floor}-${run.dungeon?.place ?? ''}-${route.options.map((o) => o.kind).join()}`} lines={lines}
+          fallback={town ? null : !fork ? t('O caminho segue.') : hasMap ? t('O caminho se divide: escolha por onde ir') : t('O caminho se divide! Sem o Mapa, você não sabe aonde cada caminho leva.')} />
+        {run.mission && run.mission.leg === (run.leg ?? 1) && (
+          <p className="text-sm" data-testid="factory-mission">
+            📋 {t('Missão')}: {missionText(run.mission)} ({run.mission.done}/{run.mission.need}){run.mission.done >= run.mission.need ? ' ✔' : ''}
+          </p>
+        )}
+        <p className="dlg-sub text-xs" data-testid="factory-clock">
+          {t(SEASON_LABEL[clock.season])} · {clock.night ? `🌙 ${t('Noite: mais Fantasma e Sombrio')}` : `🌤️ ${t('Dia')}`} · {t('Chefe em {0}:').replace('{0}', to)} <b data-no-translate>{target.name}</b>
+          {forecast && <span data-testid="factory-forecast"> · {t('Clima: {0}').replace('{0}', t(WEATHER_LABEL[forecast] ?? forecast))}{WEATHER_PULL[forecast] ? ` (${t(WEATHER_PULL[forecast])})` : ''}</span>}
+        </p>
+        {/* O surto do dia: só onde ele vive (senão a fala promete um Pokémon que não aparece aqui). Igual ao app. */}
+        {burst != null && data.species[burst]?.[6]?.includes(route.biome) && (
+          <p className="dlg-sub text-xs" data-testid="factory-outbreak">
+            📣 {t('Surto do dia: {0} aparece muito por aqui (mais chance de shiny)!').replace('{0}', name(burst))}
+          </p>
+        )}
+        {down && <p className="text-sm text-red-600">{t('O time todo está desmaiado: use um Revive ou desista.')}</p>}
+      </>
+    )
+    menu = (
+      <>
+        {!asCards && pathItems}
+        {/* Na cidade: o Poké Mart, o Centro Pokémon e a Creche (cada um no seu lugar). */}
+        {town && (
+          <div className="contents">
+            <MenuButton testid="town-mart" disabled={busy} onClick={() => save(townShop(run))}>🛒 Poké Mart</MenuButton>
+            <MenuButton testid="town-center" disabled={busy} onClick={() => save(townCenter(run))}>🏥 {t('CENTRO')}</MenuButton>
+            {contestOpen(run) && <MenuButton testid="town-contest" disabled={busy} onClick={() => setPanel(String(panel ?? '').startsWith('contest') ? null : 'contest')} active={String(panel ?? '').startsWith('contest')}>🎀 {t('CONCURSO')}</MenuButton>}
+            {daycareOpen(data, run) && <MenuButton testid="town-daycare" disabled={busy} onClick={() => setPanel(panel === 'daycare' ? null : 'daycare')} active={panel === 'daycare'}>🏡 {t('CRECHE')}</MenuButton>}
+          </div>
+        )}
+        {/* O que só esta cidade tem (como nos jogos): a Department Store, o Game Corner, o Move Deleter e o Move Reminder. */}
+        {town && (storeOf(data, run) || cornerOf(data, run) || tutorsOf(data, run).length > 0) && (
+          <div className="contents">
+            {storeOf(data, run) && <MenuButton testid="town-store" disabled={busy} onClick={() => save(enterStore(run, data))}>🏬 <span data-no-translate>{storeOf(data, run).name}</span></MenuButton>}
+            {cornerOf(data, run) && <MenuButton testid="town-corner" disabled={busy} onClick={() => setPanel(panel === 'corner' ? null : 'corner')} active={panel === 'corner'}>🎰 <span data-no-translate>{cornerOf(data, run).name}</span></MenuButton>}
+            {tutorsOf(data, run).includes('deleter') && <MenuButton testid="town-deleter" disabled={busy} onClick={() => setPanel(String(panel).startsWith('deleter') ? null : 'deleter')} active={String(panel).startsWith('deleter')}>🧓 Move Deleter</MenuButton>}
+            {tutorsOf(data, run).includes('reminder') && (
+              <MenuButton testid="town-reminder" disabled={busy || !townReminder(run, data)} onClick={() => save(townReminder(run, data))}>
+                💭 Move Reminder{run.town?.reminded ? ' ✓' : reminderCost(data, run) ? (run.scales ? ' · 💗 Heart Scale' : ` · 💰${reminderCost(data, run)}`) : ''}
+              </MenuButton>
+            )}
+          </div>
+        )}
+        {/* O ovo misterioso: um morador te dá um ovo sem dizer de quem é. */}
+        {town && mysteryEgg(data, run) != null && (
+          <MenuButton testid="town-mystery-egg" disabled={busy} onClick={() => save(takeMysteryEgg(run, data))} sub={t('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES)}>
+            ❔ {t('RECEBER O OVO MISTERIOSO')}
+          </MenuButton>
+        )}
+        {/* Os presentes da cidade (o Eevee de Celadon, o Lapras da Silph Co., o ovo de Togepi...). */}
+        {town && townGifts(data, run).map((g) => (g.choose ?? [g.id]).map((id) => {
+          const got = takeGift(run, data, g.k, id)
+          return (
+            <MenuButton key={`${g.k}-${id}`} testid={`town-gift-${g.k}-${id}`} disabled={busy || !got} onClick={() => save(got)}
+              sub={!got ? t('Sem vaga no time para o ovo.') : g.choose ? t('Um presente daqui: escolha só um dos dois.') : g.egg ? t('Vai no time como ovo e choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES) : t('Um presente daqui: entra no time (ou vai para o PC).')}>
+              {g.egg ? '🥚' : '🎁'} {t(g.egg ? 'RECEBER O OVO DE {0}' : 'RECEBER {0}').replace('{0}', name(id))}
+            </MenuButton>
+          )
+        }))}
+        {town && run.town?.trade && (run.town.trade.done ? (
+          <MenuButton testid="town-trade" disabled>🔁 {t('Troca feita: chegou {0}!').replace('{0}', name(run.town.trade.got ?? run.town.trade.give))}</MenuButton>
+        ) : (
+          <MenuButton testid="town-trade" disabled={busy || !townTradeable(run, data).length} onClick={() => setPanel(panel === 'towntrade' ? null : 'towntrade')} active={panel === 'towntrade'}
+            sub={townTradeable(run, data).length ? t('Uma troca por cidade: o que vem chega {0} níveis acima, ganha mais XP e, se evolui por troca, já chega evoluído.').replace('{0}', TRADE_LEVELS) : t('Você não tem um {0} no time.').replace('{0}', name(run.town.trade.want))}>
+            🔁 {t('Um morador troca {0} por um {1}').replace('{0}', `${run.town.trade.shiny ? '✨ ' : ''}${name(run.town.trade.give)}`).replace('{1}', name(run.town.trade.want))}
+          </MenuButton>
+        ))}
+        {/* As ações da rota, numa grade: pescar, sacudir a árvore, o mel, o vaso de frutas, a bicicleta e o álbum. */}
+        {(() => {
+          const acts = [
+            !meeting && fishPath(run, data) && ['factory-fish', `🎣 ${t('PESCAR')}`, () => save(fishPath(run, data))],
+            !meeting && headbuttPath(run) && ['factory-headbutt', `🌳 ${t('SACUDIR A ÁRVORE')}`, () => save(headbuttPath(run))],
+            !meeting && slatherHoney(run) && ['factory-honey-put', `🍯 ${t('PASSAR MEL')}`, () => save(slatherHoney(run))],
+            !meeting && honeyPath(run) && ['factory-honey-go', `🍯 ${t('VER O MEL')}`, () => save(honeyPath(run))],
+            !meeting && !town && plantBerry(run, data) && ['factory-berry-plant', `🌱 ${t('PLANTAR FRUTA')}`, () => save(plantBerry(run, data))],
+            berryReady(run) && harvestBerry(run) && ['factory-berry-pick', `🍓 ${t('COLHER {0}× {1}').replace('{0}', run.berry.count).replace('{1}', itemName(run.berry.item))}`, () => save(harvestBerry(run))],
+            !meeting && bikePath(run, data) && ['factory-bike', '🚲 Bicycle', () => save(bikePath(run, data))],
+            !meeting && radarPath(run) && ['factory-radar', '📶 Poké Radar', () => save(radarPath(run))],
+            !meeting && applyRepel(run) && ['factory-repel', `🧴 ${t('REPELENTE')} (${run.repels})`, () => save(applyRepel(run))],
+            // O Inkay no nível: virar a tela (o celular de cabeça para baixo ou o botão) e ele evolui na próxima vitória. Igual ao app.
+            flipWaiting(data, run) && (run.flip ? ['factory-flip', `🙃 ${t('Tela virada: o Inkay evolui na próxima vitória')}`, null] : ['factory-flip', `🙃 ${t('VIRAR A TELA')}`, () => save(flipScreen(run))]),
+            // O acampamento: curry (Sitrus Berry) ou sanduíche (Lum Berry), uma vez por rota. Igual ao app.
+            !meeting && campMeal(run, 'curry') && ['factory-curry', `🍛 ${t('FAZER CURRY')} (Sitrus Berry)`, () => save(campMeal(run, 'curry'))],
+            !meeting && campMeal(run, 'sandwich') && ['factory-sandwich', `🥪 ${t('FAZER SANDUÍCHE')} (Lum Berry)`, () => save(campMeal(run, 'sandwich'))],
+            mealLeft(run) > 0 && ['factory-meal', `${run.meal.kind === 'curry' ? `🍛 ${t('Curry: +5% em tudo')}` : `🥪 ${t('Sanduíche: 2× shiny e captura mais fácil')}`} · ${t('mais {0} andares').replace('{0}', mealLeft(run))}`, null],
+            (run.photos ?? []).length > 0 && ['factory-album', `📷 ${t('ÁLBUM')} (${run.photos.length})`, () => setPanel(panel === 'album' ? null : 'album')],
+          ].filter(Boolean)
+          return acts.length > 0 && (
+            <div className="grid grid-cols-1 gap-1" data-testid="route-actions">
+              {acts.map(([id, label, go]) => <MenuButton key={id} testid={id} disabled={busy || !go} onClick={go ?? undefined} active={id === 'factory-album' && panel === 'album'}>{label}</MenuButton>)}
+            </div>
+          )
+        })()}
+        {cut && (
+          <MenuButton testid="factory-cut" disabled={busy} onClick={() => save(cut)} sub={t(HM_INFO.cut.help)}>
+            ✂️ {t('USAR {0}').replace('{0}', 'Cut')}
+          </MenuButton>
+        )}
+        {smash && (
+          <MenuButton testid="factory-smash" disabled={busy} onClick={() => save(smash)} sub={t(HM_INFO['rock-smash'].help)}>
+            🪨 {t('USAR {0}').replace('{0}', 'Rock Smash')}
+          </MenuButton>
+        )}
+        {strength && (
+          <MenuButton testid="factory-strength" disabled={busy} onClick={() => save(strength)} sub={t(HM_INFO.strength.help)}>
+            💪 {t('USAR {0}').replace('{0}', 'Strength')}
+          </MenuButton>
+        )}
+        {(run.rerolls ?? 0) > 0 && !meeting && !town && hasMap && (
+          <MenuButton testid="factory-reroll" disabled={busy} onClick={() => { const next = rerollRoute(run, data); if (next) save(next) }} sub={t('Restam {0} nesta corrida').replace('{0}', run.rerolls)}>
+            🎲 {t('SORTEAR O CAMINHO DE NOVO')}
+          </MenuButton>
+        )}
+      </>
+    )
+    toolRow = true
+    // Na rota: as cartas dos caminhos no campo e, ao lado delas, o resto (árvore, mel, fruta...). Nada embaixo do campo.
+    if (asCards) {
+      // Como no port: os 4 botões coloridos (BOLSA, TIME, MAPA, AJUDA) no lugar de LUTAR/BOLSA/POKÉMON/FUGIR; os
+      // caminhos em cartas no campo e, ao lado delas, o que dá para fazer aqui (árvore, mel, fruta...).
+      const rest = Children.toArray(menu.props.children)
+      menu = <div className="grid h-full grid-cols-2 grid-rows-2 gap-[6%]">{tools}</div>
+      menuFill = true
+      menuWait = false
+      toolRow = false
+      const cards = (
+        <div key={`cards-${run.floor}`} className="choice-wait absolute left-[3%] right-[3%] top-[16%] bottom-[37%] z-20 flex gap-[2%]" data-testid="path-cards">
+          <div className="flex min-w-0 flex-1 items-stretch justify-center gap-[2.5%]">{pathItems}</div>
+          {/* O que dá para fazer aqui (árvore, mel, fruta...): um botão só, que abre a lista por cima. Igual ao app. */}
+          {rest.length > 0 && (
+            <div className="port-extras flex max-h-full w-[26%] shrink-0 flex-col gap-1 self-start">
+              <MenuButton testid="factory-actions" disabled={busy} active={panel === 'actions'} onClick={() => setPanel(panel === 'actions' ? null : 'actions')}>
+                ✨ {t('AÇÕES')} ({rest.reduce((n, el) => n + (el.type === 'div' || el.type === Fragment ? Children.toArray(el.props.children).length : 1), 0)})
+              </MenuButton>
+              {/* A lista pequena, logo abaixo do botão (tocando de novo, fecha). Igual ao app. */}
+              {panel === 'actions' && (
+                <div className="grid min-h-0 content-start gap-1 overflow-y-auto rounded-md border-2 border-[#8b93a1] bg-[#15181ff0] p-1 [&_[data-testid=route-actions]]:gap-1" data-testid="actions-panel">{rest}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )
+      field = cloneElement(field, {}, ...Children.toArray(field.props.children), cards)
+    }
+    if (town && panel === 'daycare') below = daycareView()
+    if (panel === 'album') {
+      below = (
+        <div className="space-y-2 p-2" data-testid="album">
+          <OverlayClose onClose={() => setPanel(null)} title={`📷 ${t('Álbum da corrida')}`} />
+          <div className="grid grid-cols-3 gap-2">
+            {(run.photos ?? []).map((ph, k) => (
+              <figure key={k} className="overflow-hidden rounded-lg border-2 border-white/70 bg-black" data-testid={`photo-${k}`}>
+                <div className="relative aspect-[4/3]">
+                  <img src={spriteUrl(`battle/${battleScene(ph.scene)}.webp`)} alt="" className="pixelated absolute inset-0 h-full w-full object-cover" onError={hide} />
+                  {ph.id != null && <PokeIcon id={ph.id} shiny={Boolean(ph.shiny)} className="absolute bottom-0 left-1/2 h-4/5 w-auto -translate-x-1/2" />}
+                </div>
+                <figcaption className="bg-white px-1 py-0.5 text-center text-[10px] leading-tight font-bold text-slate-900">
+                  {ph.shiny ? '✨ ' : ''}<span data-no-translate>{ph.name ?? name(ph.id)}</span> · {t('Andar {0}').replace('{0}', ph.floor)}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    const corner = town ? cornerOf(data, run) : null
+    if (corner && panel === 'corner') {
+      below = (
+        <div className="space-y-2 p-2" data-testid="corner">
+          <OverlayClose onClose={() => setPanel(null)} title={`🎰 ${corner.name}`} />
+          <p className="text-center text-sm font-bold" data-testid="corner-coins">🪙 {run.gcCoins ?? 0} · 💰 {run.money}</p>
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-surface p-1 text-3xl" data-testid="corner-reels" data-no-translate>
+            {(run.slots?.reels ?? ['?', '?', '?']).map((r, i) => <span key={i} className="flex h-9 w-14 items-center justify-center rounded-lg border-2 border-amber-400 bg-white text-xl font-black text-slate-900">{r}</span>)}
+          </div>
+          <p className="text-center text-sm" data-testid="corner-result">{run.slots ? (run.slots.won ? `🎉 ${t('Ganhou {0} fichas!').replace('{0}', run.slots.won)}` : t('Não foi desta vez.')) : t('Três iguais pagam: 7 paga 100, BAR paga 30, 🍒 paga 6.')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button data-testid="corner-buy" disabled={busy || !buyCoins(run, data)} onClick={() => save(buyCoins(run, data))}>{t('{0} fichas por 💰{1}').replace('{0}', CORNER_PACK).replace('{1}', CORNER_PACK_PRICE)}</Button>
+            <Button data-testid="corner-spin" disabled={busy || !spinSlots(run, data)} onClick={() => save(spinSlots(run, data))}>{t('JOGAR ({0} fichas)').replace('{0}', CORNER_SPIN)}</Button>
+          </div>
+          <p className="text-xs text-muted">{t('Os prêmios daqui (as fichas ficam com você a corrida toda):')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {corner.prizes.map(([prize, cost]) => (
+              <div key={prize} className="flex items-center justify-between gap-2 rounded-xl bg-surface p-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2 font-bold" data-no-translate>
+                  {typeof prize === 'number' ? <PokeIcon id={prize} className="h-9 w-9" /> : <img src={itemIcon(prize)} alt="" className="h-7 w-7" />}
+                  {typeof prize === 'number' ? name(prize) : itemName(prize)}
+                </span>
+                <Button data-testid={`corner-prize-${prize}`} disabled={busy || !cornerPrize(run, data, prize)} onClick={() => save(cornerPrize(run, data, prize))}>🪙{cost}</Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    if (town && panel === 'deleter' && tutorsOf(data, run).includes('deleter')) {
+      below = (
+        <BwParty title={t('Move Deleter: quem vai esquecer um golpe?')} testid="deleter" team={partyOf(run, byId)} disabled={(i) => (run.team[i].moves ?? []).length < 2}
+          onPick={(i) => setPanel(`deleter:${i}`)} onCancel={() => setPanel(null)} />
+      )
+    }
+    if (town && String(panel).startsWith('deleter:') && tutorsOf(data, run).includes('deleter')) {
+      const i = Number(String(panel).slice(8))
+      const mon = run.team[i]
+      below = mon && (
+        <div className="space-y-2 p-2" data-testid="deleter-moves">
+          <OverlayClose onClose={() => setPanel('deleter')} title={`🧓 Move Deleter · ${name(mon.id)}`} />
+          <p className="text-xs text-muted">{t('Qual golpe ele esquece? (Até uma MO; não dá para voltar atrás.)')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(mon.moves ?? []).map((mv, k) => (
+              <Button key={mv} data-testid={`deleter-move-${k}`} disabled={busy || !forgetMove(run, data, i, k)} onClick={() => { setPanel(null); save(forgetMove(run, data, i, k)) }}><span data-no-translate>{prettySlug(mv)}</span></Button>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    if (town && panel === 'towntrade' && run.town?.trade && !run.town.trade.done) {
+      const ok = townTradeable(run, data)
+      below = (
+        <BwParty title={t('Quem você dá em troca do {0}?').replace('{0}', name(run.town.trade.give))} testid="towntrade"
+          team={partyOf(run, byId)} disabled={(i) => !ok.includes(i)}
+          onPick={(i) => { setPanel(null); save(townTrade(run, i, data)) }} onCancel={() => setPanel(null)} />
+      )
+    }
+  } else if (!p && run.encounter) {
+    field = <Field biome={run.scene} fieldRef={fieldRef}>{lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}</Field>
+    text = <p>{t('Lutar no andar {0}').replace('{0}', run.floor)}</p>
+    menu = <MenuButton testid="factory-fight" disabled={busy || teamDown(run)} onClick={() => onBattle(run)}>{t('LUTAR')}</MenuButton>
+  } else {
+    field = <Field fieldRef={fieldRef} />
+    text = <p>...</p>
+  }
+
+  return (
+    <section data-testid="factory-screen">
+      <BattleFrame hideHp={hideHp} onDex={() => setPanel(panel === 'dex' ? null : 'dex')} onBadges={() => setPanel(panel === 'badges' ? null : 'badges')} field={field} run={run} byId={byId} data={data} frame={factory.frame} menu={menu} menuFill={menuFill} menuWait={menuWait} cast={cast} tools={toolRow ? tools : null} panel={below || extras || null}
+        text={<>
+          {tipLine && <p className="font-bold text-amber-200" data-testid="factory-tip">💡 {t(TIPS[tipLine])}</p>}
+          {note && <p data-testid="factory-note">{note}</p>}
+          {text}
+          {unlocked != null && <p className="text-sm text-amber-600" data-testid="factory-shiny-unlocked">✨ {t('{0} shiny liberado para começar as próximas corridas!').replace('{0}', name(unlocked))}</p>}
+          {earned.map((id) => (
+            <p key={id} className="text-sm text-amber-600" data-testid={`achievement-${id}`}>
+              🏆 {t('Conquista: {0}').replace('{0}', t(ACHIEVEMENTS[id].label))} (+🪙{ACHIEVEMENTS[id].coins})
+            </p>
+          ))}
+        </>} />
+    </section>
+  )
+}
+
+const BALL_HELP = {
+  'poke-ball': 'Para capturar os selvagens (jogue na batalha)',
+  'great-ball': 'Captura 1,5× melhor',
+  'ultra-ball': 'Captura 2× melhor',
+  'quick-ball': '5× melhor no primeiro turno',
+  'net-ball': '3,5× melhor em Água e Inseto',
+  'dusk-ball': '3× melhor em cavernas e torres',
+  'timer-ball': 'Melhora a cada turno (até 4×)',
+}
+
+/** O que cada item segurado faz na batalha (como nos jogos). */
+const HELD_EFFECT = {
+  'choice-band': 'Ataque ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-specs': 'Ataque Especial ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'choice-scarf': 'Velocidade ×1,5, mas só usa o primeiro golpe escolhido até trocar',
+  'life-orb': 'Golpes 30% mais fortes; perde 10% do HP a cada ataque',
+  'expert-belt': 'Golpes super efetivos 20% mais fortes',
+  'muscle-band': 'Golpes físicos 10% mais fortes',
+  'wise-glasses': 'Golpes especiais 10% mais fortes',
+  'leftovers': 'Recupera 1/16 do HP no fim de cada turno',
+  'sitrus-berry': 'Com metade do HP ou menos, come e recupera 1/4 do HP',
+  'assault-vest': 'Defesa Especial ×1,5, mas só pode usar golpes de ataque',
+  'rocky-helmet': 'Quem acerta um golpe de contato perde 1/6 do HP',
+  'eviolite': 'Defesa e Defesa Especial ×1,5 se ele ainda pode evoluir',
+  'focus-sash': 'Com o HP cheio, aguenta com 1 de HP um golpe que o derrubaria',
+  'quick-claw': '20% de chance de agir primeiro no turno',
+  'shell-bell': 'Recupera 1/8 do dano que causa',
+  'black-sludge': 'Tipo Veneno recupera 1/16 do HP por turno; os outros perdem 1/8',
+  'weakness-policy': 'Levou um golpe super efetivo: Ataque e Ataque Especial +2',
+  'lum-berry': 'Cura qualquer problema de status (uma vez)',
+  'scope-lens': 'Mais chance de acerto crítico (+1 nível)',
+  'bright-powder': 'Golpes do adversário erram 10% mais',
+  'air-balloon': 'Flutua: imune a golpes de Terra até levar um golpe',
+  'heavy-duty-boots': 'Não sofre dano das armadilhas do campo (Stealth Rock, Spikes...)',
+  'kings-rock': 'Golpes de dano têm 10% de chance de fazer o adversário recuar',
+}
+
+function itemHelp(id) {
+  if (id === 'master-ball') return t('Captura sempre')
+  if (BALL_HELP[id]) return t(BALL_HELP[id])
+  if (id.startsWith('tm:')) return t('Ensina o golpe a quem aprende por TM (uma vez)')
+  if (id.startsWith('evo:')) return t('Evolui na hora quem evolui com ela (escolha acima)')
+  if (id === 'move-tutor') return t('Ensina um golpe de tutor ou de ovo (uma vez)')
+  if (id === 'move-reminder') return t('Lembra um golpe do nível (uma vez)')
+  if (id === 'dynamax-band') return t('Libera o Dynamax (e o Gigantamax) para o time')
+  if (id === 'tera-orb') return t('Libera a Terastalização para o time')
+  if (id === 'escape-rope') return t('Se perder uma batalha, o time foge com {0}% do HP e a corrida continua (gasta uma)').replace('{0}', Math.round(ESCAPE_HP * 100))
+  if (id === 'lucky-egg') return t('Quem segura ganha +{0}% de XP (como extra, +{1}%)').replace('{0}', Math.round((LUCKY_EGG.held - 1) * 100)).replace('{1}', Math.round((LUCKY_EGG.extra - 1) * 100))
+  if (id === 'exp-share') return t('O time todo ganha XP (quem não lutou, a metade)')
+  if (id === 'town-map') return t('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)')
+  if (id === 'repel') return t('Use em AÇÕES: os caminhos de selvagens somem por {0} andares').replace('{0}', REPEL_FLOORS)
+  if (id === 'revive') return t('Revive com metade do HP')
+  if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))
+  if (id === 'rare-candy') return t('+1 nível')
+  if (VITAMINS[id]) return t('+{0} EVs em {1}, sem limite').replace('{0}', VITAMIN_EVS).replace('{1}', STAT_LABEL[VITAMINS[id]])
+  if (id === 'bottle-cap') return t('+{0} IVs em todos os atributos, sem limite').replace('{0}', BOTTLE_CAP_IVS)
+  if (HELD_BOOST[id]) {
+    const boost = Object.entries(HELD_BOOST[id]).map(([s, v]) => `+${Math.round(v * 100)}% ${STAT_LABEL[s]}`).join(', ')
+    const extra = t('Segura o item; se já tem um, vira extra ({0})').replace('{0}', boost)
+    return HELD_EFFECT[id] ? `${t(HELD_EFFECT[id])}. ${extra}` : extra
+  }
+  // Mega Pedras e Cristais Z (drops dos chefes).
+  if (/-z$/.test(id)) return t('Cristal Z: um golpe do tipo dele vira Movimento Z (uma vez por batalha)')
+  if (/ite(-[xy])?$/.test(id) && id !== 'eviolite') return t('Mega Pedra: o Pokémon dela megaevolui (uma vez por batalha)')
+  return ''
+}
