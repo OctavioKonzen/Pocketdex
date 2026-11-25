@@ -36,8 +36,30 @@ class SpriteBoxes {
   static List<int>? of(Object id) => _boxes['$id'];
 }
 
+/// As formas só de sprite (como nos jogos): Deerling e Sawsbuck mudam com a estação (uma por mês, como no Black &
+/// White; a primavera é a normal) e o Cherrim no sol forte abre as pétalas (a batalha passa 'sunshine'). Igual ao site.
+class SpriteVariant {
+  SpriteVariant._();
+  static const seasonForms = [585, 586];
+  static String seasonNow([DateTime? date]) => const ['spring', 'summer', 'autumn', 'winter'][((date ?? DateTime.now()).month - 1) % 4];
+
+  /// A variante desse Pokémon agora ('' sem); [variant] já escolhida (a da batalha) vale primeiro.
+  static String of(int? id, [String variant = '']) {
+    if (variant.isNotEmpty || id == null) return variant;
+    if (!seasonForms.contains(id)) return '';
+    final season = seasonNow();
+    return season == 'spring' ? '' : season;
+  }
+
+  /// O Cherrim no sol forte (Flower Gift): a forma Sunshine.
+  static String battle(int id, String weather) => id == 421 && weather == 'sun' ? 'sunshine' : '';
+}
+
 class PokemonSprite extends StatelessWidget {
   final Object id;
+
+  /// A forma só de sprite ('sunshine' do Cherrim na batalha); a da estação vem sozinha.
+  final String variant;
   final bool shiny;
 
   /// Quanto da caixa o Pokémon ocupa (0 a 1).
@@ -76,7 +98,8 @@ class PokemonSprite extends StatelessWidget {
       this.prefetchShiny = false,
       this.crown,
       this.crystal,
-      this.lite = false});
+      this.lite = false,
+      this.variant = ''});
 
   /// Em grades grandes (Pokédex, PC, troca): o sprite parado do app, sem baixar nem animar o GIF (celular fraco).
   final bool lite;
@@ -92,10 +115,10 @@ class PokemonSprite extends StatelessWidget {
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back);
+        final source = AnimatedSprites.instance.source(pid, shiny: shiny, back: back, variant: SpriteVariant.of(pid, variant));
         if (source == null) {
           // Sem as costas: a frente (animada, se tiver) espelhada.
-          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle, crown: crown, crystal: crystal));
+          if (back) return Transform.flip(flipX: true, child: PokemonSprite(id, shiny: shiny, fill: fill, alignBottom: alignBottom, battle: battle, crown: crown, crystal: crystal, variant: variant));
           return still;
         }
         if (prefetchShiny) {
@@ -112,7 +135,10 @@ class PokemonSprite extends StatelessWidget {
     final box = SpriteBoxes.of(id);
     Widget image(double width, [double? height]) {
       final img = Image.asset(
-        AppImages.pokemonSprite(id, shiny: shiny),
+        AppImages.pokemonSprite(() {
+          final v = SpriteVariant.of(id is int ? id as int : int.tryParse('$id'), variant);
+          return v.isEmpty ? id : '$id-$v';
+        }(), shiny: shiny),
         width: width,
         height: height ?? width,
         // O padrão (scaleDown) nunca amplia: aqui o sprite precisa crescer.

@@ -898,6 +898,13 @@ export function setForm(run, data, index, id, night = null) {
   return { ...run, team: run.team.map((m, i) => (i === index ? { ...m, id } : m)) }
 }
 
+/**
+ * O Rockruff evolui no Lycanroc da hora (como nos jogos): de dia o do Meio-Dia (745), à noite o da Meia-Noite
+ * (10126) e no crepúsculo o do Crepúsculo (10152). Só quem acabou de virar o do Meio-Dia muda. Igual ao app.
+ */
+export const TIME_EVOLVE = { 745: { night: 10126, dusk: 10152 } }
+export const timeEvolve = (id, night, dusk) => (TIME_EVOLVE[id] ? (night ? TIME_EVOLVE[id].night : dusk ? TIME_EVOLVE[id].dusk : id) : id)
+
 /** Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao app. */
 export function withShedinja(run, before, after, rand) {
   const out = [...after]
@@ -3319,6 +3326,13 @@ export function winFloor(run, data, after = {}) {
     levels.push({ index, from: m.level, to: m.level, evolved: id, friend: true })
     return { ...m, id, friendship }
   })
+  // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
+  out.team = out.team.map((m, index) => {
+    const id = timeEvolve(m.id, after.night, after.dusk)
+    if (id === m.id || !levels.some((l) => l.index === index && l.evolved === m.id)) return m
+    levels.forEach((l, k) => { if (l.index === index && l.evolved === m.id) levels[k] = { ...l, evolved: id } })
+    return { ...m, id }
+  })
   // Evoluções especiais (Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch'd de Galar com 3 críticos).
   let flipped = false
   out.team = out.team.map((m, index) => {
@@ -4170,7 +4184,8 @@ export function habitatOf(data, id, day = null) {
 export function clockOf(date = new Date()) {
   const hour = date.getHours()
   // day: o dia de quem joga (muda à meia-noite; o surto do dia).
-  return { night: hour >= 19 || hour < 6, season: SEASONS[date.getMonth() % 4], day: Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) }
+  // dusk: o crepúsculo (17h e 18h), antes da noite (o Lycanroc do Crepúsculo).
+  return { night: hour >= 19 || hour < 6, dusk: hour >= 17 && hour < 19, season: SEASONS[date.getMonth() % 4], day: Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) }
 }
 
 /** Os lugares a céu aberto: só neles o clima do lugar (chuva, sol forte, areia, neve) acontece sozinho. Igual ao app. */

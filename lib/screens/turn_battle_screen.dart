@@ -457,7 +457,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, crits: after.crits, ball: after.ball, night: FactoryRun.clockOf().night, fled: after.fled, foeHp: after.foeHp)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, crits: after.crits, ball: after.ball, night: FactoryRun.clockOf().night, dusk: FactoryRun.clockOf().dusk, fled: after.fled, foeHp: after.foeHp)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {
@@ -2761,7 +2761,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             PlatformBase(scene: scene, side: 'foe', id: _form[1] ?? foe.id),
                             _PokeOut(
                                 state: _poke[1],
-                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1])),
+                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1], variant: SpriteVariant.battle(_form[1] ?? foe.id, _weather))),
                             if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
                             if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                           ])),
@@ -2776,7 +2776,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             PlatformBase(scene: scene, side: 'mine', id: _form[0] ?? me.id),
                             _PokeOut(
                                 state: _poke[0],
-                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0])),
+                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0], variant: SpriteVariant.battle(_form[0] ?? me.id, _weather))),
                             if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
                             if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                           ])),
@@ -2810,7 +2810,9 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                     dmax: _dmax[side],
                                     tera: _tera[side],
                                     fainted: _fainted[side],
-                                    fallback: _Sprite(key: _sprites[side], mon: side == 1 ? foe : me, id: _form[side] ?? (side == 1 ? foe : me).id, dmax: _dmax[side], tera: _tera[side], back: side == 0, fainted: _fainted[side]),
+                                    // O Cherrim no sol forte abre as pétalas. Igual ao site.
+                                    variant: SpriteVariant.battle(_form[side] ?? (side == 1 ? foe : me).id, _weather),
+                                    fallback: _Sprite(key: _sprites[side], mon: side == 1 ? foe : me, id: _form[side] ?? (side == 1 ? foe : me).id, dmax: _dmax[side], tera: _tera[side], back: side == 0, fainted: _fainted[side], variant: SpriteVariant.battle(_form[side] ?? (side == 1 ? foe : me).id, _weather)),
                                   ),
                                 ),
                               ),
@@ -4011,8 +4013,9 @@ class _TrainerSlide extends StatelessWidget {
 }
 
 class _PortSprite extends StatelessWidget {
-  const _PortSprite({required this.mon, required this.id, required this.back, required this.dmax, required this.tera, required this.fainted, required this.fallback});
+  const _PortSprite({required this.mon, required this.id, required this.back, required this.dmax, required this.tera, required this.fainted, required this.fallback, this.variant = ''});
   final BattleMon mon;
+  final String variant;
   final int id;
   final bool back, dmax, fainted;
   final String tera;
@@ -4020,13 +4023,13 @@ class _PortSprite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back);
+    final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back, variant: SpriteVariant.of(id, variant));
     if (src == null) return fallback;
     // O Alfa: maior e com o brilho vermelho. Igual ao site.
     final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : null;
     Widget img = Image.network(
       src.url,
-      key: ValueKey('port-sprite-$id-$back'),
+      key: ValueKey('port-sprite-$id-$back-$variant'),
       fit: BoxFit.fill,
       filterQuality: FilterQuality.none,
       gaplessPlayback: true,
@@ -4059,7 +4062,10 @@ class _Sprite extends StatefulWidget {
 
   /// Tipo Tera ('' se não terastalizou).
   final String tera;
-  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false, this.tera = ''});
+  const _Sprite({super.key, required this.mon, required this.id, this.back = false, this.fainted = false, this.dmax = false, this.tera = '', this.variant = ''});
+
+  /// A forma só de sprite (o Cherrim no sol).
+  final String variant;
 
   @override
   State<_Sprite> createState() => _SpriteState();
@@ -4164,11 +4170,12 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
                       imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                       child: ColorFiltered(
                         colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : const Color(0xFFDC2626), BlendMode.srcIn),
-                        child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true),
+                        child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true, variant: widget.variant),
                       ),
                     ),
                   if (widget.tera.isNotEmpty) ..._teraBack(),
                   PokemonSprite(widget.id,
+                      variant: widget.variant,
                       shiny: widget.mon.shiny,
                       back: widget.back,
                       fill: 0.95,
@@ -4193,7 +4200,7 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
 String _teraOf(BattleMon mon) => mon.terastal ? (mon.teraType.isEmpty ? 'normal' : mon.teraType) : '';
 
 extension on _SpriteState {
-  PokemonSprite _plain() => PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true);
+  PokemonSprite _plain() => PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true, variant: widget.variant);
 
   /// Atrás do Pokémon: brilho na cor do tipo em volta do contorno, pulsando.
   List<Widget> _teraBack() {

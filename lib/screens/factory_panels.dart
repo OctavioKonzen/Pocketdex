@@ -6673,7 +6673,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// você no andar de agora e os caminhos abrindo na frente; toque num caminho para ir por ele. Igual ao site (TownMap).
   /// O HUD do mapa (como a faixa do tempo nos jogos): a hora (dia ou noite), o clima e o efeito do lugar (fixos na
   /// rota), a estação, onde o lendário que foge foi visto e o plano da equipe vilã. Igual ao site.
-  Widget _mapHud(Json run, FactoryData data, String scene, ({bool night, String season, int? day}) clock) {
+  Widget _mapHud(Json run, FactoryData data, String scene, ({bool night, bool dusk, String season, int? day}) clock) {
     final sky = FactoryRun.weatherOf(run, scene, clock.season, data);
     final field = FactoryRun.fieldOf(run, scene, data);
     final roam = FactoryRun.roamerSeen(data, run);

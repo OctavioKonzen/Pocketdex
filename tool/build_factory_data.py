@@ -87,6 +87,7 @@ FORM_EVOS = {
     10238: [[10239, 30]], 10241: [[10242, 50]], 10247: [[902, 25]],
     10253: [[980, 20]],
 }
+# O Lycanroc da Noite (10126) e o do Crepúsculo (10152): o Rockruff evolui na forma da hora (factoryRun TIME_EVOLVE).
 # As formas que um item muda (como nos jogos): o Rotom com o catálogo (os aparelhos), o Shaymin com a Gracidea
 # (a Sky Forme) e o Deoxys com o Meteorite (Ataque, Defesa e Velocidade). espécie: [item, [formas]].
 ITEM_FORMS = {
@@ -581,7 +582,7 @@ def main():
     # Os dados das formas regionais (tipos, atributos e XP da forma; captura, raridade e lugares da espécie).
     form_ids = {f for fs in REGIONAL['forms'].values() for f in fs.values()} | {f for fs in REGIONAL['evolveIn'].values() for f in fs.values()} \
         | {t for es in FORM_EVOS.values() for e in es for t in [e[0]] if t > 10000} | set(REGIONAL['femaleForm'].values()) \
-        | {f for _, fs in ITEM_FORMS.values() for f in fs}
+        | {f for _, fs in ITEM_FORMS.values() for f in fs} | {10126, 10152}
     form_species = {}
     for fid in sorted(form_ids):
         rec = records[fid]

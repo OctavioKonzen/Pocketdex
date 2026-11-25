@@ -769,7 +769,9 @@ function TeraCrown({ color }) {
  * tamanho certo, fxStage). Shiny, de costas, Dinamax (maior, contorno vermelho), Tera (brilho na cor do tipo) e
  * desmaiado (desce e some). Sem o GIF, o sprite de sempre.
  */
-const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = '', fainted }, ref) {
+/** O Cherrim no sol forte abre as pétalas (Flower Gift, a forma Sunshine; só o sprite muda). Igual ao app. */
+export const spriteVariant = (id, weather) => (id === 421 && weather === 'sun' ? 'sunshine' : '')
+const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = '', fainted, variant = '' }, ref) {
   const [failed, setFailed] = useState(false)
   const kind = back ? (mon.shiny ? 'back-shiny' : 'back') : mon.shiny ? 'shiny' : 'front'
   // O Alfa: maior e com o brilho vermelho (como em Legends: Arceus). Igual ao app.
@@ -778,9 +780,9 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
     <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
       <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
         {failed ? (
-          <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}.png`) : `pokemon/${id}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />
+          <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}${variant ? `-${variant}` : ''}.png`) : `pokemon/${id}${variant ? `-${variant}` : ''}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />
         ) : (
-          <img src={spriteUrl(`animated/${kind}/${id}.gif`)} alt={mon.name} draggable={false} onError={() => setFailed(true)} className="pixelated pointer-events-none h-full w-full" data-testid="port-sprite" />
+          <img key={variant} src={spriteUrl(`animated/${kind}/${id}${variant ? `-${variant}` : ''}.gif`)} alt={mon.name} draggable={false} onError={() => setFailed(true)} className="pixelated pointer-events-none h-full w-full" data-testid="port-sprite" />
         )}
       </div>
     </div>
@@ -789,7 +791,7 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
 
 /** O Alfa: maior e com o brilho vermelho em volta (os olhos vermelhos de Legends: Arceus). Igual ao app. */
 const ALPHA_STYLE = { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 3px #dc2626) drop-shadow(0 0 7px rgba(220, 38, 38, 0.6))' }
-const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId }, ref) {
+const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId, variant = '' }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
   // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
@@ -805,7 +807,7 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
         <div ref={ref} className={`relative h-full w-full ${teraColor ? 'tera-glow' : ''}`} style={teraColor ? { '--tera': teraColor } : undefined} data-tera={tera || undefined}>
-          {p && <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle alt={mon.name} crown={teraColor ? <TeraCrown color={teraColor} /> : null} crystal={teraColor} />}
+          {p && <Sprite key={`${p.id}-${mon.shiny}-${variant}`} path={(mon.shiny ? shinyPath(p.sprite) : p.sprite).replace(/\.png$/, variant ? `-${variant}.png` : '.png')} box={p.box} fill={0.95} align="bottom" back={back} battle alt={mon.name} crown={teraColor ? <TeraCrown color={teraColor} /> : null} crystal={teraColor} />}
         </div>
       </div>
     </div>
@@ -1844,7 +1846,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
               <div key={side} className={side === 1 ? 'absolute right-[11%] w-[26%]' : 'absolute bottom-[22%] left-[1%] w-[58%]'} style={side === 1 ? { bottom: `${foeBottom(scene) * 100}%` } : undefined}>
                 <PlatformBase scene={scene} side={side === 1 ? 'foe' : 'mine'} scale={battleScale(byId?.get(id)?.height)} />
                 <div className={`poke-${poke[side] || 'shown'}`}>
-                  <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} />
+                  <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} variant={spriteVariant(id, shown.weather)} />
                 </div>
                 {extras}
               </div>
@@ -1859,7 +1861,7 @@ waiting && !locked && menu === 'fight' ? <MenuButton onClick={() => setMenu('mai
               <div className="port-shadow pointer-events-none absolute" style={{ left: pct(spot.x - spot.box.w * 0.4, W0), top: pct(spot.y - spot.box.w * 0.08, H0), width: pct(spot.box.w * 0.8, W0), height: pct(spot.box.w * 0.16, H0) }} />
               <div className="absolute" style={{ left: pct(spot.box.left, W0), top: pct(spot.box.top, H0), width: pct(spot.box.w, W0), height: pct(spot.box.h, H0) }} data-testid={`port-${side === 1 ? 'foe' : 'me'}`}>
                 <div className={`poke-${poke[side] || 'shown'} h-full w-full`}>
-                  <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} />
+                  <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} variant={spriteVariant(id, shown.weather)} />
                 </div>
                 {extras}
               </div>

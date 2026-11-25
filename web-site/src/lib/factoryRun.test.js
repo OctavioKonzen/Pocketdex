@@ -10,7 +10,7 @@ import {
   isDoubleBattle,
   DOUBLE_FLOOR,
   battleOrder, blindPick, bossGimmick, bossOf, UPGRADE_TREE, bossScene, routeBiome, bossTeam, buyItem, buyPokemon, capture, CARDS, emptyFactory, encounterFor, endRun, expAt, expFor, foeBoostAt, RARE_PLACES, atPc, pcOf, pcMove, pcSlots, PC_BOX, boxName, renameBox, boxWall, nextWall, setNick, gameOf, leagueAhead, rivalGrowth, sortBox, shownScene, bagsFor, NUZLOCKE_DEFAULT, levelCapOf, EXP_BENCH, benchShare, TRADE_EXP, TRADE_EVOS, familyOf, townTrade, townTradeable, featuresOf, climateOf, RODS, rodOf, fishPath, headbuttPath, slatherHoney, honeyReady, honeyPath, TREE_MONS, HONEY_FLOORS, plantBerry, harvestBerry, BERRIES, BERRY_FLOORS, BERRY_RAIN_FLOORS, BERRY_YIELD, bikePath, bikeUses, FERRY, HORDE_SIZE, HORDE_FLOOR, SKY_FIELDS, FIELD_TYPES, takePhoto, photoNow, PHOTO_MAX, GYM_PUZZLES, GYM_CHALLENGES, SUPER_EFFECTIVE, gymPuzzleOf, startPuzzle, puzzleAct, finishPuzzle, puzzleView, puzzleOfType, PUZZLE_MONEY, GYM_EDGE_LEVELS, priceScale, inTown, isCity, townScene, WEATHER_TYPES, SAND_SCENES, SNOW_SCENES, SCENE_WEATHER, OPEN_SCENES, waterReach, hasWaterfall, WATER_REACH, daycareHere, daycareOpen, rarePlacesOf, SECRET_BIOMES, PLACE_SCENES, hasKey, KEY_ITEMS, placeLegendOf, blockerOf, townGifts, takeGift, cornerOf, buyCoins, spinSlots, cornerPrize, CORNER_PACK, CORNER_PACK_PRICE, CORNER_SPIN, storeOf, enterStore, tutorsOf, townReminder, forgetMove, reminderCost, SAFARI_FEE, SAFARI_BALLS, SAFARI_ENCOUNTERS, SAFARI_MONS, safariRates, safariAct, safariPool, leaveSafari, foeEvsAt, GAME_TIER, tierFoes, cardPower, cardText, foeLevelAt, foeMember,
-  HELD_BOOST, levelTo, feedPuff, AMIE_PUFF, habitatOf, campMeal, mealLeft, CAMP_FLOORS, itemFormsOf, formItemOf, setForm, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
+  HELD_BOOST, levelTo, timeEvolve, feedPuff, AMIE_PUFF, habitatOf, campMeal, mealLeft, CAMP_FLOORS, itemFormsOf, formItemOf, setForm, flipWaiting, flipScreen, CRIT_EVOLVE, MAX_TEAM, memberOf, movesAt, nextFloor, nextRandom, overflowPoints, pokemonPrice, runCoins, setMainItem, shopPrice,
   SHINY_BOOST, FOE_SHINY_BOOST, SHINY_CHANCE, START_BAG, START_BALLS, startersOf, unlockShiny, claimStarter, freePick, canEvolveWith, teachMove,
   equipFromStash, gimmicksOf, setGimmick, storyLine, sceneRegion, startRun, takeCard, teamDown, applyBagItem, winFloor, chooseNode as chooseNodeRaw, routeOptions, gymLocked, routeCities,
   captureFor, dexBook, factoryOf, BIOMES, isBattleNode, skipCapture, FORKS, ROUTE_LENGTH, BALL_TIERS, HEAL_TIERS, tierPick, minLevelOf, devolve,
@@ -1183,9 +1183,10 @@ describe('mapa da corrida', () => {
       expect(BIOME_IDS).toContain(b)
       expect(Object.values(data.species).some((s) => s[6].includes(b))).toBe(true)
     }
-    expect(clockOf(new Date(2026, 0, 10, 21))).toEqual({ night: true, season: 'spring', day: 20463 })
-    expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, season: 'winter', day: 20553 })
-    expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, season: 'summer', day: 20739 })
+    expect(clockOf(new Date(2026, 0, 10, 21))).toEqual({ night: true, dusk: false, season: 'spring', day: 20463 })
+    expect(clockOf(new Date(2026, 3, 10, 12))).toEqual({ night: false, dusk: false, season: 'winter', day: 20553 })
+    expect(clockOf(new Date(2026, 9, 13, 5))).toEqual({ night: true, dusk: false, season: 'summer', day: 20739 })
+    expect(clockOf(new Date(2026, 0, 10, 17, 30)).dusk).toBe(true)
     expect(SEASON_TYPES.winter).toEqual(['ice'])
     // Nunca neva no campo, nem no inverno (neve só onde é lugar de neve).
     const base = startRun(emptyFactory(), data, 1, 42)
@@ -1504,6 +1505,26 @@ describe('ideias: amizade, habilidades fora da batalha, Nuzlocke', () => {
     expect(feedPuff({ ...fed, floor: run.floor + 1 }, 0).team[0].friendship).toBe(3 + 2 * AMIE_PUFF)
     expect(feedPuff(run, 1)).toBe(null)
     expect(feedPuff({ ...run, encounter: { kind: 'wild', foes: [] } }, 0)).toBe(null)
+  })
+
+  it('formas da hora e da estação: Lycanroc pela hora, Deerling/Sawsbuck pela estação (sprite)', async () => {
+    // No andar 40 (o limite de nível do andar deixa ele subir).
+    const run = { ...base(), floor: 40, encounter: { kind: 'trainer', foes: [{ id: 19, level: 30, iv: 0, ev: 0 }] } }
+    const rockruff = { ...run, team: [{ ...run.team[0], id: 744, level: 24, exp: expAt(25) - 1, friendship: 0 }] }
+    const win = (clock) => winFloor(rockruff, data, { gained: [10], ...clock })
+    expect(win({ night: false, dusk: false }).team[0].id).toBe(745)
+    expect(win({ night: true, dusk: false }).team[0].id).toBe(10126)
+    expect(win({ night: false, dusk: true }).team[0].id).toBe(10152)
+    expect(win({ night: true }).pending.levels.some((l) => l.evolved === 10126)).toBe(true)
+    // Um Lycanroc do Meio-Dia que já estava no time não muda à noite.
+    expect(winFloor({ ...run, team: [{ ...run.team[0], id: 745, level: 40, friendship: 0 }] }, data, { night: true }).team[0].id).toBe(745)
+    expect(timeEvolve(745, false, false)).toBe(745)
+    const { seasonalPath } = await import('./data.js')
+    expect(seasonalPath('pokemon/585.png', new Date(2026, 0, 5))).toBe('pokemon/585.png')
+    expect(seasonalPath('pokemon/585.png', new Date(2026, 1, 5))).toBe('pokemon/585-summer.png')
+    expect(seasonalPath('animated/back-shiny/586.gif', new Date(2026, 2, 5))).toBe('animated/back-shiny/586-autumn.gif')
+    expect(seasonalPath('pokemon/shiny/585.png', new Date(2026, 3, 5))).toBe('pokemon/shiny/585-winter.png')
+    expect(seasonalPath('pokemon/25.png', new Date(2026, 1, 5))).toBe('pokemon/25.png')
   })
 
   it('Pokédex de habitat: onde vive, só de dia ou à noite e o surto de hoje', () => {

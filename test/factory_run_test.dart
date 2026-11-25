@@ -7,10 +7,11 @@ import 'package:pocket_dex/services/damage_calc.dart';
 import 'package:pocket_dex/services/factory_run.dart';
 import 'package:pocket_dex/services/league.dart';
 import 'package:pocket_dex/services/turn_battle.dart';
+import 'package:pocket_dex/widgets/pokemon_sprite.dart';
 
 /// O desafio do ginásio é obrigatório: nos testes que vão até o líder, quem joga vence o desafio antes (como um jogador).
 /// Igual ao site (clearGym).
-Json _choose(Json run, FactoryData data, int i, [({bool night, String season, int? day})? clock]) {
+Json _choose(Json run, FactoryData data, int i, [({bool night, bool dusk, String season, int? day})? clock]) {
   final options = (run['route'] as Map?)?['options'] as List?;
   final node = options != null && i >= 0 && i < options.length ? options[i] as Map : null;
   final r = FactoryRun.gymLocked(data, run, node) ? {...run, 'gymEdge': {'leg': FactoryRun.legOf(run), 'won': true}} : run;
@@ -1659,9 +1660,9 @@ void main() {
       expect(FactoryRun.biomeIds, contains(b));
       expect(data.species.values.any((s) => (s[6] as List).contains(b)), isTrue);
     }
-    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 21)), (night: true, season: 'spring', day: 20463));
-    expect(FactoryRun.clockOf(DateTime(2026, 4, 10, 12)), (night: false, season: 'winter', day: 20553));
-    expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, season: 'summer', day: 20739));
+    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 21)), (night: true, dusk: false, season: 'spring', day: 20463));
+    expect(FactoryRun.clockOf(DateTime(2026, 4, 10, 12)), (night: false, dusk: false, season: 'winter', day: 20553));
+    expect(FactoryRun.clockOf(DateTime(2026, 10, 13, 5)), (night: true, dusk: false, season: 'summer', day: 20739));
     final base = FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!;
     final floors = [for (var k = 0; k < 40; k++) {...base, 'floor': k + 1}];
     expect(floors.any((r) => FactoryRun.weatherOf(r, 'grass', 'winter') == 'snow'), isFalse);
@@ -1675,7 +1676,7 @@ void main() {
           'floor': 40,
           'route': {'floor': 40, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
         };
-        final out = _choose(run, data, 0, night ? (night: true, season: 'spring', day: null) : null);
+        final out = _choose(run, data, 0, night ? (night: true, dusk: false, season: 'spring', day: null) : null);
         n += (out['encounter']['foes'] as List).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
       }
       return n;
@@ -2015,6 +2016,15 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.feedPuff({...fed, 'floor': (amieRun['floor'] as num).toInt() + 1}, 0)!)[0]['friendship'], 3 + 2 * FactoryRun.amiePuff);
     expect(FactoryRun.feedPuff(amieRun, 1), isNull);
     expect(FactoryRun.feedPuff({...amieRun, 'encounter': {'kind': 'wild', 'foes': []}}, 0), isNull);
+    // O Lycanroc na forma da hora (no andar 40: o limite de nível deixa ele subir). Igual ao site.
+    final rr = {...base(), 'floor': 40, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 30, 'iv': 0, 'ev': 0}]}};
+    final rockruff = {...rr, 'team': [{...first, 'id': 744, 'level': 24, 'exp': FactoryRun.expAt(25) - 1, 'friendship': 0}]};
+    int lyc({bool? night, bool? dusk}) => FactoryRun.teamOf(FactoryRun.winFloor(rockruff, data, gained: [10], night: night, dusk: dusk)).first['id'] as int;
+    expect([lyc(night: false, dusk: false), lyc(night: true, dusk: false), lyc(night: false, dusk: true)], [745, 10126, 10152]);
+    expect(FactoryRun.teamOf(FactoryRun.winFloor({...rr, 'team': [{...first, 'id': 745, 'level': 40, 'friendship': 0}]}, data, night: true)).first['id'], 745);
+    expect(FactoryRun.clockOf(DateTime(2026, 1, 10, 17, 30)).dusk, isTrue);
+    expect([SpriteVariant.seasonNow(DateTime(2026, 1, 5)), SpriteVariant.seasonNow(DateTime(2026, 2, 5)), SpriteVariant.seasonNow(DateTime(2026, 4, 5))], ['spring', 'summer', 'winter']);
+    expect([SpriteVariant.battle(421, 'sun'), SpriteVariant.battle(421, 'rain'), SpriteVariant.battle(25, 'sun')], ['sunshine', '', '']);
     // A Pokédex de habitat: onde vive, só de dia ou à noite e o surto de hoje. Igual ao site.
     final pidgey = FactoryRun.habitatOf(data, 16);
     expect([pidgey.places, pidgey.time, pidgey.outbreak], [[for (final b in data.species[16]![6] as List) '$b'], 'day', false]);

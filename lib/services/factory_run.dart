@@ -1071,6 +1071,14 @@ class FactoryRun {
     return {...run, 'team': [for (var i = 0; i < team.length; i++) i == index ? {...team[i], 'id': id} : team[i]]};
   }
 
+  /// O Rockruff evolui no Lycanroc da hora (como nos jogos): de dia o do Meio-Dia (745), à noite o da Meia-Noite
+  /// (10126) e no crepúsculo o do Crepúsculo (10152). Só quem acabou de virar o do Meio-Dia muda. Igual ao site.
+  static const timeEvolveForms = {745: (night: 10126, dusk: 10152)};
+  static int timeEvolve(int id, bool? night, bool? dusk) {
+    final f = timeEvolveForms[id];
+    return f == null ? id : night == true ? f.night : dusk == true ? f.dusk : id;
+  }
+
   /// Shedinja: quando o Nincada vira Ninjask com vaga no time, ele aparece junto (como nos jogos). Igual ao site.
   static List<Json> withShedinja(Json run, List<Json> before, List<Json> after, double Function() rand) {
     final out = [...after];
@@ -2605,7 +2613,7 @@ class FactoryRun {
   }
 
   /// Escolhe o caminho: batalha (o encontro do andar) ou, sem batalha, Poké Mart, Centro Pokémon e eventos. Igual ao site.
-  static Json chooseNode(Json run, FactoryData data, int index, [({bool night, String season, int? day})? clock]) {
+  static Json chooseNode(Json run, FactoryData data, int index, [({bool night, bool dusk, String season, int? day})? clock]) {
     final options = (run['route']?['options'] as List?) ?? const [];
     if (index < 0 || index >= options.length || run['encounter'] != null || run['pending'] != null) return run;
     var node = Map<String, dynamic>.from(options[index] as Map);
@@ -3271,6 +3279,7 @@ class FactoryRun {
       List<int>? crits,
       String? ball,
       bool? night,
+      bool? dusk,
       bool fled = false,
       double? foeHp}) {
     final out = _copy(run);
@@ -3362,6 +3371,16 @@ class FactoryRun {
       out['friendEvos'] = ((out['friendEvos'] as num?) ?? 0).toInt() + 1;
       levels.add({'index': i, 'from': m['level'], 'to': m['level'], 'evolved': id, 'friend': true});
       team[i] = {...m, 'id': id, 'friendship': friendship};
+    }
+    // O Lycanroc na forma da hora: de dia o do Meio-Dia, à noite o da Meia-Noite, no crepúsculo o do Crepúsculo.
+    for (var i = 0; i < team.length; i++) {
+      final from = _int(team[i]['id']);
+      final id = timeEvolve(from, night, dusk);
+      if (id == from || !levels.any((l) => l['index'] == i && l['evolved'] == from)) continue;
+      for (var k = 0; k < levels.length; k++) {
+        if (levels[k]['index'] == i && levels[k]['evolved'] == from) levels[k] = {...levels[k], 'evolved': id};
+      }
+      team[i] = {...team[i], 'id': id};
     }
     // Evoluções especiais (Inkay com a tela virada, Pancham com um Sombrio no time, Farfetch'd de Galar com 3 críticos).
     var flipped = false;
@@ -5763,11 +5782,12 @@ class FactoryRun {
         outbreak: day != null && outbreakOf(data, day) == id,
       );
 
-  static ({bool night, String season, int? day}) clockOf([DateTime? date]) {
+  static ({bool night, bool dusk, String season, int? day}) clockOf([DateTime? date]) {
     final now = date ?? DateTime.now();
-    // day: o dia de quem joga (muda à meia-noite; o surto do dia).
+    // day: o dia de quem joga (muda à meia-noite; o surto do dia). dusk: o crepúsculo (17h e 18h), antes da noite.
     return (
       night: now.hour >= 19 || now.hour < 6,
+      dusk: now.hour >= 17 && now.hour < 19,
       season: seasons[(now.month - 1) % 4],
       day: DateTime.utc(now.year, now.month, now.day).millisecondsSinceEpoch ~/ 86400000,
     );

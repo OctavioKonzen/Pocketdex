@@ -54,11 +54,14 @@ class _Set {
     stand = byId((raw['stand'] as Map?)?['front'], (v) => [for (final x in v as List) (x as num).toDouble()]);
   }
 
-  SpriteSource source(String kind, int id) {
+  /// [variant]: a forma só de sprite (o Deerling do verão, o Cherrim no sol): o mesmo encaixe da normal.
+  SpriteSource source(String kind, int id, [String variant = '']) {
     final v = hash[kind]![id];
     final wh = size[kind]![id];
     return (
-      url: '${AnimatedSprites.site}/sprites/$folder/$kind/$id.gif${v == null ? '' : '?v=$v'}',
+      url: variant.isEmpty
+          ? '${AnimatedSprites.site}/sprites/$folder/$kind/$id.gif${v == null ? '' : '?v=$v'}'
+          : '${AnimatedSprites.site}/sprites/$folder/$kind/$id-$variant.gif',
       fit: fit[kind]![id] ?? const [1, 0, 0, 1, 1],
       foot: foot[kind]![id] ?? 0,
       width: wh == null ? 0 : wh[0],
@@ -120,14 +123,14 @@ class AnimatedSprites {
   /// O sprite desse Pokémon, ou null (fica o parado).
   /// De costas: se as costas são só a arte parada e a frente é animada, null
   /// (quem desenha espelha a frente, que se mexe).
-  SpriteSource? source(int id, {bool shiny = false, bool back = false}) {
+  SpriteSource? source(int id, {bool shiny = false, bool back = false, String variant = ''}) {
     final kind = _kind(shiny, back);
     if (!_bw.have[kind]!.contains(id)) return null;
     if (back && _bw.still[kind]!.contains(id)) {
       final front = _kind(shiny, false);
       if (_bw.have[front]!.contains(id) && !_bw.still[front]!.contains(id)) return null;
     }
-    return _bw.source(kind, id);
+    return _bw.source(kind, id, variant);
   }
 
   /// Quanto do lado da caixa o Pokémon ocupa de verdade, de frente, fora da batalha (com fill 1): [largura, altura]

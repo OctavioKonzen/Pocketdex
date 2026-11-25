@@ -38,7 +38,20 @@ export function spriteUrl(path) {
   if (!path) return null
   // As artes oficiais estão em WebP no banco.
   const file = path.startsWith('pokemon/other/official-artwork/') ? path.replace(/\.png$/, '.webp') : path
-  return `${BASE}sprites/${file}`
+  return `${BASE}sprites/${seasonalPath(file)}`
+}
+
+/**
+ * Deerling e Sawsbuck mudam com a estação (como no Black & White: uma por mês, primavera, verão, outono e inverno, a
+ * mesma conta do clockOf da corrida). O sprite da primavera é o normal. Igual ao app.
+ */
+export const SEASON_FORMS = [585, 586]
+export const seasonNow = (date = new Date()) => ['spring', 'summer', 'autumn', 'winter'][date.getMonth() % 4]
+export function seasonalPath(file, date = new Date()) {
+  const m = /^(pokemon\/(?:shiny\/)?|animated\/[a-z-]+\/)(\d+)\.(png|gif)$/.exec(file)
+  if (!m || !SEASON_FORMS.includes(Number(m[2]))) return file
+  const season = seasonNow(date)
+  return season === 'spring' ? file : `${m[1]}${m[2]}-${season}.${m[3]}`
 }
 
 export const imageUrl = (name) => `${BASE}img/${name}`
