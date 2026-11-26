@@ -176,8 +176,49 @@ def rocks(a, seed, n, y0, y1, base, light, dark, smin=10, smax=40):
     return layer(a, fn)
 
 
+_CANOPY = {}
+
+
+def canopy_sprite(size, dark, mid, light, seed):
+    """Copa como no BW2: um monte de esferas de folhagem iluminado de cima à esquerda e reduzido a poucos tons (os
+    degraus de cor), com a parte de baixo das folhas mais escura. RGBA do tamanho da copa (cache)."""
+    key = (int(size), dark, mid, light, seed % 6)
+    if key in _CANOPY:
+        return _CANOPY[key]
+    rnd = random.Random(seed % 6 * 131 + 7)
+    s = max(8, int(size * 2.2))
+    w, h = s, int(s * 0.9)
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    z = np.full((h, w), -1e9, np.float32)
+    for _ in range(14):
+        a = rnd.uniform(0, 2 * math.pi); dd = rnd.uniform(0, 0.3) * w
+        cx, cy, r = w / 2 + math.cos(a) * dd, h * 0.5 + math.sin(a) * dd * 0.5, w * rnd.uniform(0.15, 0.22)
+        d2 = (xs - cx) ** 2 + (ys - cy) ** 2
+        z = np.maximum(z, np.where(d2 < r * r, np.sqrt(np.maximum(0, r * r - d2)), -1e9))
+    m = z > -1e8
+    zz = np.where(m, z, 0) + noise(5, seed % 6 + 900, 3, 1.0, w, h) * w * 0.05
+    gy, gx = np.gradient(zz)
+    nrm = np.dstack([-gx, -gy, np.ones_like(zz)])
+    nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
+    L = np.array([-0.55, -0.65, 0.52], np.float32)
+    lam = np.clip(nrm @ (L / np.linalg.norm(L)), 0, 1)
+    top, bot = ys[m].min(), ys[m].max()
+    v = lam * 0.85 + 0.25 - np.clip((ys - top) / max(1, bot - top), 0, 1) ** 2.2 * 0.45
+    pal = [np.asarray(dark, np.float32) * 0.8, np.asarray(dark, np.float32), np.asarray(mid, np.float32), mix(np.asarray(mid, np.float32), np.asarray(light, np.float32), 0.5), np.asarray(light, np.float32)]
+    k = np.clip((v * len(pal)).astype(int), 0, len(pal) - 1)
+    out = np.zeros((h, w, 4), np.uint8)
+    out[m, :3] = np.clip(np.array(pal)[k[m]], 0, 255).astype(np.uint8)
+    out[m, 3] = 255
+    _CANOPY[key] = Image.fromarray(out, 'RGBA')
+    return _CANOPY[key]
+
+
 def canopy(d, x, y, size, dark, mid, light, rnd):
-    """Copa de árvore: bolhas sobrepostas, escura embaixo, borda iluminada em cima à esquerda."""
+    """Copa de árvore (estilo BW2: esferas de folhagem com luz de cima à esquerda, em poucos tons)."""
+    sp = canopy_sprite(size, tuple(dark[:3]), tuple(mid[:3]), tuple(light[:3]), rnd.randrange(1000))
+    d._image.alpha_composite(sp, (int(x - sp.width / 2), int(y - sp.height * 0.6)))
+    return
+
     blobs = [(rnd.uniform(-0.7, 0.7) * size, rnd.uniform(-1.0, 0.2) * size, rnd.uniform(0.32, 0.6) * size) for _ in range(12)]
     for ox, oy, r in blobs:
         d.ellipse([x + ox - r, y + oy - r, x + ox + r, y + oy + r], fill=dark)
@@ -185,6 +226,19 @@ def canopy(d, x, y, size, dark, mid, light, rnd):
         d.ellipse([x + ox - r * 0.85 - r * 0.12, y + oy - r * 0.85 - r * 0.15, x + ox + r * 0.6, y + oy + r * 0.5], fill=mid)
     for ox, oy, r in blobs[:6]:
         d.ellipse([x + ox - r * 0.7, y + oy - r * 0.8, x + ox - r * 0.05, y + oy - r * 0.2], fill=light)
+
+
+def trees_at(a, seed, xs, y, size, colors, trunk=(40, 30, 24)):
+    """Árvores só nos lugares dados (nunca no meio do caminho ou da avenida)."""
+    rnd = random.Random(seed)
+    dark, mid, light = [tuple(int(v) for v in c) + (255,) for c in colors]
+
+    def fn(d):
+        for x in xs:
+            s = size * rnd.uniform(0.9, 1.1)
+            d.rectangle([x - s * 0.07, y - s * 0.3, x + s * 0.07, y + s * 0.15], fill=trunk + (255,))
+            canopy(d, x, y - s * 0.55, s, dark, mid, light, rnd)
+    return layer(a, fn)
 
 
 def treeline(a, seed, y, size, colors, gap=1.0, trunk=(40, 30, 24), blur=0, haze=None, haze_k=0.0):
@@ -288,8 +342,12 @@ def platform(a, spec, scale=3):
 def finish(a, grain_seed=1):
     """Vinheta, grão e um pouco de nitidez (acabamento pintado)."""
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    v = 1 - 0.28 * (((xx - W / 2) / (W / 2)) ** 2 * 0.6 + ((yy - H / 2) / (H / 2)) ** 2 * 0.4)
-    a = a * np.clip(v, 0.6, 1)[..., None]
+    v = 1 - 0.1 * (((xx - W / 2) / (W / 2)) ** 2 * 0.6 + ((yy - H / 2) / (H / 2)) ** 2 * 0.4)
+    a = a * np.clip(v, 0.8, 1)[..., None]
+    # As cores do BW2: mais saturadas e um pouco mais claras (o cenário do DS é vivo, não apagado).
+    g = a.mean(axis=2, keepdims=True)
+    a = g + (a - g) * 1.18
+    a = a * 1.04 + 4
     a = a + (np.random.default_rng(grain_seed).random((H, W, 1), np.float32) - 0.5) * 6
     im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).filter(ImageFilter.UnsharpMask(1.2, 60, 2))
     return im
@@ -451,7 +509,7 @@ def weather(a, w, scene):
 
 def grass():
     a = vgrad([(0, rgb('2d5fa8')), (0.55, rgb('7fb3e6')), (1, rgb('d8ecff'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 90, y - 18, x + 90, y + 18], fill=(255, 255, 255, 150)) for x, y in ((120, 60), (380, 40), (640, 80), (760, 30))], 14)
+    a = cumulus(a, ((120, 60), (420, 44), (690, 76)), 0.75, 3)
     a = mountains(a, 3, HORIZON - 30, 70, rgb('9db7d8'), rgb('7d9cc0'), rgb('c8dcf2'), 0.5, 0.5, 10, blur=2)
     a = treeline(a, 5, HORIZON + 4, 34, ((40, 92, 60), (60, 124, 70), (110, 170, 96)), 1.0, haze=rgb('a8c8e0'), haze_k=0.35, blur=0.8)
     a = ground(a, HORIZON, rgb('7dc062'), rgb('3b7f2f'), 11, 5, 0.14, spots=(rgb('9a8a5a'), 0.35))
@@ -462,27 +520,24 @@ def grass():
 
 
 def forest():
-    a = vgrad([(0, rgb('0c1a2e')), (1, rgb('25456a'))], 0, HORIZON + 40)
-    a = moon(a, W * 0.72, 50, 18)
-    a = stars(a, 21, 60, HORIZON - 40)
-    for i, (y, s, k) in enumerate(((HORIZON - 20, 50, 0.65), (HORIZON + 10, 70, 0.4))):
-        a = treeline(a, 22 + i, y, s, ((14, 40, 40), (24, 64, 58), (50, 104, 90)), 0.95, haze=rgb('2a4f78'), haze_k=k, blur=2 - i)
-    # Cachoeira e lago lá no fundo.
-    a = layer(a, lambda d: (d.rectangle([W * 0.6, HORIZON - 80, W * 0.66, HORIZON + 10], fill=(150, 200, 240, 220)), d.ellipse([W * 0.45, HORIZON - 4, W * 0.85, HORIZON + 26], fill=(60, 110, 170, 230))), 2)
-    a = glow(a, W * 0.63, HORIZON - 20, 60, (80, 140, 220), 0.4)
-    a = ground(a, HORIZON + 14, rgb('2f5a4a'), rgb('16302a'), 23, 4, 0.18, spots=(rgb('4a4232'), 0.4))
-    # Troncos grossos dos lados (perto).
-    a = layer(a, lambda d: (d.polygon([(0, 0), (90, 0), (120, HORIZON + 90), (60, HORIZON + 110), (0, HORIZON + 100)], fill=(30, 36, 40, 255)), d.polygon([(W - 70, 0), (W, 0), (W, HORIZON + 80), (W - 100, HORIZON + 70)], fill=(28, 34, 38, 255))))
-    a = treeline(a, 25, -10, 90, ((16, 44, 40), (26, 70, 60), (48, 104, 86)), 0.8)
-    a = rocks(a, 26, 7, HORIZON + 30, H * 0.6, rgb('3a4a50'), rgb('5a7078'), rgb('101818'), 8, 26)
-    # Cogumelos brilhando.
-    rnd = random.Random(27)
-    spots = [(rnd.uniform(0, W * 0.4), rnd.uniform(HORIZON + 40, H * 0.5)) for _ in range(6)] + [(rnd.uniform(W * 0.8, W), rnd.uniform(HORIZON + 20, H * 0.45)) for _ in range(4)]
-    for x, y in spots:
-        a = glow(a, x, y - 6, 22, (60, 160, 255), 0.5)
-    a = layer(a, lambda d: [(d.rectangle([x - 1.5, y - 10, x + 1.5, y], fill=(170, 220, 255, 255)), d.pieslice([x - 9, y - 18, x + 9, y - 4], 180, 360, fill=(110, 200, 255, 255))) for x, y in spots])
-    a = blades(a, 28, 900, HORIZON + 20, H + 10, [rgb('1f4a3a'), rgb('2f6a50'), rgb('4a8a62')])
-    a = motes(a, 29, 50, (0, HORIZON - 120, W, H * 0.7), (120, 200, 255), 2.4, 1.5)
+    """Floresta de dia, como a Pinwheel Forest do BW2: as copas fechando o alto, os troncos no fundo com a luz passando
+    entre eles, o chão de musgo claro com a trilha e os raios de sol."""
+    a = vgrad([(0, rgb('8fd0c0')), (1, rgb('d8f0d8'))], 0, HORIZON + 40)
+    # Fundo: a mata clareando na névoa (três camadas, a de longe mais clara).
+    for i, (y, sz, k) in enumerate(((HORIZON - 10, 46, 0.55), (HORIZON + 6, 60, 0.32), (HORIZON + 22, 74, 0.12))):
+        a = treeline(a, 22 + i, y, sz, ((22, 84, 70), (40, 120, 94), (78, 160, 118)), 0.8, trunk=(92, 64, 44), haze=rgb('c8ecdc'), haze_k=k)
+    a = ground(a, HORIZON + 30, rgb('a8d888'), rgb('5aa858'), 23, 5, 0.1, spots=(rgb('c4e49a'), 0.4))
+    a = path(a, 'd6c08a', HORIZON + 30, 0.46, 0.56, 0.75)
+    # Troncos grossos dos lados (perto) e as copas fechando o alto da tela.
+    a = layer(a, lambda d: (d.polygon([(0, 0), (70, 0), (92, HORIZON + 110), (40, HORIZON + 130), (0, HORIZON + 120)], fill=(96, 66, 44, 255)),
+                            d.polygon([(0, 0), (30, 0), (46, HORIZON + 120), (0, HORIZON + 126)], fill=(124, 88, 58, 255)),
+                            d.polygon([(W - 60, 0), (W, 0), (W, HORIZON + 100), (W - 84, HORIZON + 92)], fill=(90, 62, 42, 255))))
+    a = treeline(a, 25, 60, 110, ((22, 82, 68), (38, 116, 92), (70, 152, 114)), 0.62)
+    # Raios de sol entrando entre as copas.
+    a = layer(a, lambda d: [d.polygon([(x, 40), (x + 36, 40), (x + 150, H * 0.7), (x + 60, H * 0.7)], fill=(255, 250, 210, 34)) for x in (180, 360, 520)], 10)
+    a = rocks(a, 26, 6, HORIZON + 40, H * 0.6, rgb('8a9a80'), rgb('b0c0a0'), rgb('4a5a48'), 8, 24)
+    a = blades(a, 28, 700, HORIZON + 40, H + 10, [rgb('4a9a50'), rgb('6ab860'), rgb('8ad070')])
+    a = motes(a, 29, 40, (0, HORIZON - 120, W, H * 0.7), (255, 250, 210), 2.0, 1.2)
     return a, {'outdoor': True, 'sky': HORIZON - 60, 'seed': 20}
 
 
@@ -791,34 +846,28 @@ def snow():
 
 
 def city():
-    a = vgrad([(0, rgb('0a1030')), (1, rgb('2a2f6a'))], 0, HORIZON)
-    a = stars(a, 141, 30, HORIZON - 80)
+    """Cidade grande de dia, como Castelia no BW2: os prédios claros de vidro, a avenida larga com as faixas, as árvores
+    da calçada e os postes."""
+    a = day_sky('5aa6ec', 'e0f0fa')
     rnd = random.Random(142)
-    blds = [(x, rnd.uniform(28, 60), rnd.uniform(60, 190)) for x in range(-10, W, 46)]
 
     def far(d):
-        for x, w, h in blds:
-            top = HORIZON - h
-            d.rectangle([x, top, x + w, HORIZON + 10], fill=(28, 34, 74, 255))
-            for r in range(int(h // 10)):
-                for c in range(int(w // 9)):
-                    if rnd.random() < 0.55:
-                        col = (255, 220, 140, 230) if rnd.random() < 0.7 else (140, 200, 255, 230)
-                        d.rectangle([x + 3 + c * 9, top + 4 + r * 10, x + 7 + c * 9, top + 9 + r * 10], fill=col)
-            if rnd.random() < 0.4:
-                d.ellipse([x + w / 2 - 2, top - 6, x + w / 2 + 2, top - 2], fill=(255, 60, 60, 255))
-    a = layer(a, far, 0.8)
-    a = glow(a, W * 0.5, HORIZON, W * 0.5, (60, 70, 160), 0.25)
-    # Grade e postes.
-    a = layer(a, lambda d: [d.line([(0, HORIZON + 26), (W, HORIZON + 26)], fill=(60, 70, 110, 255), width=4)] + [d.line([(x, HORIZON + 26), (x, HORIZON + 46)], fill=(60, 70, 110, 255), width=3) for x in range(10, W, 40)])
-    for x in (140, 520, 760):
-        a = glow(a, x, HORIZON - 40, 50, (255, 210, 140), 0.6)
-    a = layer(a, lambda d: [(d.line([(x, HORIZON - 40), (x, HORIZON + 50)], fill=(50, 56, 80, 255), width=4), d.ellipse([x - 6, HORIZON - 46, x + 6, HORIZON - 36], fill=(255, 240, 200, 255))) for x in (140, 520, 760)])
-    a = ground(a, HORIZON + 46, rgb('4c4f78'), rgb('262848'), 143, 6, 0.1)
-    a = reflect(a, HORIZON + 46, HORIZON + 150, 0.3, 3)
-    # Calçada e árvore à esquerda.
-    a = put(a, rgb('3a3c60'), mask(lambda d: d.polygon([(0, HORIZON + 40), (W * 0.42, HORIZON + 40), (W * 0.30, HORIZON + 66), (0, HORIZON + 90)], fill=255)))
-    a = treeline(a, 144, HORIZON + 18, 40, ((20, 50, 46), (30, 74, 62), (50, 104, 86)), 4.5)
+        for x in range(-10, W, 50):
+            w, h = rnd.uniform(34, 58), rnd.uniform(80, 210)
+            c = rnd.choice(((176, 200, 226), (196, 214, 232), (150, 180, 214), (214, 220, 228)))
+            top = HORIZON + 10 - h
+            d.rectangle([x, top, x + w, HORIZON + 12], fill=c + (255,))
+            d.rectangle([x, top, x + w * 0.22, HORIZON + 12], fill=tuple(min(255, int(v * 1.1)) for v in c) + (255,))
+            d.rectangle([x + w * 0.78, top, x + w, HORIZON + 12], fill=tuple(int(v * 0.84) for v in c) + (255,))
+            for yy in range(int(top + 6), HORIZON + 4, 9):
+                d.line([(x + 4, yy), (x + w - 4, yy)], fill=(226, 240, 252, 255), width=3)
+    a = layer(a, far)
+    a = ground(a, HORIZON + 14, rgb('c4c8d0'), rgb('8a8e9a'), 143, 6, 0.05)
+    a = put(a, rgb('6a6e7c'), mask(lambda d: d.polygon([(W * 0.38, HORIZON + 14), (W * 0.62, HORIZON + 14), (W * 0.96, H), (W * 0.04, H)], fill=255), 2))
+    a = layer(a, lambda d: [d.polygon([(W * 0.5 - 2 - k * 1.5, y), (W * 0.5 + 2 + k * 1.5, y), (W * 0.5 + 3 + k * 2, y + 14 + k * 8), (W * 0.5 - 3 - k * 2, y + 14 + k * 8)], fill=(250, 246, 220, 255)) for k, y in enumerate((HORIZON + 24, HORIZON + 54, HORIZON + 100, HORIZON + 176, HORIZON + 286))])
+    a = layer(a, lambda d: [(d.line([(x, HORIZON - 34), (x, HORIZON + 34)], fill=(80, 86, 100, 255), width=4), d.ellipse([x - 7, HORIZON - 42, x + 7, HORIZON - 30], fill=(250, 250, 236, 255))) for x in (150, 650)])
+    a = trees_at(a, 144, (70, 200, 600, 730), HORIZON + 20, 44, ((30, 96, 64), (50, 136, 78), (96, 180, 104)), trunk=(110, 76, 44))
+    a = reflect(a, HORIZON + 14, HORIZON + 80, 0.14, 4)
     return a, {'outdoor': True, 'seed': 140}
 
 
@@ -2155,9 +2204,30 @@ def wildarea():
 
 # ------------------------------------------------------------ cidades e vilas (de dia; à noite o jogo escurece)
 
+def cumulus(a, clouds, scale=1.0, seed=7):
+    """Nuvens como no BW2: um cacho de bolas brancas com contorno definido, a parte de baixo azulada e chata."""
+    rnd = random.Random(seed)
+
+    def fn(d):
+        for x, y in clouds:
+            s = scale * rnd.uniform(0.8, 1.2)
+            balls = [(x + dx * s, y - dy * s, r * s) for dx, dy, r in ((-60, 0, 22), (-30, 10, 30), (0, 16, 36), (34, 8, 28), (62, 0, 20), (14, 0, 26), (-14, 0, 24))]
+            for bx, by, r in balls:
+                d.ellipse([bx - r, by - r, bx + r, by + r], fill=(206, 226, 246, 255))
+            for bx, by, r in balls:
+                d.ellipse([bx - r * 0.92, by - r * 1.02, bx + r * 0.86, by + r * 0.62], fill=(255, 255, 255, 255))
+            d.rectangle([x - 84 * s, y + 6 * s, x + 84 * s, y + 30 * s], fill=(0, 0, 0, 0))
+            d.line([(x - 80 * s, y + 4 * s), (x + 80 * s, y + 4 * s)], fill=(196, 218, 240, 255), width=max(2, int(3 * s)))
+    im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    fn(ImageDraw.Draw(im))
+    # A base chata: corta o que passou de baixo.
+    arr = np.asarray(im, np.float32)
+    return put(a, arr[..., :3], arr[..., 3] / 255 * 0.95)
+
+
 def day_sky(top='3f8fe0', bottom='cfeaff', clouds=((150, 64), (440, 40), (700, 90)), alpha=185):
     a = vgrad([(0, rgb(top)), (1, rgb(bottom))], 0, HORIZON)
-    return layer(a, lambda d: [d.ellipse([x - 120, y - 20, x + 120, y + 20], fill=(255, 255, 255, alpha)) for x, y in clouds], 14)
+    return cumulus(a, clouds, 0.8)
 
 
 def house(d, x, y, w, h, wall, roof, door=(96, 64, 40), windows=True, chimney=False):
@@ -2192,7 +2262,7 @@ def town_village():
     # As cercas brancas e a placa da vila.
     a = layer(a, lambda d: [d.line([(x0, HORIZON + 44), (x1, HORIZON + 44)], fill=(246, 246, 240, 255), width=3) for x0, x1 in ((0, 330), (470, W))] +
               [d.line([(x, HORIZON + 36), (x, HORIZON + 52)], fill=(246, 246, 240, 255), width=3) for x in list(range(4, 330, 22)) + list(range(474, W, 22))] +
-              [d.rectangle([386, HORIZON + 18, 414, HORIZON + 32], fill=(150, 104, 60, 255)), d.line([(400, HORIZON + 32), (400, HORIZON + 44)], fill=(110, 76, 44, 255), width=4)])
+              [d.rectangle([306, HORIZON + 18, 334, HORIZON + 32], fill=(150, 104, 60, 255)), d.line([(320, HORIZON + 32), (320, HORIZON + 44)], fill=(110, 76, 44, 255), width=4)])
     a = blades(a, 1304, 380, HORIZON + 60, H + 10, [rgb('4f9a44'), rgb('79c35a'), rgb('2f7a36')], 0.25)
     a = motes(a, 1305, 40, (0, HORIZON, W, H), (255, 250, 200), 2, 0.8)
     return a, {'outdoor': True, 'seed': 1300}
@@ -2313,10 +2383,6 @@ def town_mountain():
             house(d, x, HORIZON + 30, w, h, (168, 164, 156), (92, 96, 110))
             for yy in range(int(HORIZON + 30 - h + 8), HORIZON + 28, 10):
                 d.line([(x + 2, yy), (x + w - 2, yy)], fill=(140, 136, 128, 255), width=1)
-        # A escadaria de pedra subindo o morro.
-        for k in range(7):
-            d.rectangle([372 - k * 4, HORIZON + 22 - k * 9, 428 + k * 4 - k * 8, HORIZON + 30 - k * 9], fill=(190, 186, 176, 255))
-            d.line([(372 - k * 4, HORIZON + 30 - k * 9), (428 - k * 4, HORIZON + 30 - k * 9)], fill=(120, 116, 108, 255), width=2)
     a = layer(a, homes)
     a = path(a, 'c8c0ac', HORIZON + 26, k=0.65)
     a = rocks(a, 1344, 16, HORIZON + 50, H - 10, (140, 136, 128), (190, 186, 176), (70, 66, 60), 10, 34)
