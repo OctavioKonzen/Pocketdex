@@ -2210,6 +2210,9 @@ class FactoryRun {
 
   /// O cenário da luta com o chefe: o líder no ginásio do tipo dele, a Elite dos Quatro na Liga, o Campeão na sala dele (uma
   /// por região) e o vilão na base da equipe. Igual ao site.
+  /// O tipo da Elite dos Quatro quando o time empata ou engana (a Lorelei é de Gelo, a Agatha de Fantasma, o Lance de Dragão).
+  static const eliteTypes = {'Lorelei': 'ice', 'Agatha': 'ghost', 'Lance': 'dragon'};
+
   static String bossScene(FactoryData data, Map? boss, [String fallback = 'grass']) {
     if (boss == null) return fallback;
     switch (boss['kind']) {
@@ -2219,8 +2222,10 @@ class FactoryRun {
       case 'champion':
         final region = '${boss['region'] ?? ''}'.toLowerCase();
         return championArenas[region] ?? 'champion-$region';
+      // A sala de cada membro da Elite dos Quatro, no tipo dele (como nos jogos). Igual ao site.
       case 'elite':
-        return 'league';
+        final full = data.bosses.expand((g) => g['leaders'] as List).cast<Map>().where((l) => l['id'] == boss['id']).firstOrNull;
+        return full != null ? 'elite-${eliteTypes[full['name']] ?? leaderType(data, full)}' : 'league';
       case 'villain':
         return 'base-${villainTeam(boss['name'])}';
     }

@@ -119,7 +119,7 @@ CITIES = {
     'Opelucid City': ['swamp', 'Route 8 · Route 9', ['Moor of Icirrus', 'swamp'], []],
     'Aspertia City': ['grass', 'Route 19', ['Floccesy Ranch', 'flowers'], []],
     'Virbank City': ['grass', 'Route 20', None, [['Virbank Complex', 'plant'], ['Pokéstar Studios', 'city']]],
-    'Humilau City': ['beach', 'Route 21 · Route 22', ['Seaside Cave', 'cave'], [['Plasma Frigate', 'base-plasma'], ['Humilau Beach', 'beach']]],
+    'Humilau City': ['beach', 'Route 21 · Route 22', ['Seaside Cave', 'seacave'], [['Plasma Frigate', 'base-plasma'], ['Humilau Beach', 'beach']]],
     'Unova:Pokémon League': ['cave', 'Victory Road', ['Giant Chasm', 'icecave'], []],
     # Kalos
     'Santalune City': ['forest', 'Route 2 · Santalune Forest', ['Santalune Forest', 'forest'], []],

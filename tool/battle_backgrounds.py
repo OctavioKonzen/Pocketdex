@@ -2855,8 +2855,35 @@ def base_scene(team):
     return make
 
 
+def elite_scene(t):
+    """A sala de cada membro da Elite dos Quatro (como nos jogos, cada um tem a sua): a arquitetura da Liga (colunas,
+    estandartes e o tapete até o desafiante) nas cores do tipo dele, com o emblema do tipo no fundo."""
+    def make():
+        wall_top, wall_bottom, far, near, accent = [rgb(c) for c in GYM_TYPES[t]]
+        A = tuple(int(v) for v in accent)
+        gold = (236, 206, 132)
+        a = vgrad([(0, wall_top * 0.7), (1, wall_bottom * 0.9)], 0, HORIZON + 30)
+        a = glow(a, W * 0.5, 50, 170, A, 0.45)
+        for x in (30, 190, 570, 730):
+            a = put(a, vgrad([(0, accent * 0.95), (1, accent * 0.45)], 20, HORIZON + 40), mask(lambda d, x=x: d.rectangle([x, 20, x + 40, HORIZON + 40], fill=255)))
+            a = layer(a, lambda d, x=x: (d.rectangle([x - 8, 8, x + 48, 26], fill=gold + (255,)), d.rectangle([x - 8, HORIZON + 30, x + 48, HORIZON + 44], fill=(200, 170, 100, 255)),
+                                         d.rectangle([x + 4, 26, x + 10, HORIZON + 30], fill=(255, 255, 255, 90))))
+        # Os estandartes do tipo e o emblema no meio da parede (um losango com o anel).
+        a = layer(a, lambda d: [(d.polygon([(x, 30), (x + 30, 40), (x + 30, 130), (x, 120)], fill=A + (255,)), d.polygon([(x + 12, 60), (x + 18, 54), (x + 24, 60), (x + 18, 66)], fill=gold + (255,))) for x in (120, 650)]
+                  + [d.polygon([(W * 0.5, 40), (W * 0.5 + 46, 92), (W * 0.5, 144), (W * 0.5 - 46, 92)], fill=A + (255,)), d.ellipse([W * 0.5 - 20, 72, W * 0.5 + 20, 112], outline=gold + (255,), width=5)])
+        a = layer(a, gym_decor(t, accent, random.Random(600 + len(t))), 0, 0.55)
+        a = ground(a, HORIZON + 30, far * 0.8, near * 0.55, 600 + len(t), 6, 0.06)
+        a = reflect(a, HORIZON + 30, HORIZON + 120, 0.25, 4)
+        a = put(a, vgrad([(0, accent * 0.75), (1, accent * 0.4)], HORIZON + 30, H), mask(lambda d: d.polygon([(W * 0.45, HORIZON + 30), (W * 0.55, HORIZON + 30), (W * 0.82, H), (W * 0.18, H)], fill=255), 1))
+        a = layer(a, lambda d: [d.line([(W * 0.45, HORIZON + 30), (W * 0.18, H)], fill=gold + (255,), width=3), d.line([(W * 0.55, HORIZON + 30), (W * 0.82, H)], fill=gold + (255,), width=3)])
+        a = motes(a, 610 + len(t), 50, (0, 0, W, H * 0.6), A, 2, 1.5)
+        return a, {'outdoor': False, 'seed': 600 + len(t)}
+    return make
+
+
 for _t in GYM_TYPES:
     SCENES[f'gym-{_t}'] = gym_scene(_t)
+    SCENES[f'elite-{_t}'] = elite_scene(_t)
 for _r in CHAMPIONS:
     SCENES[f'champion-{_r}'] = champion_scene(_r)
 for _b in BASES:

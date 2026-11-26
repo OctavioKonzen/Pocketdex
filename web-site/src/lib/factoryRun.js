@@ -1278,11 +1278,17 @@ export function bossScene(data, boss, fallback = 'grass') {
     const region = String(boss.region ?? '').toLowerCase()
     return CHAMPION_ARENAS[region] ?? `champion-${region}`
   }
-  if (boss.kind === 'elite') return 'league'
+  // A sala de cada membro da Elite dos Quatro, no tipo dele (como nos jogos). Igual ao app.
+  if (boss.kind === 'elite') {
+    const full = data.bosses.flatMap((g) => g.leaders).find((l) => l.id === boss.id)
+    return full ? `elite-${ELITE_TYPES[full.name] ?? leaderType(data, full)}` : 'league'
+  }
   if (boss.kind === 'villain') return `base-${villainTeam(boss.name)}`
   return fallback
 }
 
+/** O tipo da Elite dos Quatro quando o time empata ou engana (a Lorelei é de Gelo, a Agatha de Fantasma, o Lance de Dragão). */
+export const ELITE_TYPES = { Lorelei: 'ice', Agatha: 'ghost', Lance: 'dragon' }
 /** O lugar da última batalha das regiões sem arena de campeão (os outros jogos e as expansões): o lugar da luta no jogo. */
 export const CHAMPION_ARENAS = { hisui: 'spearpillar', orre: 'tower', fiore: 'temple', almia: 'mansion', oblivia: 'ruins', kitakami: 'crystal', blueberry: 'league', sevii: 'tower', armor: 'dojo', crown: 'snow', orange: 'league' }
 

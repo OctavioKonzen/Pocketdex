@@ -95,8 +95,8 @@ REGIONS = [
         'routes': {
             'Pueltown': ['beach', 'Almia Coast', ['Marine Cave', 'seacave'], [['Pueltown Harbor', 'beach']]],
             'Chicole Village': ['forest', 'Chicole Path', ['Altru Park', 'forest'], []],
-            'Boyleland': ['mountain', 'Mt. Tember Road', ['Volcano Cave', 'cave'], []],
-            'Haruba Village': ['desert', 'Haruba Desert', ['Hippowdon Temple', 'ruins'], []],
+            'Boyleland': ['mountain', 'Mt. Tember Road', ['Volcano Cave', 'lavacave'], []],
+            'Haruba Village': ['desert', 'Haruba Desert', ['Hippowdon Temple', 'temple'], []],
             'Altru Building': ['grass', 'Altru Road', ['Dim Sun Hideout', 'cave'], []],
             'Almia Castle': ['grass', 'Almia Castle Road', ['Almia Castle', 'tower'], []],
         },
@@ -130,7 +130,7 @@ REGIONS = [
         'routes': {
             'Renbow Island': ['beach', 'Renbow Coast', ['Renbow Cave', 'seacave'], []],
             'Mitonga Island': ['forest', 'Mitonga Jungle', ['Mitonga Ruins', 'ruins'], []],
-            'Layuda Island': ['desert', 'Layuda Dunes', ['Layuda Temple', 'ruins'], []],
+            'Layuda Island': ['desert', 'Layuda Dunes', ['Layuda Temple', 'temple'], []],
             'Faldera Island': ['mountain', 'Faldera Road', ['Faldera Volcano', 'volcano'], []],
             'Oblivia Ruins': ['water', 'Oblivia Sea', ['Sophian Island', 'temple'], []],
         },

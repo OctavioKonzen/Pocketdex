@@ -298,6 +298,10 @@ void main() {
     final brock = (data.bosses[0]['leaders'] as List).cast<Map>().firstWhere((l) => l['id'] == 'kanto-brock');
     expect(FactoryRun.bossScene(data, {...brock, 'region': 'Kanto'}), 'gym-rock');
     expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kanto'}), 'champion-kanto');
+    // Cada membro da Elite dos Quatro na sala dele, no tipo dele (igual ao site).
+    final red = (data.bosses.firstWhere((b) => b['game'] == 'Red/Blue')['leaders'] as List).cast<Map>();
+    expect([for (final n in ['Lorelei', 'Bruno', 'Agatha', 'Lance']) FactoryRun.bossScene(data, red.firstWhere((l) => l['name'] == n && l['kind'] == 'elite'))],
+        ['elite-ice', 'elite-fighting', 'elite-ghost', 'elite-dragon']);
     expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Hisui'}), 'spearpillar');
     expect(FactoryRun.bossScene(data, {'kind': 'champion', 'region': 'Kitakami'}), 'crystal');
     expect(FactoryRun.bossScene(data, {'kind': 'villain', 'name': 'Archie'}), 'base-aqua');
