@@ -241,15 +241,24 @@ def trees_at(a, seed, xs, y, size, colors, trunk=(40, 30, 24)):
     return layer(a, fn)
 
 
-def treeline(a, seed, y, size, colors, gap=1.0, trunk=(40, 30, 24), blur=0, haze=None, haze_k=0.0):
+def treeline(a, seed, y, size, colors, gap=1.0, trunk=(40, 30, 24), blur=0, haze=None, haze_k=0.0, canopy_only=False):
+    """Uma fileira de árvores com o pé em y. Embaixo delas, o chão da mata (a sombra), para nunca aparecer céu entre
+    as árvores e o chão (nada flutuando). canopy_only: só as copas (o teto da floresta, sem troncos pendurados)."""
     rnd = random.Random(seed)
     dark, mid, light = [tuple(int(v) for v in mix(np.asarray(c, np.float32), haze, haze_k)) + (255,) if haze is not None else tuple(int(v) for v in c) + (255,) for c in colors]
 
     def fn(d):
+        if canopy_only:
+            # O teto de folhas: preenche do alto da tela até as copas.
+            d.rectangle([0, 0, W, y - size * 0.4], fill=dark)
+        elif y > HORIZON - 60:
+            shade = tuple(int(v * 0.75) for v in dark[:3]) + (255,)
+            d.rectangle([0, y - size * 0.35, W, y + 70], fill=shade)
         x = -size
         while x < W + size:
             s = size * rnd.uniform(0.75, 1.25)
-            d.rectangle([x - s * 0.07, y - s * 0.3, x + s * 0.07, y + s * 0.15], fill=trunk + (255,))
+            if not canopy_only:
+                d.rectangle([x - s * 0.07, y - s * 0.3, x + s * 0.07, y + s * 0.15], fill=trunk + (255,))
             canopy(d, x, y - s * 0.55, s, dark, mid, light, rnd)
             x += s * gap * rnd.uniform(0.8, 1.15)
     return layer(a, fn, blur)
@@ -532,7 +541,7 @@ def forest():
     a = layer(a, lambda d: (d.polygon([(0, 0), (70, 0), (92, HORIZON + 110), (40, HORIZON + 130), (0, HORIZON + 120)], fill=(96, 66, 44, 255)),
                             d.polygon([(0, 0), (30, 0), (46, HORIZON + 120), (0, HORIZON + 126)], fill=(124, 88, 58, 255)),
                             d.polygon([(W - 60, 0), (W, 0), (W, HORIZON + 100), (W - 84, HORIZON + 92)], fill=(90, 62, 42, 255))))
-    a = treeline(a, 25, 60, 110, ((22, 82, 68), (38, 116, 92), (70, 152, 114)), 0.62)
+    a = treeline(a, 25, 70, 110, ((22, 82, 68), (38, 116, 92), (70, 152, 114)), 0.62, canopy_only=True)
     # Raios de sol entrando entre as copas.
     a = layer(a, lambda d: [d.polygon([(x, 40), (x + 36, 40), (x + 150, H * 0.7), (x + 60, H * 0.7)], fill=(255, 250, 210, 34)) for x in (180, 360, 520)], 10)
     a = rocks(a, 26, 6, HORIZON + 40, H * 0.6, rgb('8a9a80'), rgb('b0c0a0'), rgb('4a5a48'), 8, 24)
