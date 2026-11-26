@@ -15682,5 +15682,125 @@
   "fr": "{0} a pris {1} pendant le combat !",
   "es": "¡{0} se quedó con {1} en el combate!",
   "pt": "{0} pegou {1} na luta!"
+ },
+ "TM": {
+  "en": "TM",
+  "fr": "CT",
+  "es": "MT",
+  "pt": "TM"
+ },
+ "Jogos zerados": {
+  "en": "Games beaten",
+  "fr": "Jeux terminés",
+  "es": "Juegos completados",
+  "pt": "Jogos zerados"
+ },
+ "{0} jogos zerados numa corrida": {
+  "en": "{0} games beaten in one run",
+  "fr": "{0} jeux terminés en une partie",
+  "es": "{0} juegos completados en una partida",
+  "pt": "{0} jogos zerados numa corrida"
+ },
+ "Regras do Nuzlocke": {
+  "en": "Nuzlocke rules",
+  "fr": "Règles du Nuzlocke",
+  "es": "Reglas del Nuzlocke",
+  "pt": "Regras do Nuzlocke"
+ },
+ "Jogo {0} da corrida: adversários +{1}% em todos os atributos": {
+  "en": "Game {0} of the run: opponents +{1}% to all stats",
+  "fr": "Jeu {0} de la partie : adversaires +{1}% à toutes les stats",
+  "es": "Juego {0} de la partida: rivales +{1}% en todas las características",
+  "pt": "Jogo {0} da corrida: adversários +{1}% em todos os atributos"
+ },
+ "FECHAR": {
+  "en": "CLOSE",
+  "fr": "FERMER",
+  "es": "CERRAR",
+  "pt": "FECHAR"
+ },
+ "Time cheio: escolha quem sai ou mande para o PC.": {
+  "en": "Team full: choose who leaves or send it to the PC.",
+  "fr": "Équipe pleine : choisissez qui part ou envoyez-le au PC.",
+  "es": "Equipo lleno: elige quién sale o envíalo al PC.",
+  "pt": "Time cheio: escolha quem sai ou mande para o PC."
+ },
+ "PARA O PC": {
+  "en": "TO THE PC",
+  "fr": "AU PC",
+  "es": "AL PC",
+  "pt": "PARA O PC"
+ },
+ "Para:": {
+  "en": "To:",
+  "fr": "Vers :",
+  "es": "Hacia:",
+  "pt": "Para:"
+ },
+ "(Você já me venceu {0} vezes. Meu time ficou mais forte!)": {
+  "en": "(You've beaten me {0} times. My team got stronger!)",
+  "fr": "(Tu m'as déjà battu {0} fois. Mon équipe est devenue plus forte !)",
+  "es": "(Ya me ganaste {0} veces. ¡Mi equipo se hizo más fuerte!)",
+  "pt": "(Você já me venceu {0} vezes. Meu time ficou mais forte!)"
+ },
+ "O adversário vai mandar {0}. Quer trocar de Pokémon?": {
+  "en": "The opponent is about to send out {0}. Will you switch Pokémon?",
+  "fr": "L'adversaire va envoyer {0}. Changer de Pokémon ?",
+  "es": "El rival va a sacar a {0}. ¿Cambiar de Pokémon?",
+  "pt": "O adversário vai mandar {0}. Quer trocar de Pokémon?"
+ },
+ "Trocar {0} por {1}?": {
+  "en": "Trade {0} for {1}?",
+  "fr": "Échanger {0} contre {1} ?",
+  "es": "¿Cambiar {0} por {1}?",
+  "pt": "Trocar {0} por {1}?"
+ },
+ "andar": {
+  "en": "floor",
+  "fr": "étage",
+  "es": "piso",
+  "pt": "andar"
+ },
+ "Apelido (vazio tira)": {
+  "en": "Nickname (empty removes it)",
+  "fr": "Surnom (vide pour l'enlever)",
+  "es": "Mote (vacío lo quita)",
+  "pt": "Apelido (vazio tira)"
+ },
+ "Nome da caixa": {
+  "en": "Box name",
+  "fr": "Nom de la boîte",
+  "es": "Nombre de la caja",
+  "pt": "Nome da caixa"
+ },
+ "Memorial": {
+  "en": "Memorial",
+  "fr": "Mémorial",
+  "es": "Memorial",
+  "pt": "Memorial"
+ },
+ "Ordenar a caixa": {
+  "en": "Sort the box",
+  "fr": "Trier la boîte",
+  "es": "Ordenar la caja",
+  "pt": "Ordenar a caixa"
+ },
+ "Nº da Pokédex": {
+  "en": "Pokédex No.",
+  "fr": "N° du Pokédex",
+  "es": "N.º de la Pokédex",
+  "pt": "Nº da Pokédex"
+ },
+ "Quem caiu nesta corrida (Nuzlocke).": {
+  "en": "Who fell in this run (Nuzlocke).",
+  "fr": "Ceux tombés dans cette partie (Nuzlocke).",
+  "es": "Quienes cayeron en esta partida (Nuzlocke).",
+  "pt": "Quem caiu nesta corrida (Nuzlocke)."
+ },
+ "Arraste um Pokémon para outra vaga para trocar.": {
+  "en": "Drag a Pokémon to another slot to swap.",
+  "fr": "Faites glisser un Pokémon vers une autre case pour l'échanger.",
+  "es": "Arrastra un Pokémon a otro hueco para cambiarlo.",
+  "pt": "Arraste um Pokémon para outra vaga para trocar."
  }
 }
