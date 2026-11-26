@@ -552,7 +552,7 @@ def forest():
 
 def water():
     a = vgrad([(0, rgb('2a6fc0')), (1, rgb('bfe2ff'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 110, y - 20, x + 110, y + 20], fill=(255, 255, 255, 170)) for x, y in ((140, 70), (420, 50), (700, 90))], 16)
+    a = cumulus(a, ((140, 70), (420, 50), (700, 90)), 0.79, 1)
     a = mountains(a, 31, HORIZON - 4, 34, rgb('8aa8c8'), rgb('6f8fb0'), rgb('bcd6ee'), 0.4, 0.4, 12, blur=2.5)
     a = ground(a, HORIZON, rgb('6fb8e8'), rgb('1a5a96'), 32, 9, 0.08)
     a = reflect(a, HORIZON, HORIZON + 50, 0.4, 3)
@@ -572,7 +572,7 @@ def water():
 
 def beach():
     a = vgrad([(0, rgb('2f8fe0')), (1, rgb('d4f0ff'))], 0, HORIZON - 30)
-    a = layer(a, lambda d: [d.ellipse([x - 100, y - 18, x + 100, y + 18], fill=(255, 255, 255, 190)) for x, y in ((160, 50), (500, 35), (760, 70))], 14)
+    a = cumulus(a, ((160, 50), (500, 35), (760, 70)), 0.71, 2)
     a = ground(a, HORIZON - 30, rgb('5ec0ee'), rgb('2a8ad0'), 41, 10, 0.06)
     a = ground(a, HORIZON + 16, rgb('f6e2b0'), rgb('d6b070'), 42, 5, 0.12, spots=(rgb('c49a5a'), 0.3))
     a = layer(a, lambda d: (d.line(ridge(3, HORIZON + 18, 4, 0.8, 12), fill=(255, 255, 255, 230), width=6), d.line(ridge(4, HORIZON + 28, 3, 0.8, 12), fill=(255, 255, 255, 120), width=3)), 1.2)
@@ -786,7 +786,7 @@ def waterfall():
 
 def mountain():
     a = vgrad([(0, rgb('3f7ec8')), (1, rgb('d4e8f8'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 110, y - 16, x + 110, y + 16], fill=(255, 255, 255, 150)) for x, y in ((180, 40), (560, 60))], 14)
+    a = cumulus(a, ((180, 40), (560, 60)), 0.79, 3)
     a = mountains(a, 91, HORIZON - 50, 140, rgb('a8b8cc'), rgb('7a8ca6'), rgb('c8dcf0'), 0.4, 0.45, 18, 1.6, blur=1.5, snowcap=rgb('f4f8ff'))
     a = mountains(a, 92, HORIZON + 6, 70, rgb('9a8a78'), rgb('5e5246'), None, 0, 0.5, 12, 2.4, tex=0.2)
     a = ground(a, HORIZON + 4, rgb('a8977e'), rgb('5c4e40'), 93, 4, 0.2, spots=(rgb('7a6a52'), 0.4))
@@ -989,7 +989,7 @@ def ruins():
 def flowers():
     """Campo de flores: colinas suaves cobertas de flores coloridas."""
     a = vgrad([(0, rgb('5a9ae0')), (0.6, rgb('a8d4ff')), (1, rgb('f2f6ff'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 80, y - 16, x + 80, y + 16], fill=(255, 255, 255, 170)) for x, y in ((150, 50), (470, 30), (700, 70))], 12)
+    a = cumulus(a, ((150, 50), (470, 30), (700, 70)), 0.57, 4)
     a = mountains(a, 211, HORIZON - 10, 40, rgb('8fcf7a'), rgb('6aae5a'), rgb('c8ecc0'), 0.5, 0.3, 18, 1.4, blur=2)
     a = ground(a, HORIZON, rgb('9ad47a'), rgb('4e9a3e'), 212, 5, 0.12)
     rnd = random.Random(213)
@@ -2094,7 +2094,7 @@ def whirl():
 def lakeside():
     """Lago calmo (Valor Lakefront e os lagos de Sinnoh): a água azul parada, a ilhota com a caverna no meio e os pinheiros."""
     a = vgrad([(0, rgb('3a8ad8')), (1, rgb('c8e8ff'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 110, y - 18, x + 110, y + 18], fill=(255, 255, 255, 180)) for x, y in ((160, 60), (470, 44), (700, 86))], 14)
+    a = cumulus(a, ((160, 60), (470, 44), (700, 86)), 0.79, 5)
     a = mountains(a, 1241, HORIZON - 4, 70, rgb('7a9cc0'), rgb('5c80a6'), rgb('bcd6ee'), 0.4, 0.5, 10, blur=2, snowcap=rgb('f0f6ff'))
     rnd = random.Random(1242)
     a = layer(a, lambda d: [pine(d, x, HORIZON + 4, rnd.uniform(40, 80), (26, 78, 60), (50, 116, 84)) for x in range(-10, W + 20, 28)], 0.6)
@@ -2175,7 +2175,7 @@ def hotel():
 def wildarea():
     """Wild Area (Galar): a planície enorme, o lago ao longe, a árvore grande, as pedras em pé e a toca com o facho de luz."""
     a = vgrad([(0, rgb('3f8fe0')), (1, rgb('cfeaff'))], 0, HORIZON)
-    a = layer(a, lambda d: [d.ellipse([x - 130, y - 22, x + 130, y + 22], fill=(255, 255, 255, 190)) for x, y in ((130, 70), (430, 40), (690, 96))], 14)
+    a = cumulus(a, ((130, 70), (430, 40), (690, 96)), 0.93, 6)
     a = mountains(a, 1271, HORIZON - 2, 60, rgb('8aa6c4'), rgb('6c8cae'), rgb('c4dcf0'), 0.45, 0.5, 10, blur=2.5)
     # Hammerlocke ao longe (a muralha e a torre).
     a = layer(a, lambda d: (d.rectangle([560, HORIZON - 50, 720, HORIZON - 6], fill=(150, 150, 170, 255)), d.rectangle([626, HORIZON - 96, 654, HORIZON - 50], fill=(150, 150, 170, 255)),
@@ -2383,9 +2383,9 @@ def town_snow():
 def town_mountain():
     """Cidade de montanha (Pewter, Blackthorn, Oreburgh, Veilstone, Cyllage...): as casas de pedra no pé do paredão, as escadarias e os pedregulhos."""
     a = day_sky('4a8ad0', 'c8dff0', ((180, 50), (620, 70)))
-    a = mountains(a, 1341, HORIZON - 30, 130, rgb('8a8a94'), rgb('5c5c68'), rgb('b8c4d0'), 0.3, 0.8, 9, freq=1.4, snowcap=rgb('f0f2f6'))
-    a = mountains(a, 1342, HORIZON + 6, 60, rgb('a09a90'), rgb('6a645c'), rgb('b8b0a4'), 0.2, 0.7, 10, freq=2.2)
-    a = ground(a, HORIZON + 26, rgb('b8b0a0'), rgb('6a6458'), 1343, 5, 0.12, spots=(rgb('8aa070'), 0.35))
+    a = mountains(a, 1341, HORIZON - 30, 130, rgb('9a9ca8'), rgb('6e7080'), rgb('c4d4e4'), 0.2, 0.8, 9, freq=1.4, snowcap=rgb('f4f6fa'))
+    a = mountains(a, 1342, HORIZON + 6, 60, rgb('b8a88a'), rgb('8a7656'), rgb('c8b898'), 0.1, 0.7, 10, freq=2.2)
+    a = ground(a, HORIZON + 26, rgb('d6c8a4'), rgb('a08a62'), 1343, 5, 0.12, spots=(rgb('9ac070'), 0.45))
 
     def homes(d):
         for x, w, h in ((60, 110, 56), (230, 86, 48), (480, 92, 50), (620, 120, 60)):
