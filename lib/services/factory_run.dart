@@ -64,10 +64,13 @@ class FactoryData {
 
   /// As formas que um item muda (Rotom Catalog, Gracidea, Meteorite): espécie → [item, [formas]].
   final Map<int, List> itemForms;
+
+  /// Os itens que os selvagens seguram (como nos jogos): espécie → [itens].
+  final Map<int, List<String>> held;
   const FactoryData(this.species, this.evolutions, this.starters,
       [this.bosses = const [], this.forms = const {}, this.megas = const {}, this.gmax = const [], this.zcrystals = const {},
       this.tms = const [], this.stones = const [], this.stories = const {}, this.routes = const {}, this.formSpecies = const {},
-      this.regional = const {}, this.scenes = const {}, this.itemForms = const {}]);
+      this.regional = const {}, this.scenes = const {}, this.itemForms = const {}, this.held = const {}]);
 
   static Future<FactoryData>? _loading;
 
@@ -109,6 +112,7 @@ class FactoryData {
       Map<String, dynamic>.from((j['regional'] as Map?) ?? const {}),
       Map<String, dynamic>.from((j['scenes'] as Map?) ?? const {}),
       {for (final e in ((j['itemForms'] as Map?) ?? const {}).entries) int.parse('${e.key}'): e.value as List},
+      {for (final e in ((j['held'] as Map?) ?? const {}).entries) int.parse('${e.key}'): [for (final x in e.value as List) '$x']},
     );
   }
 
@@ -135,7 +139,9 @@ class FactoryRun {
 
   /// A Bolsa do começo da corrida (os itens gastos na batalha não voltam).
   static const startBag = {'poke-ball': startBalls, 'potion': 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, 'revive': 1};
-  static const bagItems = [...ballIds, 'potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive', 'escape-rope'];
+  /// Os itens X da Bolsa (igual ao site).
+  static const xBag = ['x-attack', 'x-defense', 'x-sp-atk', 'x-sp-def', 'x-speed', 'x-accuracy', 'dire-hit', 'guard-spec'];
+  static const bagItems = [...ballIds, 'potion', 'super-potion', 'hyper-potion', 'max-potion', 'revive', 'escape-rope', ...xBag];
 
   /// Escape Rope: se perder uma batalha, o time foge com pouco HP em vez de a corrida acabar.
   static const escapeHp = 0.1;
@@ -183,6 +189,29 @@ class FactoryRun {
 
   /// O chefe do reide como prêmio: sem o HP a mais nem a mecânica (ele vem com os IVs fortes).
   static Json _raidPrize(Map f) => {for (final e in f.entries) if (!const {'raidHp', 'gimmick', 'title', 'boost', 'item'}.contains(e.key)) '${e.key}': e.value};
+
+  /// Exp. Candy (como no Sword/Shield): os doces de XP que os reides dão (pelas estrelas). No time (TIME > OPÇÕES), cada
+  /// um dá o XP dele direto (sobe de nível e evolui como o Rare Candy). Igual ao site.
+  static const expCandies = {'exp-candy-xs': 100, 'exp-candy-s': 800, 'exp-candy-m': 3000, 'exp-candy-l': 10000, 'exp-candy-xl': 30000};
+  static const raidCandies = {1: ('exp-candy-xs', 3), 2: ('exp-candy-s', 2), 3: ('exp-candy-m', 2), 4: ('exp-candy-l', 1), 5: ('exp-candy-xl', 1)};
+  static (String, int) raidCandy(Object? stars) => raidCandies[_int(stars ?? 1).clamp(1, 5)]!;
+
+  /// Usa um Exp. Candy no Pokémon index (null se não dá: sem doce ou no limite de nível do Nuzlocke).
+  static Json? eatCandy(Json run, FactoryData data, int index, String candy) {
+    final team = teamOf(run);
+    if (index < 0 || index >= team.length || !expCandies.containsKey(candy) || _int((run['candies'] as Map?)?[candy] ?? 0) <= 0) return null;
+    final mon = team[index];
+    final cap = levelCapOf(data, run);
+    final now = _int(mon['exp'] ?? expAt(_int(mon['level'])));
+    final exp = cap != null ? math.min(expCandies[candy]!, expAt(cap) - now) : expCandies[candy]!;
+    if (exp <= 0) return null;
+    final out = _copy(run);
+    out['candies'] = {...Map<String, dynamic>.from(run['candies'] as Map), candy: _int((run['candies'] as Map)[candy]) - 1};
+    final (grown, _, _) = _gainExp({...mon, 'exp': now}, exp, data, _dice(out), regionOf(data, out));
+    final after = [for (var i = 0; i < team.length; i++) i == index ? grown : team[i]];
+    out['team'] = withShedinja(out, team, after, _dice(out));
+    return out;
+  }
 
   /// Troca o Tera Type do Pokémon index gastando teraShardCost Tera Shards do tipo (null se não dá). Igual ao site.
   static Json? setTera(Json run, int index, String type) {
@@ -357,6 +386,8 @@ class FactoryRun {
     // Serviços e chaves das mecânicas.
     'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
     'escape-rope': 450,
+    // Os itens X (vão para a Bolsa; usados na batalha em quem está em campo).
+    'x-attack': 150, 'x-defense': 150, 'x-sp-atk': 150, 'x-sp-def': 150, 'x-speed': 150, 'x-accuracy': 120, 'dire-hit': 120, 'guard-spec': 120,
     // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
     'exp-share': 800,
     // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
@@ -1753,6 +1784,76 @@ class FactoryRun {
     return out;
   }
 
+  /// Os itens dos selvagens (como nos jogos): às vezes (wildItemChance) o selvagem vem segurando um item da espécie dele.
+  /// Os de batalha ele usa na luta e vêm junto na captura; os remédios vão para a Bolsa; os valiosos viram dinheiro
+  /// (wildValuables). O sorteio vem da semente e do andar (não gasta o da corrida). Igual ao site.
+  static const wildItemChance = 0.2;
+  static const wildBag = ['potion', 'revive', 'max-revive'];
+  static const wildValuables = {
+    'nugget': 1000, 'big-nugget': 4000, 'pearl': 300, 'big-pearl': 1200, 'stardust': 400, 'star-piece': 1500, 'tiny-mushroom': 100,
+    'big-mushroom': 600, 'balm-mushroom': 2000, 'rare-bone': 1000, 'comet-shard': 3000,
+  };
+  static Json wildItems(Json encounter, Json run, FactoryData data) {
+    if (encounter['foes'] is! List || encounter['kind'] != 'wild' || encounter['raid'] != null) return encounter;
+    final foes = encounter['foes'] as List;
+    return {
+      ...encounter,
+      'foes': [
+        for (var k = 0; k < foes.length; k++)
+          () {
+            final f = Map<String, dynamic>.from(foes[k] as Map);
+            final id = _int(f['id']);
+            final list = data.held[data.forms[id] ?? id] ?? data.held[id] ?? const <String>[];
+            if (list.isEmpty || f['item'] != null || followRoll(run, 1103515245 + k * 7919) >= wildItemChance) return f;
+            final item = list[(followRoll(run, 2654435761 + k * 104729) * list.length).floor()];
+            return wildBag.contains(item) || wildValuables.containsKey(item) ? {...f, 'loot': item} : {...f, 'item': item, 'held': true};
+          }(),
+      ],
+    };
+  }
+
+  /// As formas de cada um (o sprite): o Unown com a letra dele (28: '' é o A, e ! e ?) e o Vivillon com o padrão das asas
+  /// da região da corrida (como nos jogos, pelo lugar). Ficam no Pokémon (variant) e vão junto na captura. Igual ao site.
+  static final unownLetters = ['', ...'bcdefghijklmnopqrstuvwxyz'.split(''), 'exclamation', 'question'];
+  static const vivillonPatterns = {
+    'Kanto': 'garden', 'Johto': 'elegant', 'Hoenn': 'jungle', 'Sinnoh': 'polar', 'Unova': 'modern', 'Kalos': '', 'Alola': 'sun', 'Galar': 'continental',
+    'Paldea': 'savanna', 'Hisui': 'tundra', 'Armor': 'archipelago', 'Crown': 'icy-snow', 'Kitakami': 'river', 'Blueberry': 'ocean',
+  };
+  static String vivillonOf(FactoryData data, Json run) => vivillonPatterns[regionOf(data, run)] ?? '';
+
+  /// A letra do Unown (o nome dela).
+  static String unownLetter(Object? variant) => variant == 'exclamation' ? '!' : variant == 'question' ? '?' : ('${variant ?? ''}'.isEmpty ? 'a' : '$variant').toUpperCase();
+  static Json wildForms(Json encounter, Json run, FactoryData data) {
+    final foes = encounter['foes'];
+    if (foes is! List || !foes.any((f) => _int((f as Map)['id']) == 201 || _int(f['id']) == 666)) return encounter;
+    return {
+      ...encounter,
+      'foes': [
+        for (var k = 0; k < foes.length; k++)
+          _int((foes[k] as Map)['id']) == 201
+              ? {...Map<String, dynamic>.from(foes[k] as Map), 'variant': unownLetters[(followRoll(run, 2246822519 + k * 131) * unownLetters.length).floor()]}
+              : _int((foes[k] as Map)['id']) == 666
+                  ? {...Map<String, dynamic>.from(foes[k] as Map), 'variant': vivillonOf(data, run)}
+                  : foes[k],
+      ],
+    };
+  }
+
+  /// Quem virou Vivillon (evoluindo) ganha o padrão da região de agora.
+  static List<Json> withVivillon(List<Json> team, FactoryData data, Json run) =>
+      [for (final m in team) _int(m['id']) == 666 && !m.containsKey('variant') ? {...m, 'variant': vivillonOf(data, run)} : m];
+
+  /// O que veio com o selvagem capturado: (o item, 'held' (segura), 'bag' (Bolsa) ou 'money' (vendido), o dinheiro).
+  static (String, String, int)? wildLoot(Map? foe) {
+    if (foe?['held'] == true && foe?['item'] != null) return ('${foe!['item']}', 'held', 0);
+    final loot = foe?['loot'];
+    if (loot == null) return null;
+    return wildValuables.containsKey(loot) ? ('$loot', 'money', wildValuables[loot]!) : ('$loot', 'bag', 0);
+  }
+
+  /// O nome do item segurado no motor ("Choice Band") como no jogo ('choice-band'). Igual ao site.
+  static String itemSlug(Object? name) => '${name ?? ''}'.toLowerCase().replaceAll(RegExp("['’.]"), '').replaceAll(RegExp('[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-$'), '');
+
   /// Aceita o ovo misterioso.
   static Json takeMysteryEgg(Json run, FactoryData data) {
     final id = mysteryEgg(data, run);
@@ -2910,7 +3011,7 @@ class FactoryRun {
         };
       }
       // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-      out['encounter'] = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run), run);
+      out['encounter'] = wildForms(wildItems(rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, Map<String, dynamic>.from(out['encounter'] as Map)), run), run), run), out, data), out, data);
       // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver. Igual ao site.
       out['scene'] = shownScene(run, '${out['scene']}', data);
       out['encounter'] = {...out['encounter'] as Map<String, dynamic>, 'scene': shownScene(run, '${out['encounter']['scene'] ?? out['scene']}', data)};
@@ -3441,7 +3542,8 @@ class FactoryRun {
       bool? night,
       bool? dusk,
       bool fled = false,
-      double? foeHp}) {
+      double? foeHp,
+      List<String?>? stolen}) {
     final out = _copy(run);
     final team0 = teamOf(out);
     // Depois de cada vitória, a cura da árvore (só em quem está de pé).
@@ -3570,6 +3672,9 @@ class FactoryRun {
       team[i] = {...team[i], 'id': id};
     }
     if (flipped) out.remove('flip');
+    // Os Exp. Candy do reide (pelas estrelas).
+    final candy = run['encounter']?['raid'] != null && !fled ? raidCandy(run['encounter']['stars']) : null;
+    if (candy != null) out['candies'] = {...Map<String, dynamic>.from((run['candies'] as Map?) ?? const {}), candy.$1: _int((run['candies'] as Map?)?[candy.$1] ?? 0) + candy.$2};
     // O Reide Tera: as Tera Shards do tipo do chefe.
     if (raidShards(run) > 0 && !fled) {
       final type = '${((run['encounter']['foes'] as List).first as Map)['tera']}';
@@ -3839,6 +3944,19 @@ class FactoryRun {
     // Na Liga não tem Centro: as lutas vêm uma atrás da outra, só com a Bolsa (a Enfermeira Joy não aparece).
     final joy = rand() < joyChance && !_inLeague(data, out);
     if (joy) out['team'] = [for (final m in teamOf(out)) {...m, 'hp': 1}];
+    // O que veio com o selvagem capturado: o remédio vai para a Bolsa, o valioso vira dinheiro (o segurado vem com ele).
+    final loot = wildLoot(captured && kind == 'wild' && foes.isNotEmpty ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : null);
+    if (loot != null && loot.$2 == 'bag') {
+      final k = loot.$1 == 'max-revive' ? 'revive' : loot.$1;
+      out['bag'] = {...Map<String, dynamic>.from((out['bag'] as Map?) ?? const {}), k: _int((out['bag'] as Map?)?[k] ?? 0) + 1};
+    }
+    if (loot != null && loot.$2 == 'money') out['money'] = _int(out['money']) + loot.$3;
+    // Thief / Covet: o item que ele roubou na luta fica com ele (se não segurava nada).
+    if (stolen != null) {
+      final t = teamOf(out);
+      out['team'] = [for (var i = 0; i < t.length; i++) i < stolen.length && stolen[i] != null && (t[i]['item'] == null || t[i]['item'] == '') ? {...t[i], 'item': stolen[i]} : t[i]];
+    }
+    out['team'] = withVivillon(teamOf(out), data, out);
     final born = _hatch(out, captured && (kind == 'wild' || kind == 'wildboss'));
     // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
     final fossils = run['dungeon'] != null && kind == 'dboss' && born == null
@@ -3863,10 +3981,13 @@ class FactoryRun {
           : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
       if (coins > 0) 'coins': coins,
       if (fossilFound != null) 'fossil': fossilFound,
+      if (loot != null) 'loot': [loot.$1, loot.$2, loot.$3],
+      if (stolen != null && stolen.any((x) => x != null)) 'stolen': stolen,
       if (run['encounter']?['raid'] != null)
         'raid': {
           'kind': run['encounter']['raid'],
           'stars': run['encounter']['stars'] ?? 1,
+          if (candy != null) 'candy': [candy.$1, candy.$2],
           if (raidShards(run) > 0) 'shards': raidShards(run),
           if (raidShards(run) > 0) 'type': ((run['encounter']['foes'] as List).first as Map)['tera'],
         },
@@ -3997,6 +4118,10 @@ class FactoryRun {
     var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : _int(foe['minIv'] ?? 0), foe['shiny'] == true);
     // O do Hidden Grotto: com a habilidade oculta.
     if (foe['ha'] == true) mon = {...mon, 'ha': true};
+    // A letra do Unown e o padrão do Vivillon vêm junto.
+    if (foe['variant'] != null) mon = {...mon, 'variant': foe['variant']};
+    // O item que o selvagem segurava vem junto (como nos jogos).
+    if (foe['held'] == true && foe['item'] != null && (mon['item'] == null || mon['item'] == '')) mon = {...mon, 'item': foe['item']};
     // O Alfa capturado continua Alfa (maior e mais forte).
     if (foe['alpha'] == true) mon = {...mon, 'alpha': true};
     // O do Reide Tera continua com o Tera Type dele.
@@ -6650,8 +6775,19 @@ class FactoryRun {
     for (final id in [...caught]) {
       if (species(id) case final s?) caught.add(s);
     }
-    if ((seen.length, caught.length) == before) return factory;
-    return {...factory, 'seen': seen.toList()..sort(), 'caught': caught.toList()..sort()};
+    // As letras do Unown que você já teve (a coleção das Ruínas de Alph: unownLetters). Igual ao site.
+    final unown = <String>{for (final l in (factory['unown'] as List?) ?? const []) '$l'};
+    final had = unown.length;
+    for (final m in [...((run['team'] as List?) ?? const []), ...((run['pc'] as List?) ?? const [])]) {
+      if (m is Map && _int(m['id']) == 201) unown.add('${m['variant'] ?? ''}');
+    }
+    if ((seen.length, caught.length) == before && unown.length == had) return factory;
+    return {
+      ...factory,
+      'seen': seen.toList()..sort(),
+      'caught': caught.toList()..sort(),
+      if (unown.isNotEmpty) 'unown': [for (final l in unownLetters) if (unown.contains(l)) l],
+    };
   }
 
   /// Quantas corridas a galeria guarda (as melhores).
@@ -6843,6 +6979,7 @@ class FactoryRun {
           if (mon['ha'] == true) 'ability': 'hidden' else if (mon['ab'] != null && mon['ab'] != 0) 'ability': 'second',
           if (mon['ball'] != null) 'ball': mon['ball'],
           if (mon['alpha'] == true) 'alpha': true,
+          if ('${mon['variant'] ?? ''}'.isNotEmpty) 'variant': mon['variant'],
           if (mon['tera'] != null) 'tera': mon['tera'],
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
@@ -6879,6 +7016,7 @@ class FactoryRun {
         if (foe['shiny'] == true) 'shiny': true,
         if (foe['ha'] == true) 'ability': 'hidden',
         if (foe['alpha'] == true) 'alpha': true,
+        if ('${foe['variant'] ?? ''}'.isNotEmpty) 'variant': foe['variant'],
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],

@@ -458,7 +458,7 @@ class _TurnBattleScreenState extends State<TurnBattleScreen> {
       if (_battle?.winner == 0) {
         final data = _factoryData ??= await FactoryData.load();
         final after = factoryAfter(_battle!, _factoryOrder, run);
-        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, crits: after.crits, ball: after.ball, night: FactoryRun.clockOf().night, dusk: FactoryRun.clockOf().dusk, fled: after.fled, foeHp: after.foeHp)});
+        saveFactory({...factory, 'run': FactoryRun.winFloor(run, data, hp: after.hp, bag: after.bag, captured: after.captured, capturedIndex: after.capturedIndex, fought: after.fought, gained: after.gained, crits: after.crits, ball: after.ball, night: FactoryRun.clockOf().night, dusk: FactoryRun.clockOf().dusk, fled: after.fled, foeHp: after.foeHp, stolen: after.stolen)});
         // Uma tela de vitória só: a do resultado do andar (XP, níveis, dinheiro), logo depois.
         note = '';
       } else {
@@ -2448,6 +2448,19 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     _act(() => _b.needSwitch ? _b.replace(i) : _b.shiftPending ? _b.shiftSwitch(i) : _b.playTurn(widget.hit, switchTo: i));
   }
 
+  /// A forma do sprite na batalha: a do clima (o Cherrim no sol) ou a do Pokémon (a letra do Unown, o Vivillon). Igual ao site.
+  String _spriteVariant(int id, BattleMon mon) {
+    final weather = SpriteVariant.battle(id, _weather);
+    return weather.isNotEmpty ? weather : id == mon.id ? mon.variant : '';
+  }
+
+  /// O item X vai direto em quem está em campo (como nos jogos). Igual ao site.
+  void _applyX(String slug) {
+    if (_busy || widget.online?.locked == true || _b.winner != null) return;
+    setState(() { _gimmickPick = null; _gimmickMon = null; });
+    _act(() => _b.playTurn(widget.hit, item: slug, target: _b.activeIndex[0]));
+  }
+
   void _throwBall(String slug) {
     if (_busy || widget.online != null || _b.winner != null) return;
     setState(() => _menu = 'main');
@@ -2515,10 +2528,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     // A Bolsa e o time abrem por cima do campo (a mesma tela, como no jogo; dá para jogar com o celular de lado).
     // A Bolsa: em cima da caixa de texto (a descrição do item aparece nela); USAR e Voltar nos botões fixos de baixo.
     final bagPockets = <BagPocket>[
-                  for (final (id, label, img, ball) in const [('medicine', 'Remédios', 'potion', false), ('balls', 'Poké Balls', 'poke-ball', true)])
+                  // Os itens X no bolso "Itens de batalha" (como nos jogos).
+                  for (final (id, label, img, ball, x) in const [('medicine', 'Remédios', 'potion', false, false), ('balls', 'Poké Balls', 'poke-ball', true, false), ('battle', 'Itens de batalha', 'x-attack', false, true)])
                     BagPocket(id: id, label: label, img: img, items: [
                       for (final it in battleItems)
-                        if (it.ball == ball && (_b.bags[0][it.slug] ?? 0) > 0)
+                        if ((x ? it.x.isNotEmpty : it.x.isEmpty && it.ball == ball) && (_b.bags[0][it.slug] ?? 0) > 0)
                           BagEntry(
                             id: it.slug,
                             name: it.name,
@@ -2527,9 +2541,11 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             help: _itemHelp(it, _b.healPct),
                             disabled: ![for (var i = 0; i < _b.teams[0].length; i++) i].any((i) => _b.canUseItem(0, it.slug, i)),
                             use: it.ball ? tr('JOGAR') : tr('USAR'),
-                            // A bola vai direto no selvagem; os remédios perguntam em quem.
+                            // A bola vai direto no selvagem; o item X, em quem está em campo; os remédios perguntam em quem.
                             onUse: () => it.ball
                                 ? _throwBall(it.slug)
+                                : it.x.isNotEmpty
+                                ? _applyX(it.slug)
                                 : setState(() {
                                     _item = it.slug;
                                     _menu = 'party';
@@ -2837,7 +2853,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             PlatformBase(scene: scene, side: 'foe', id: _form[1] ?? foe.id),
                             _PokeOut(
                                 state: _poke[1],
-                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1], variant: SpriteVariant.battle(_form[1] ?? foe.id, _weather))),
+                                child: _Sprite(key: _sprites[1], mon: foe, id: _form[1] ?? foe.id, dmax: _dmax[1], tera: _tera[1], fainted: _fainted[1], variant: _spriteVariant(_form[1] ?? foe.id, foe))),
                             if (_morph?.$1 == 1) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: foe.teraType)),
                             if (_shine?.$1 == 1) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                             if (_burst?.$1 == 1) Positioned.fill(child: _BallBurst(key: ValueKey(('burst', _burst!.$3)), ball: _burst!.$2)),
@@ -2853,7 +2869,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                             PlatformBase(scene: scene, side: 'mine', id: _form[0] ?? me.id),
                             _PokeOut(
                                 state: _poke[0],
-                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0], variant: SpriteVariant.battle(_form[0] ?? me.id, _weather))),
+                                child: _Sprite(key: _sprites[0], mon: me, id: _form[0] ?? me.id, dmax: _dmax[0], tera: _tera[0], back: true, fainted: _fainted[0], variant: _spriteVariant(_form[0] ?? me.id, me))),
                             if (_morph?.$1 == 0) Positioned.fill(child: _Morph(key: ValueKey(('morph', _morph!.$3)), kind: _morph!.$2, type: me.teraType)),
                             if (_shine?.$1 == 0) Positioned.fill(child: _Sparkles(key: ValueKey(('shine', _shine!.$2)))),
                             if (_burst?.$1 == 0) Positioned.fill(child: _BallBurst(key: ValueKey(('burst', _burst!.$3)), ball: _burst!.$2)),
@@ -2889,8 +2905,8 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
                                     tera: _tera[side],
                                     fainted: _fainted[side],
                                     // O Cherrim no sol forte abre as pétalas. Igual ao site.
-                                    variant: SpriteVariant.battle(_form[side] ?? (side == 1 ? foe : me).id, _weather),
-                                    fallback: _Sprite(key: _sprites[side], mon: side == 1 ? foe : me, id: _form[side] ?? (side == 1 ? foe : me).id, dmax: _dmax[side], tera: _tera[side], back: side == 0, fainted: _fainted[side], variant: SpriteVariant.battle(_form[side] ?? (side == 1 ? foe : me).id, _weather)),
+                                    variant: _spriteVariant(_form[side] ?? (side == 1 ? foe : me).id, side == 1 ? foe : me),
+                                    fallback: _Sprite(key: _sprites[side], mon: side == 1 ? foe : me, id: _form[side] ?? (side == 1 ? foe : me).id, dmax: _dmax[side], tera: _tera[side], back: side == 0, fainted: _fainted[side], variant: _spriteVariant(_form[side] ?? (side == 1 ? foe : me).id, side == 1 ? foe : me)),
                                   ),
                                 ),
                               ),
@@ -3558,8 +3574,17 @@ double battleBottomHeight(BuildContext context) => _BottomScreen.height(context)
 double battleBarHeight(BuildContext context) => MediaQuery.textScalerOf(context).scale(15) + 12;
 
 /// O que o item da Bolsa faz (na caixa de texto, ao tocar nele). Igual ao site.
+/// O que cada item X faz (a ajuda na Bolsa). Igual ao site.
+const _xHelp = {'atk': 'Ataque', 'def': 'Defesa', 'spa': 'Ataque Especial', 'spd': 'Defesa Especial', 'spe': 'Velocidade', 'accuracy': 'Precisão'};
+
 String _itemHelp(BattleItem it, bool healPct) => it.ball
     ? tr('Jogar no Pokémon selvagem')
+    : it.x == 'crit'
+    ? tr('Aumenta a chance de golpe crítico de quem está em campo')
+    : it.x == 'mist'
+    ? tr('Protege os atributos do time contra quedas por 5 turnos')
+    : it.x.isNotEmpty
+    ? tr('+2 de {0} para quem está em campo').replaceAll('{0}', tr(_xHelp[it.x]!))
     : it.revive
         ? tr('Revive com metade do HP')
         : it.heal >= 9999
@@ -5543,7 +5568,7 @@ class _MultiBattleViewState extends State<_MultiBattleView> {
   List<BagPocket> _pockets() => [
         BagPocket(id: 'medicine', label: 'Remédios', img: 'potion', items: [
           for (final it in battleItems)
-            if (!it.ball && _left(it.slug) > 0)
+            if (!it.ball && it.x.isEmpty && _left(it.slug) > 0)
               BagEntry(
                 id: it.slug,
                 name: it.name,

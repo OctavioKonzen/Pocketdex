@@ -233,7 +233,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
 }
 
 /// Como o time terminou a batalha (para winFloor): a parte do HP de cada um, na ordem da corrida, a Bolsa, se capturou o selvagem e quem lutou contra cada adversário.
-({List<double> hp, Map<String, int> bag, bool captured, int? capturedIndex, List<List<int>> fought, List<int>? gained, List<int>? crits, String? ball, bool fled, double? foeHp}) factoryAfter(
+({List<double> hp, Map<String, int> bag, bool captured, int? capturedIndex, List<List<int>> fought, List<int>? gained, List<int>? crits, String? ball, bool fled, double? foeHp, List<String?>? stolen}) factoryAfter(
     TurnBattle battle, List<int> order, Json run) {
   final hp = [for (final m in FactoryRun.teamOf(run)) FactoryRun.hpOf(m)];
   for (var slot = 0; slot < order.length && slot < battle.teams[0].length; slot++) {
@@ -266,6 +266,18 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
       if (i < crits.length) crits[i] += (e.value as num).toInt();
     }
   }
+  // Thief / Covet: o item que cada um terminou segurando sem ter entrado com um (na ordem da corrida). Igual ao site.
+  final ends = battle.simulatorState?['sides']?[0]?['team'] as List?;
+  final team = FactoryRun.teamOf(run);
+  List<String?>? stolen = ends == null ? null : List<String?>.filled(team.length, null);
+  if (stolen != null) {
+    for (var slot = 0; slot < order.length && slot < ends!.length; slot++) {
+      final it = FactoryRun.itemSlug((ends[slot] as Map?)?['item']);
+      final i = order[slot];
+      if (it.isNotEmpty && i < team.length && (team[i]['item'] == null || team[i]['item'] == '')) stolen[i] = it;
+    }
+    if (!stolen.any((x) => x != null)) stolen = null;
+  }
   // O lendário que fugiu: o HP que ficou (para a próxima vez).
   final foe = battle.teams[1].isEmpty ? null : battle.teams[1][0];
   final foeHp = battle.fled && foe != null && foe.maxHp > 0 ? ((foe.hp < 0 ? 0 : foe.hp) / foe.maxHp * 1000).round() / 1000 : null;
@@ -280,6 +292,7 @@ double? expBarOf(TurnBattle battle, int slot, List<int> foeHp) {
     ball: battle.capturedBall,
     fled: battle.fled,
     foeHp: foeHp,
+    stolen: stolen,
   );
 }
 
@@ -403,7 +416,7 @@ Widget _mon(BuildContext context, Map m, {bool selected = false, VoidCallback? o
         border: Border.all(color: selected ? Colors.amber : Colors.transparent, width: 2),
       ),
       child: Column(children: [
-        Opacity(opacity: down ? 0.4 : 1, child: SizedBox(width: 48, height: 48, child: PokemonSprite((m['id'] as num).toInt(), shiny: shiny, fill: 0.9))),
+        Opacity(opacity: down ? 0.4 : 1, child: SizedBox(width: 48, height: 48, child: PokemonSprite((m['id'] as num).toInt(), shiny: shiny, variant: '${m['variant'] ?? ''}', fill: 0.9))),
         if (name.isNotEmpty || shiny)
           FittedBox(fit: BoxFit.scaleDown, child: Text('${shiny ? '✨ ' : ''}$name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: c.text), maxLines: 1)),
         if (m['level'] != null) Text('Nv. ${m['level']}', style: TextStyle(fontSize: 11, color: c.muted)),
@@ -1039,6 +1052,30 @@ class _BagAndItemsState extends State<_BagAndItems> {
                 },
               ),
             ),
+          // Os Exp. Candy dos reides: cada um dá o XP dele direto. Igual ao site.
+          if (((run['candies'] as Map?) ?? const {}).values.any((n) => _int(n) > 0))
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: DropdownButton<String>(
+                key: const ValueKey('team-candy'),
+                underline: const SizedBox(),
+                isDense: true,
+                dropdownColor: Colors.white,
+                style: const TextStyle(color: _ink, fontSize: 12, fontWeight: FontWeight.w900),
+                value: '',
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('🍬 Exp. Candy')),
+                  for (final c in FactoryRun.expCandies.keys)
+                    if (_int((run['candies'] as Map?)?[c] ?? 0) > 0)
+                      DropdownMenuItem(value: c, child: Text('🍬 ${prettySlug(c).replaceAll('Exp Candy', 'Exp. Candy')} (+${FactoryRun.expCandies[c]} XP) ×${(run['candies'] as Map)[c]}')),
+                ],
+                onChanged: (c) {
+                  final next = c == null || c.isEmpty ? null : FactoryRun.eatCandy(run, widget.data, i, c);
+                  if (next != null) widget.onSave(next);
+                },
+              ),
+            ),
           // A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao site.
           if (FactoryRun.itemFormsOf(widget.data, mon).isNotEmpty)
             Container(
@@ -1112,7 +1149,7 @@ class _BagAndItemsState extends State<_BagAndItems> {
           child: SizedBox.square(
             dimension: 64,
             child: Stack(clipBehavior: Clip.none, children: [
-              Positioned.fill(child: PokemonSprite(_int(mon['id']), shiny: mon['shiny'] == true, fill: 0.9)),
+              Positioned.fill(child: PokemonSprite(_int(mon['id']), shiny: mon['shiny'] == true, variant: '${mon['variant'] ?? ''}', fill: 0.9)),
               if (_pets > 0)
                 Positioned(
                   left: 20,
@@ -2274,7 +2311,7 @@ class _FactoryHubState extends State<FactoryHub> {
                           alignment: Alignment.bottomCenter,
                           child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
                             for (final m in h['team'] as List)
-                              SizedBox(width: 48, height: 48, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.95)),
+                              SizedBox(width: 48, height: 48, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, variant: '${m['variant'] ?? ''}', fill: 0.95)),
                           ]),
                         ),
                       ]),
@@ -2955,6 +2992,13 @@ class _FactoryScreenState extends State<FactoryScreen> {
     if (id == 'town-map') return tr('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)');
     if (id == 'repel') return tr('Use em AÇÕES: os caminhos de selvagens somem por {0} andares').replaceAll('{0}', '${FactoryRun.repelFloors}');
     if (id == 'revive') return tr('Revive com metade do HP');
+    // Os itens X (vão para a Bolsa e são usados na batalha). Igual ao site.
+    if (id == 'dire-hit') return tr('Na batalha: aumenta a chance de golpe crítico de quem está em campo');
+    if (id == 'guard-spec') return tr('Na batalha: protege os atributos do time contra quedas por 5 turnos');
+    if (FactoryRun.xBag.contains(id)) {
+      return tr('Na batalha: +2 de {0} para quem está em campo')
+          .replaceAll('{0}', tr(const {'x-attack': 'Ataque', 'x-defense': 'Defesa', 'x-sp-atk': 'Ataque Especial', 'x-sp-def': 'Defesa Especial', 'x-speed': 'Velocidade', 'x-accuracy': 'Precisão'}[id]!));
+    }
     final share = FactoryRun.healShare[id];
     if (share != null) return share >= 1 ? tr('Recupera todo o HP') : tr('Recupera {0}% do HP').replaceAll('{0}', '${(share * 100).round()}');
     if (id == 'rare-candy') return tr('+1 nível');
@@ -3002,7 +3046,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
   /// Um Pokémon no campo, no mesmo lugar da batalha: o seu de costas (grande, na frente à esquerda) ou de frente lá
   /// atrás à direita, do tamanho dele (pela altura) e em cima da base dele.
   Widget _fieldMon(Map mon, double w, double h, {bool back = false}) {
-    final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, back: back, scene: _scene);
+    final sprite = StageMon(id: (mon['id'] as num).toInt(), shiny: mon['shiny'] == true, variant: '${mon['variant'] ?? ''}', back: back, scene: _scene);
     return back
         ? Positioned(left: w * 0.04, bottom: h * 0.18, width: w * 0.36, height: w * 0.36, child: sprite)
         : Positioned(right: w * 0.14, bottom: h * foeBottom(_scene), width: w * 0.2, height: w * 0.2, child: sprite);
@@ -3097,7 +3141,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         Row(mainAxisSize: MainAxisSize.min, children: [
           for (final m in FactoryRun.teamOf(run))
             FittedBox(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Opacity(opacity: FactoryRun.hpOf(m) > 0 ? 1 : 0.4, child: SizedBox(width: 20, height: 20, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9))),
+              Opacity(opacity: FactoryRun.hpOf(m) > 0 ? 1 : 0.4, child: SizedBox(width: 20, height: 20, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, variant: '${m['variant'] ?? ''}', fill: 0.9))),
               Container(
                 width: 22,
                 height: 3,
@@ -3570,6 +3614,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
             row('🧗', 'Andar', text(run['floor'] ?? 0, 'card-floor')),
             row('⏱️', 'Tempo de jogo', text(playTimeText(((run['playMs'] as num?) ?? 0).toInt()), 'card-time')),
             row('✨', 'Shiny Charm', text(currentFactory()['charm'] == true ? '✅ ${FactoryRun.shinyCharm}×' : '—', 'card-charm')),
+            // As letras do Unown que você já teve (como a coleção das Ruínas de Alph). Igual ao site.
+            if (((currentFactory()['unown'] as List?) ?? const []).isNotEmpty)
+              row('🔤', 'Unown', text('${(currentFactory()['unown'] as List).length}/${FactoryRun.unownLetters.length} · ${[for (final l in currentFactory()['unown'] as List) FactoryRun.unownLetter(l)].join(' ')}', 'card-unown')),
             if (quest != null)
               row('🌟', 'Lendários', Row(mainAxisSize: MainAxisSize.min, children: [
                 for (final id in quest['list'] as List)
@@ -3971,7 +4018,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(color: const Color(0x33FFFFFF), border: Border.all(color: target == i ? const Color(0xFFFBBF24) : Colors.transparent, width: 2)),
-                child: Opacity(opacity: FactoryRun.hpOf(team[i]) > 0 ? 1 : 0.45, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, fill: 0.9)),
+                child: Opacity(opacity: FactoryRun.hpOf(team[i]) > 0 ? 1 : 0.45, child: PokemonSprite((team[i]['id'] as num).toInt(), shiny: team[i]['shiny'] == true, variant: '${team[i]['variant'] ?? ''}', fill: 0.9)),
               ),
             ),
           ),
@@ -4766,6 +4813,18 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['pokerus'] is List)
           Text('🦠 ${tr('{0} pegou Pokérus! Ganha o dobro de EVs.').replaceAll('{0}', [for (final id in p['pokerus'] as List) _name(id)].join(', '))}',
               key: const ValueKey('factory-pokerus'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
+        // O item que o selvagem capturado segurava (e o roubado com Thief/Covet). Igual ao site.
+        if (p['loot'] is List)
+          Text(
+              '🎁 ${tr((p['loot'] as List)[1] == 'held' ? 'Ele segurava {0}! Continua com ele.' : (p['loot'] as List)[1] == 'money' ? 'Ele segurava {0}! Vendido por 💰{1}.' : 'Ele segurava {0}! Foi para a Bolsa.').replaceAll('{0}', prettySlug('${(p['loot'] as List)[0]}')).replaceAll('{1}', '${(p['loot'] as List)[2]}')}',
+              key: const ValueKey('factory-loot'),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A))),
+        if (p['stolen'] is List)
+          for (final (i, it) in (p['stolen'] as List).indexed)
+            if (it != null && i < FactoryRun.teamOf(run).length)
+              Text('🫳 ${tr('{0} pegou {1} na luta!').replaceAll('{0}', '${FactoryRun.teamOf(run)[i]['nick'] ?? _name(FactoryRun.teamOf(run)[i]['id'])}').replaceAll('{1}', prettySlug('$it'))}',
+                  key: const ValueKey('factory-stolen'),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A))),
         // O fóssil achado na rota (o laboratório da próxima cidade revive). Igual ao site.
         if (p['fossil'] != null)
           Text('🦴 ${tr('Você achou um {0}! O laboratório da próxima cidade revive.').replaceAll('{0}', prettySlug('${p['fossil']}'))}',
@@ -4778,6 +4837,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['raid'] is Map)
           Text(
               '${p['raid']['kind'] == 'tera' ? '💎' : '🔴'} ${tr(p['raid']['kind'] == 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} ${'★' * _int(p['raid']['stars'] ?? 1)}'
+              '${p['raid']['candy'] is List ? ' · +${(p['raid']['candy'] as List)[1]} ${prettySlug('${(p['raid']['candy'] as List)[0]}')}' : ''}'
               '${p['raid']['shards'] != null ? ' · +${p['raid']['shards']} Tera Shard (${tr(_typePt['${p['raid']['type']}'] ?? '${p['raid']['type']}')})' : ''}',
               key: const ValueKey('factory-raid'),
               style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF67E8F9))),
@@ -4938,7 +4998,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                     Text('🏆 ${tr('Campeão de {0}!').replaceAll('{0}', '${game?['region'] ?? ''}')}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFFACC15))),
                     const SizedBox(height: 18),
                     for (final m in team) ...[
-                      SizedBox(width: 72, height: 72, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.9)),
+                      SizedBox(width: 72, height: 72, child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, variant: '${m['variant'] ?? ''}', fill: 0.9)),
                       Text('${(m['nick'] as String?) ?? _name(m['id'])} · Nv. ${m['level']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 10),
                     ],
@@ -5365,7 +5425,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(color: const Color(0xFFBDE7F0), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF0F3D5C), width: 2)),
-                child: PokemonSprite(id, shiny: mon['shiny'] == true, fill: 0.85),
+                child: PokemonSprite(id, shiny: mon['shiny'] == true, variant: '${mon['variant'] ?? ''}', fill: 0.85),
               ),
               const SizedBox(height: 4),
               FittedBox(fit: BoxFit.scaleDown, child: Text(name, maxLines: 1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
@@ -6077,7 +6137,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       Padding(
         padding: const EdgeInsets.all(8),
         child: Row(children: [
-          SizedBox(width: 48, height: 48, child: PokemonSprite((mon['id'] as num).toInt(), shiny: mon['shiny'] == true, fill: 0.9)),
+          SizedBox(width: 48, height: 48, child: PokemonSprite((mon['id'] as num).toInt(), shiny: mon['shiny'] == true, variant: '${mon['variant'] ?? ''}', fill: 0.9)),
           const SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -6600,7 +6660,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       bottom: h * 0.2,
                       width: w * 0.36,
                       height: w * 0.36,
-                      child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, base: false, scene: _scene, scale: follow?.scale)),
+                      child: StageMon(id: (lead['id'] as num).toInt(), shiny: lead['shiny'] == true, variant: '${lead['variant'] ?? ''}', base: false, scene: _scene, scale: follow?.scale)),
                 if (!town && lead != null) _fieldMon(lead, w, h, back: true),
                 // Tocando no Pokémon que segue você: o balão com o que ele sente (e o grito). Ao chegar numa rota, só o balão.
                 if (lead != null && petMood != null && !meeting)
@@ -8578,7 +8638,7 @@ class _PcPanelState extends State<_PcPanel> {
     final picked = _picked == l;
     Widget sprite(Json m, {double opacity = 1}) => Opacity(
           opacity: opacity,
-          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85, lite: true),
+          child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, variant: '${m['variant'] ?? ''}', fill: 0.85, lite: true),
         );
     return DragTarget<_PcLoc>(
       onWillAcceptWithDetails: (d) => d.data != l,
@@ -8639,7 +8699,7 @@ class _PcPanelState extends State<_PcPanel> {
                       aspectRatio: 1,
                       child: ColorFiltered(
                         colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation),
-                        child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, fill: 0.85),
+                        child: PokemonSprite((m['id'] as num).toInt(), shiny: m['shiny'] == true, variant: '${m['variant'] ?? ''}', fill: 0.85),
                       ),
                     ),
                   ),

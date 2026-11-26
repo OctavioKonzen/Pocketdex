@@ -591,8 +591,21 @@ def main():
                              base[5], base[6], base[7], rec['species']]
     regional_items = {e[2] for es in REGIONAL['regionEvos'].values() for x in es.values() for e in x if len(e) > 2}
     stones = sorted({e[2] for es in evolutions.values() for e in es if len(e) > 2} | regional_items)
+    # Os itens que os selvagens seguram (como nos jogos, held_by do PokeAPI): os de batalha (vão segurados), os remédios
+    # (vão para a Bolsa) e os valiosos (viram dinheiro). Igual em factoryRun.js (WILD_ITEM_*).
+    battle_held = set(json.load(open(os.path.join(DB, 'battle_items.json')))['held'])
+    keep_extra = {'potion', 'revive', 'max-revive', 'nugget', 'big-nugget', 'pearl', 'big-pearl', 'stardust', 'star-piece',
+                  'tiny-mushroom', 'big-mushroom', 'balm-mushroom', 'rare-bone', 'comet-shard'}
+    held = {}
+    for it in json.load(open(os.path.join(DB, 'items.json'))):
+        if not it.get('held_by') or not (it['name'].replace('-', '') in battle_held or it['name'] in keep_extra):
+            continue
+        for sid in it['held_by']:
+            if sid in out_species:
+                held.setdefault(sid, []).append(it['name'])
+    held = {sid: sorted(v) for sid, v in sorted(held.items())}
     data = {'species': out_species, 'evolutions': evolutions, 'starters': STARTERS, 'bosses': bosses, 'forms': forms,
-            'formSpecies': form_species, 'regional': REGIONAL, 'itemForms': ITEM_FORMS,
+            'formSpecies': form_species, 'regional': REGIONAL, 'itemForms': ITEM_FORMS, 'held': held,
             'megas': megas, 'gmax': gmax, 'zcrystals': zcrystals, 'tms': tms, 'stones': stones, 'stories': STORIES,
             'scenes': {r: {'cities': {c: [list(x) for x in ls] for c, ls in sc.get('cities', {}).items()},
                            'bosses': {k: {w: [list(x) for x in ls] for w, ls in v.items()} for k, v in sc.get('bosses', {}).items()}} for r, sc in SCENES.items()},

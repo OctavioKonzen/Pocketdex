@@ -1706,9 +1706,11 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const bagPockets = [
     { id: 'medicine', label: 'Remédios', img: 'potion', ball: false },
     { id: 'balls', label: 'Poké Balls', img: 'poke-ball', ball: true },
+    // Os itens X (como nos jogos, o bolso "Itens de batalha").
+    { id: 'battle', label: 'Itens de batalha', img: 'x-attack', x: true },
   ].map((pocket) => ({
     ...pocket,
-    items: ITEMS.filter((it) => Boolean(it.ball) === pocket.ball && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
+    items: ITEMS.filter((it) => (pocket.x ? Boolean(it.x) : !it.x && Boolean(it.ball) === pocket.ball) && (battle.bags[0][it.slug] ?? 0) > 0).map((it) => ({
       id: it.slug,
       name: it.name,
       count: battle.bags[0][it.slug] ?? 0,
@@ -1716,8 +1718,8 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       help: itemHelp(it, battle.healPct),
       disabled: !battle.sides[0].team.some((_, i) => canUseItem(battle, 0, it.slug, i)),
       use: it.ball ? t('JOGAR') : t('USAR'),
-      // A bola vai direto no selvagem; os remédios perguntam em quem.
-      onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
+      // A bola vai direto no selvagem; o item X, em quem está em campo; os remédios perguntam em quem.
+      onUse: () => (setBagPick(null), it.ball ? throwBall(it.slug) : it.x ? applyX(it.slug) : (setItem(it.slug), setPartyPick(null), setSummary(null), setMenu('party'))),
     })),
   }))
   const bagPicked = bagPockets.flatMap((p) => p.items).find((it) => it.id === bagPick)
@@ -1774,6 +1776,12 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       return act(() => playTurn(battle, { item, target: i }, hit))
     }
     return act(() => battle.needSwitch ? replace(battle, i) : battle.shiftPending ? shiftSwitch(battle, i) : playTurn(battle, { switch: i }, hit))
+  }
+  /** O item X vai direto em quem está em campo (como nos jogos). */
+  const applyX = (slug) => {
+    if (actionBusy.current || busy || online?.locked) return
+    setGimmickPick(null)
+    return act(() => playTurn(battle, { item: slug, target: battle.sides[0].active }, hit))
   }
   const throwBall = (slug) => {
     if (actionBusy.current || busy || online) return
@@ -1913,7 +1921,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
               <div key={side} className={side === 1 ? 'absolute right-[11%] w-[26%]' : 'absolute bottom-[22%] left-[1%] w-[58%]'} style={side === 1 ? { bottom: `${foeBottom(scene) * 100}%` } : undefined}>
                 <PlatformBase scene={scene} side={side === 1 ? 'foe' : 'mine'} scale={battleScale(byId?.get(id)?.height)} />
                 <div className={`poke-${poke[side] || 'shown'}${side === 1 && reveal ? ' wild-reveal' : ''}`}>
-                  <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} variant={spriteVariant(id, shown.weather)} />
+                  <BattleSprite ref={sprites[side]} mon={mon} id={id} dmax={shown.dmax[side]} tera={shown.tera[side]} back={side === 0} fainted={shown.fainted[side]} byId={byId} variant={spriteVariant(id, shown.weather) || (id === mon.id ? mon.variant ?? "" : "")} />
                 </div>
                 {extras}
               </div>
@@ -1928,7 +1936,7 @@ waiting && !locked && (menu === 'fight' || menu === 'rotate') ? <MenuButton onCl
               <div className="port-shadow pointer-events-none absolute" style={{ left: pct(spot.x - spot.box.w * 0.4, W0), top: pct(spot.y - spot.box.w * 0.08, H0), width: pct(spot.box.w * 0.8, W0), height: pct(spot.box.w * 0.16, H0) }} />
               <div className="absolute" style={{ left: pct(spot.box.left, W0), top: pct(spot.box.top, H0), width: pct(spot.box.w, W0), height: pct(spot.box.h, H0) }} data-testid={`port-${side === 1 ? 'foe' : 'me'}`}>
                 <div className={`poke-${poke[side] || 'shown'} h-full w-full${side === 1 && reveal ? ' wild-reveal' : ''}`}>
-                  <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} variant={spriteVariant(id, shown.weather)} />
+                  <PortSprite ref={sprites[side]} mon={mon} id={id} back={side === 0} dmax={shown.dmax[side]} tera={shown.tera[side]} fainted={shown.fainted[side]} variant={spriteVariant(id, shown.weather) || (id === mon.id ? mon.variant ?? "" : "")} />
                 </div>
                 {extras}
               </div>
@@ -2512,7 +2520,7 @@ export function MultiBattle({battle, hit = null, onExit, onAgain, onFinish, onli
   // Quantos ainda tem do item (tirando o que outro Pokémon seu já vai usar neste turno). Na dupla não tem captura.
   const left = slug => (battle.bags?.[side]?.[slug] ?? 0) - Object.values(choices).filter(c=>c.kind==='item' && c.item===slug).length
   const canItem = (slug, i) => left(slug) > 0 && canUseItem(battle, side, slug, i) && !(slug === 'revive' && Object.values(choices).some(c=>c.kind==='item' && c.item==='revive' && c.index===i))
-  const bagPockets = [{id: 'medicine', label: 'Remédios', img: 'potion', items: ITEMS.filter(it=>!it.ball && left(it.slug) > 0).map(it=>({
+  const bagPockets = [{id: 'medicine', label: 'Remédios', img: 'potion', items: ITEMS.filter(it=>!it.ball && !it.x && left(it.slug) > 0).map(it=>({
     id: it.slug, name: it.name, count: left(it.slug), icon: spriteUrl(`items/${it.slug}.png`), help: itemHelp(it, battle.healPct),
     disabled: !battle.sides[side].team.some((_, i) => canItem(it.slug, i)), use: t('USAR'),
     onUse: () => {setItem(it.slug);setBagPick(null);setPartyPick(null);setSummary(null);setMenu('party')},
@@ -2779,8 +2787,13 @@ function MenuGrid({ children, testId }) {
 }
 
 /** O que o item da Bolsa faz (na caixa de texto, ao tocar nele). Igual ao app. */
+/** O que cada item X faz (a ajuda na Bolsa). Igual ao app. */
+const X_HELP = { atk: 'Ataque', def: 'Defesa', spa: 'Ataque Especial', spd: 'Defesa Especial', spe: 'Velocidade', accuracy: 'Precisão' }
 function itemHelp(it, healPct) {
   if (it.ball) return t('Jogar no Pokémon selvagem')
+  if (it.x === 'crit') return t('Aumenta a chance de golpe crítico de quem está em campo')
+  if (it.x === 'mist') return t('Protege os atributos do time contra quedas por 5 turnos')
+  if (it.x) return t('+2 de {0} para quem está em campo').replace('{0}', t(X_HELP[it.x]))
   if (it.revive) return t('Revive com metade do HP')
   if (it.heal >= 9999) return t('Recupera todo o HP')
   return healPct ? t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[it.slug] * 100)) : t('Recupera {0} de HP').replace('{0}', it.heal)

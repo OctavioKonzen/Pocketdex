@@ -858,6 +858,55 @@ void main() {
         }()
     ];
     expect(norm(fossil), expected['fossil']);
+    // Exp. Candy, itens dos selvagens (segurado, Bolsa, dinheiro, Thief) e as formas do Unown e do Vivillon (igual ao site).
+    final candy = [
+      for (final (k, c) in FactoryRun.expCandies.keys.indexed)
+        () {
+          final team0 = (rt['team'] as List).first as Map;
+          final r = {...rt, 'candies': {c: 1}, 'team': [{...team0, 'level': 10 + k * 5, 'exp': (10 + k * 5) * (10 + k * 5) * (10 + k * 5)}]};
+          final out = FactoryRun.eatCandy(r, data, 0, c);
+          if (out == null) return null;
+          final m = FactoryRun.teamOf(out).first;
+          return [m['id'], m['level'], m['exp'], (out['candies'] as Map)[c]];
+        }()
+    ];
+    expect(norm(candy), expected['candy']);
+    final held = [
+      for (final id in [25, 113, 35, 74, 41, 19, 12, 15, 143, 201, 666])
+        for (var k = 0; k < 10; k++)
+          () {
+            final e = FactoryRun.wildItems({'kind': 'wild', 'foes': [{'id': id, 'level': 20, 'iv': 0, 'ev': 0}]}, {...rt, 'seed': 900 + k * 7 + id, 'floor': 10 + k}, data);
+            final f = (e['foes'] as List).first as Map;
+            final l = FactoryRun.wildLoot(f);
+            return [f['item'], f['loot'], f['held'], l == null ? null : [l.$1, l.$2, l.$3]];
+          }()
+    ];
+    expect(norm(held), expected['held']);
+    final loot = [
+      for (final it in ['nugget', 'potion', 'max-revive', 'light-ball'])
+        () {
+          final foe = it == 'light-ball' ? {'id': 25, 'level': 5, 'iv': 0, 'ev': 0, 'item': it, 'held': true} : {'id': 25, 'level': 5, 'iv': 0, 'ev': 0, 'loot': it};
+          final team0 = (rt['team'] as List).first as Map;
+          final r = {...rt, 'seed': 77, 'floor': 9, 'money': 0, 'team': [{...team0}], 'encounter': {'kind': 'wild', 'foes': [foe]}};
+          final won = FactoryRun.winFloor(r, data, hp: [1], captured: true, capturedIndex: 0, stolen: [it == 'nugget' ? 'leftovers' : null]);
+          return [won['money'], (won['bag'] as Map)['potion'] ?? 0, (won['bag'] as Map)['revive'] ?? 0, FactoryRun.teamOf(won).first['item'], FactoryRun.pendingOf(won)!['loot'], FactoryRun.capturedMon(won)?['item']];
+        }()
+    ];
+    expect(norm(loot), expected['loot']);
+    final forms = [
+      for (var g = 0; g < data.bosses.length; g++)
+        () {
+          final r = {...rt, 'seed': 30 + g, 'boss': {'region': g, 'step': 0}};
+          final e = FactoryRun.wildForms({'kind': 'wild', 'foes': [{'id': 201, 'level': 9}, {'id': 666, 'level': 9}, {'id': 25, 'level': 9}]}, r, data);
+          final foes = (e['foes'] as List).cast<Map>();
+          return [
+            [for (final f in foes) f['variant']],
+            [for (final m in FactoryRun.withVivillon([{'id': 666}, {'id': 666, 'variant': 'sun'}, {'id': 25}], data, r)) m['variant']],
+            FactoryRun.unownLetter(foes.first['variant']),
+          ];
+        }()
+    ];
+    expect(norm(forms), expected['forms']);
     final wild = [
       for (var k = 0; k < 60; k++)
         () {

@@ -2241,7 +2241,28 @@ function round14Trace(F) {
     const back = F.reviveFossil(town, data)
     return [won.pending.fossil ?? null, won.fossils ?? null, F.fossilReady(data, town), back ? [back.team.map((m) => m.id), back.fossils, back.revived] : null]
   })
-  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid, coins, items, rival, fossil }
+  // Exp. Candy, itens dos selvagens (segurado, Bolsa, dinheiro, Thief) e as formas do Unown e do Vivillon (o mesmo no app).
+  const candy = Object.keys(F.EXP_CANDIES).map((c, k) => {
+    const r = { ...route, candies: { [c]: 1 }, team: [{ ...route.team[0], level: 10 + k * 5, exp: (10 + k * 5) ** 3 }] }
+    const out = F.eatCandy(r, data, 0, c)
+    return out ? [out.team[0].id, out.team[0].level, out.team[0].exp, out.candies[c]] : null
+  })
+  const held = [25, 113, 35, 74, 41, 19, 12, 15, 143, 201, 666].flatMap((id) => Array.from({ length: 10 }, (_, k) => {
+    const e = F.wildItems({ kind: 'wild', foes: [{ id, level: 20, iv: 0, ev: 0 }] }, { ...route, seed: 900 + k * 7 + id, floor: 10 + k }, data)
+    return [e.foes[0].item ?? null, e.foes[0].loot ?? null, e.foes[0].held ?? null, F.wildLoot(e.foes[0])]
+  }))
+  const loot = ['nugget', 'potion', 'max-revive', 'light-ball'].map((it) => {
+    const foe = it === 'light-ball' ? { id: 25, level: 5, iv: 0, ev: 0, item: it, held: true } : { id: 25, level: 5, iv: 0, ev: 0, loot: it }
+    const r = { ...route, seed: 77, floor: 9, money: 0, team: [{ ...route.team[0] }], encounter: { kind: 'wild', foes: [foe] } }
+    const won = F.winFloor(r, data, { hp: [1], captured: true, capturedIndex: 0, stolen: [it === 'nugget' ? 'leftovers' : null] })
+    return [won.money, won.bag.potion ?? 0, won.bag.revive ?? 0, won.team[0].item ?? null, won.pending.loot ?? null, F.capturedMon(won)?.item ?? null]
+  })
+  const forms = data.bosses.map((_, g) => {
+    const r = { ...route, seed: 30 + g, boss: { region: g, step: 0 } }
+    const e = F.wildForms({ kind: 'wild', foes: [{ id: 201, level: 9 }, { id: 666, level: 9 }, { id: 25, level: 9 }] }, r, data)
+    return [e.foes.map((f) => f.variant ?? null), F.withVivillon([{ id: 666 }, { id: 666, variant: 'sun' }, { id: 25 }], data, r).map((m) => m.variant ?? null), F.unownLetter(e.foes[0].variant)]
+  })
+  return { puzzles, wild, berry, gyms, gymStep, badges, stopped: [stopped.team[0].id, stopped.pending.levels], sick, fresh, inherit, days, season, contest, quest, kept, radar, grotto, calls, moods, extras, alpha, rotation, raid, coins, items, rival, fossil, candy, held, loot, forms }
 }
 describe('rodada 14 igual ao app', () => {
   it('os desafios, as hordas, a pesca, as árvores e as frutas dão o mesmo que test/fixtures/round14.json', async () => {

@@ -66,6 +66,9 @@ class BattleMon {
   /// O Alfa (maior, com o brilho vermelho).
   bool alpha = false;
 
+  /// A forma do sprite (a letra do Unown, o padrão do Vivillon). Igual ao site.
+  String variant = '';
+
   /// O gênero ('M', 'F' ou '' sem gênero), do simulador: o ♂/♀ na caixa de vida.
   String gender = '';
 
@@ -147,7 +150,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha..variant = variant;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -389,7 +392,10 @@ class BattleItem {
   final String slug, name;
   final int heal, count;
   final bool revive, ball;
-  const BattleItem(this.slug, this.name, {this.heal = 0, this.revive = false, this.ball = false, required this.count});
+
+  /// Item X: o atributo que sobe (atk, def, spa, spd, spe, accuracy), 'crit' (Dire Hit) ou 'mist' (Guard Spec.).
+  final String x;
+  const BattleItem(this.slug, this.name, {this.heal = 0, this.revive = false, this.ball = false, this.x = '', required this.count});
 }
 
 /// Itens da Bolsa (os mesmos dos dois lados) e quantos cada um começa. Igual ao site.
@@ -409,6 +415,15 @@ const battleItems = [
   BattleItem('dusk-ball', 'Dusk Ball', ball: true, count: 0),
   BattleItem('timer-ball', 'Timer Ball', ball: true, count: 0),
   BattleItem('master-ball', 'Master Ball', ball: true, count: 0),
+  // Os itens X (Battle Factory, comprados na loja): sobem o atributo de quem está em campo. Igual ao site.
+  BattleItem('x-attack', 'X Attack', x: 'atk', count: 0),
+  BattleItem('x-defense', 'X Defense', x: 'def', count: 0),
+  BattleItem('x-sp-atk', 'X Sp. Atk', x: 'spa', count: 0),
+  BattleItem('x-sp-def', 'X Sp. Def', x: 'spd', count: 0),
+  BattleItem('x-speed', 'X Speed', x: 'spe', count: 0),
+  BattleItem('x-accuracy', 'X Accuracy', x: 'accuracy', count: 0),
+  BattleItem('dire-hit', 'Dire Hit', x: 'crit', count: 0),
+  BattleItem('guard-spec', 'Guard Spec.', x: 'mist', count: 0),
 ];
 BattleItem? _itemOf(String slug) => battleItems.where((i) => i.slug == slug).firstOrNull;
 
@@ -1397,6 +1412,8 @@ class TurnBattle {
     if (item?.ball == true) return canThrow(slug);
     if (item == null || index < 0 || index >= teams[side].length || (bags[side][slug] ?? 0) <= 0) return false;
     final mon = teams[side][index];
+    // Item X: só em quem está em campo, de pé.
+    if (item.x.isNotEmpty) return index == activeIndex[side] && mon.hp > 0;
     return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp;
   }
 
@@ -2197,7 +2214,8 @@ class TurnBattleSetup {
         ..boost = m.$2?['boost'] is Map ? {for (final e in (m.$2!['boost'] as Map).entries) '${e.key}': (e.value as num).toDouble()} : null
         ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble()
         ..ball = m.$2?['ball'] as String?
-        ..alpha = m.$2?['alpha'] == true);
+        ..alpha = m.$2?['alpha'] == true
+        ..variant = '${m.$2?['variant'] ?? ''}');
     }
     return out;
   }

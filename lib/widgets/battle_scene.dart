@@ -158,8 +158,11 @@ class _PlatformBaseState extends State<PlatformBase> {
 /// Um Pokémon parado no campo (as telas da Battle Factory): do tamanho dele (pela altura), em cima da base dele, no
 /// mesmo lugar da batalha. Vai num Positioned quadrado.
 class StageMon extends StatefulWidget {
-  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, this.base = true, required this.scene, this.scale});
+  const StageMon({super.key, required this.id, this.shiny = false, this.back = false, this.base = true, required this.scene, this.scale, this.variant = ''});
   final int id;
+
+  /// A forma do sprite (a letra do Unown, o padrão do Vivillon).
+  final String variant;
   final bool shiny, back;
 
   /// Com a base embaixo (fora da batalha, andando com você: sem).
@@ -188,7 +191,7 @@ class _StageMonState extends State<StageMon> {
           alignment: Alignment.bottomCenter,
           // Sem a base (andando com você): o tamanho normal da figura, como fora da batalha (na batalha, a animação
           // inteira cabe na caixa e quem é largo, como o Koraidon, encolhe). Igual ao site.
-          child: PokemonSprite(widget.id, shiny: widget.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: widget.base),
+          child: PokemonSprite(widget.id, shiny: widget.shiny, variant: widget.variant, back: widget.back, fill: 0.95, alignBottom: true, battle: widget.base),
         ),
       ]);
 }

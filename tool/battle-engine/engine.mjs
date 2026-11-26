@@ -275,6 +275,20 @@ function configure(game) {
       return;
     }
     const target = pokemon.side.pokemon.find(p => originalIndex(p) === action.index);
+    // Os itens X (como nos jogos): +2 no atributo de quem está em campo; Dire Hit: mais críticos; Guard Spec.: o Mist.
+    const x = X_ITEMS[action.item];
+    if (x) {
+      if (!target || !target.isActive || target.fainted || !(game.bags[pokemon.side.n][action.item] > 0)) throw new Error('Item inválido');
+      game.bags[pokemon.side.n][action.item]--;
+      this.add('pocketdexitem', target, action.item);
+      if (action.item === 'dire-hit') {
+        if (!target.addVolatile('focusenergy')) this.add('-fail', target);
+      } else if (action.item === 'guard-spec') {
+        if (!target.side.addSideCondition('mist', target)) this.add('-fail', target);
+      } else this.boost(x, target, target, {id: action.item, name: action.item, effectType: 'Item'});
+      done();
+      return;
+    }
     const fixed = {potion: 20, 'super-potion': 60, 'hyper-potion': 120, 'max-potion': 1e9, revive: 0}[action.item];
     // Battle Factory (healPct): cura uma parte do HP máximo (o nível não tem limite).
     const share = {potion: .25, 'super-potion': .5, 'hyper-potion': .75, 'max-potion': 1}[action.item];
@@ -306,7 +320,10 @@ function configure(game) {
  * em Água ou Inseto; Dusk Ball: 3× em cavernas (capture.dusk); Timer Ball:
  * sobe a cada turno (até 4×); Master Ball: sempre captura.
  */
-export const BALLS = {
+export /** Os itens X da Bolsa: quanto cada um sobe (Dire Hit e Guard Spec. têm efeito próprio). */
+const X_ITEMS = {'x-attack': {atk: 2}, 'x-defense': {def: 2}, 'x-sp-atk': {spa: 2}, 'x-sp-def': {spd: 2}, 'x-speed': {spe: 2}, 'x-accuracy': {accuracy: 2}, 'dire-hit': {}, 'guard-spec': {}};
+const X_NAMES = {'x-attack': 'X Attack', 'x-defense': 'X Defense', 'x-sp-atk': 'X Sp. Atk', 'x-sp-def': 'X Sp. Def', 'x-speed': 'X Speed', 'x-accuracy': 'X Accuracy', 'dire-hit': 'Dire Hit', 'guard-spec': 'Guard Spec.'};
+const BALLS = {
   'poke-ball': () => 1, 'great-ball': () => 1.5, 'ultra-ball': () => 2, 'master-ball': () => 255,
   'quick-ball': (battle) => (battle.turn <= 1 ? 5 : 1),
   'net-ball': (battle, foe) => (foe.hasType(['Water', 'Bug']) ? 3.5 : 1),
@@ -632,7 +649,7 @@ function eventsFor(game, lines) {
     } else if (kind === 'pocketdexitem' || kind === 'pocketdexheal') {
       const index = Number(actor.split(': ')[1]?.slice(2));
       const target = {side, name: game.teams[side][index].name || game.teams[side][index].set.species};
-      if (kind === 'pocketdexitem') say('usedItem', target, {potion: 'Potion', 'super-potion': 'Super Potion', 'hyper-potion': 'Hyper Potion', revive: 'Revive'}[value]);
+      if (kind === 'pocketdexitem') say('usedItem', target, {potion: 'Potion', 'super-potion': 'Super Potion', 'hyper-potion': 'Hyper Potion', revive: 'Revive', ...X_NAMES}[value]);
       else if (value === 'revive') say('revived', target);
       else say('healed', target, Number(extra));
     } else if (kind === 'pocketdexball') {
@@ -754,6 +771,10 @@ function command(game, sideIndex, action, slot = 0) {
       return {item: action};
     }
     const target = side.pokemon.find(p => originalIndex(p) === action.index);
+    if (X_ITEMS[action.item]) {
+      if (!target || !target.isActive || target.fainted || !(game.bags[sideIndex][action.item] > 0)) throw new Error('Item inválido');
+      return {item: action};
+    }
     if (!target || !(game.bags[sideIndex][action.item] > 0) || (action.item === 'revive' ? !target.fainted : target.fainted || target.hp >= target.maxhp)) throw new Error('Item inválido');
     return {item: action};
   }

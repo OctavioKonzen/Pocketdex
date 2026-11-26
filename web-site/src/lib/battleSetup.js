@@ -121,6 +121,8 @@ export async function battleMons(members) {
       ...(member.set?.ball ? { ball: member.set.ball } : {}),
       // O Alfa (maior, com o brilho vermelho).
       ...(member.set?.alpha ? { alpha: true } : {}),
+      // A forma do sprite (a letra do Unown, o padrão do Vivillon).
+      ...(member.set?.variant ? { variant: member.set.variant } : {}),
       simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(setAbility(member.set, f.form) || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}, ...(member.set?.levelCap ? {levelCap: member.set.levelCap} : {}), ...(member.set?.bonus ? {bonus: member.set.bonus} : {}), ...(member.set?.boost ? {boost: member.set.boost} : {}), ...(member.set?.hpRatio != null ? {hpRatio: member.set.hpRatio} : {})},
     })
   }

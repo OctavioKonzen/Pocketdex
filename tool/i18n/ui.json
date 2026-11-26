@@ -15616,5 +15616,71 @@
   "fr": "Le {0} sauvage est K.O. !",
   "es": "¡El {0} salvaje se debilitó!",
   "pt": "{0} selvagem desmaiou!"
+ },
+ "Itens de batalha": {
+  "en": "Battle Items",
+  "fr": "Objets de combat",
+  "es": "Objetos de combate",
+  "pt": "Itens de batalha"
+ },
+ "Aumenta a chance de golpe crítico de quem está em campo": {
+  "en": "Raises the critical-hit ratio of the Pokémon in battle",
+  "fr": "Augmente le taux de coups critiques du Pokémon au combat",
+  "es": "Aumenta la probabilidad de golpe crítico del Pokémon en combate",
+  "pt": "Aumenta a chance de golpe crítico de quem está em campo"
+ },
+ "Protege os atributos do time contra quedas por 5 turnos": {
+  "en": "Protects the team's stats from being lowered for 5 turns",
+  "fr": "Empêche la baisse des stats de l'équipe pendant 5 tours",
+  "es": "Evita que bajen las características del equipo durante 5 turnos",
+  "pt": "Protege os atributos do time contra quedas por 5 turnos"
+ },
+ "+2 de {0} para quem está em campo": {
+  "en": "+2 {0} for the Pokémon in battle",
+  "fr": "+2 en {0} pour le Pokémon au combat",
+  "es": "+2 de {0} para el Pokémon en combate",
+  "pt": "+2 de {0} para quem está em campo"
+ },
+ "Na batalha: aumenta a chance de golpe crítico de quem está em campo": {
+  "en": "In battle: raises the critical-hit ratio of the Pokémon in battle",
+  "fr": "En combat : augmente le taux de coups critiques du Pokémon au combat",
+  "es": "En combate: aumenta la probabilidad de golpe crítico del Pokémon en combate",
+  "pt": "Na batalha: aumenta a chance de golpe crítico de quem está em campo"
+ },
+ "Na batalha: protege os atributos do time contra quedas por 5 turnos": {
+  "en": "In battle: protects the team's stats from being lowered for 5 turns",
+  "fr": "En combat : empêche la baisse des stats de l'équipe pendant 5 tours",
+  "es": "En combate: evita que bajen las características del equipo durante 5 turnos",
+  "pt": "Na batalha: protege os atributos do time contra quedas por 5 turnos"
+ },
+ "Na batalha: +2 de {0} para quem está em campo": {
+  "en": "In battle: +2 {0} for the Pokémon in battle",
+  "fr": "En combat : +2 en {0} pour le Pokémon au combat",
+  "es": "En combate: +2 de {0} para el Pokémon en combate",
+  "pt": "Na batalha: +2 de {0} para quem está em campo"
+ },
+ "Ele segurava {0}! Continua com ele.": {
+  "en": "It was holding {0}! It keeps it.",
+  "fr": "Il tenait {0} ! Il le garde.",
+  "es": "¡Llevaba {0}! Se lo queda.",
+  "pt": "Ele segurava {0}! Continua com ele."
+ },
+ "Ele segurava {0}! Vendido por 💰{1}.": {
+  "en": "It was holding {0}! Sold for 💰{1}.",
+  "fr": "Il tenait {0} ! Vendu pour 💰{1}.",
+  "es": "¡Llevaba {0}! Vendido por 💰{1}.",
+  "pt": "Ele segurava {0}! Vendido por 💰{1}."
+ },
+ "Ele segurava {0}! Foi para a Bolsa.": {
+  "en": "It was holding {0}! It went into the Bag.",
+  "fr": "Il tenait {0} ! Rangé dans le Sac.",
+  "es": "¡Llevaba {0}! Va a la Mochila.",
+  "pt": "Ele segurava {0}! Foi para a Bolsa."
+ },
+ "{0} pegou {1} na luta!": {
+  "en": "{0} took {1} in battle!",
+  "fr": "{0} a pris {1} pendant le combat !",
+  "es": "¡{0} se quedó con {1} en el combate!",
+  "pt": "{0} pegou {1} na luta!"
  }
 }

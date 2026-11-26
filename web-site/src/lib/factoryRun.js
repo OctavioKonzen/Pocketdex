@@ -246,6 +246,8 @@ export const SHOP = {
   // Serviços e chaves das mecânicas.
   'move-tutor': 300, 'move-reminder': 150, 'dynamax-band': 2500, 'tera-orb': 2500,
   'escape-rope': 450,
+  // Os itens X (vão para a Bolsa; usados na batalha em quem está em campo).
+  'x-attack': 150, 'x-defense': 150, 'x-sp-atk': 150, 'x-sp-def': 150, 'x-speed': 150, 'x-accuracy': 120, 'dire-hit': 120, 'guard-spec': 120,
   // Exp. Share: o time todo ganha XP (quem não lutou, a metade).
   'exp-share': 800,
   // Mapa (Town Map): mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas).
@@ -261,7 +263,9 @@ export const TOKENS = ['move-tutor', 'move-reminder']
 /** Itens que vão para a Bolsa (não precisam de um Pokémon). */
 /** Escape Rope: se perder uma batalha, o time foge com pouco HP (ESCAPE_HP) em vez de a corrida acabar. */
 export const ESCAPE_HP = 0.1
-export const BAG_ITEMS = [...BALL_IDS, ...Object.keys(START_BAG).filter((k) => !BALL_IDS.includes(k)), 'escape-rope']
+/** Os itens X da Bolsa (igual ao app). */
+export const X_BAG = ['x-attack', 'x-defense', 'x-sp-atk', 'x-sp-def', 'x-speed', 'x-accuracy', 'dire-hit', 'guard-spec']
+export const BAG_ITEMS = [...BALL_IDS, ...Object.keys(START_BAG).filter((k) => !BALL_IDS.includes(k)), 'escape-rope', ...X_BAG]
 
 /** Cartas de bônus (depois de cada chefe, escolhe 1 de 3). */
 export const CARDS = {
@@ -1512,6 +1516,49 @@ export function reviveFossil(run, data) {
   out.revived = (run.revived ?? 0) + 1
   return out
 }
+/**
+ * Os itens dos selvagens (como nos jogos): às vezes (WILD_ITEM_CHANCE) o selvagem vem segurando um item da espécie dele
+ * (o Pikachu com a Light Ball, o Chansey com o Lucky Punch...). Os de batalha ele usa na luta e vêm junto na captura; os
+ * remédios vão para a Bolsa; os valiosos (Nugget, Pearl, Star Piece...) viram dinheiro (WILD_VALUABLES). O sorteio vem
+ * da semente e do andar (não gasta o da corrida). Igual ao app.
+ */
+export const WILD_ITEM_CHANCE = 0.2
+export const WILD_BAG = ['potion', 'revive', 'max-revive']
+export const WILD_VALUABLES = { nugget: 1000, 'big-nugget': 4000, pearl: 300, 'big-pearl': 1200, stardust: 400, 'star-piece': 1500, 'tiny-mushroom': 100, 'big-mushroom': 600, 'balm-mushroom': 2000, 'rare-bone': 1000, 'comet-shard': 3000 }
+export function wildItems(encounter, run, data) {
+  if (!encounter?.foes || encounter.kind !== 'wild' || encounter.raid) return encounter
+  const foes = encounter.foes.map((f, k) => {
+    const list = data.held?.[data.forms?.[f.id] ?? f.id] ?? data.held?.[f.id] ?? []
+    if (!list.length || f.item || followRoll(run, 1103515245 + k * 7919) >= WILD_ITEM_CHANCE) return f
+    const item = list[Math.floor(followRoll(run, 2654435761 + k * 104729) * list.length)]
+    return WILD_BAG.includes(item) || WILD_VALUABLES[item] ? { ...f, loot: item } : { ...f, item, held: true }
+  })
+  return { ...encounter, foes }
+}
+/**
+ * As formas de cada um (o sprite): o Unown com a letra dele (28: '' é o A, e ! e ?) e o Vivillon com o padrão das asas
+ * da região da corrida (como nos jogos, pelo lugar). Ficam no Pokémon (variant) e vão junto na captura. Igual ao app.
+ */
+export const UNOWN_LETTERS = ['', ...'bcdefghijklmnopqrstuvwxyz'.split(''), 'exclamation', 'question']
+export const VIVILLON_PATTERNS = { Kanto: 'garden', Johto: 'elegant', Hoenn: 'jungle', Sinnoh: 'polar', Unova: 'modern', Kalos: '', Alola: 'sun', Galar: 'continental', Paldea: 'savanna', Hisui: 'tundra', Armor: 'archipelago', Crown: 'icy-snow', Kitakami: 'river', Blueberry: 'ocean' }
+export const vivillonOf = (data, run) => VIVILLON_PATTERNS[regionOf(data, run)] ?? ''
+/** A letra do Unown (o nome dela). */
+export const unownLetter = (variant) => (variant === 'exclamation' ? '!' : variant === 'question' ? '?' : (variant || 'a').toUpperCase())
+export function wildForms(encounter, run, data) {
+  if (!encounter?.foes?.some((f) => f.id === 201 || f.id === 666)) return encounter
+  const foes = encounter.foes.map((f, k) => (f.id === 201 ? { ...f, variant: UNOWN_LETTERS[Math.floor(followRoll(run, 2246822519 + k * 131) * UNOWN_LETTERS.length)] } : f.id === 666 ? { ...f, variant: vivillonOf(data, run) } : f))
+  return { ...encounter, foes }
+}
+/** Quem virou Vivillon (evoluindo) ganha o padrão da região de agora. */
+export const withVivillon = (team, data, run) => team.map((m) => (m.id === 666 && !('variant' in m) ? { ...m, variant: vivillonOf(data, run) } : m))
+/** O que veio com o selvagem capturado: [o item, 'held' (segura), 'bag' (Bolsa) ou 'money' (vendido), o dinheiro]. */
+export function wildLoot(foe) {
+  if (foe?.held && foe.item) return [foe.item, 'held', 0]
+  if (!foe?.loot) return null
+  return WILD_VALUABLES[foe.loot] ? [foe.loot, 'money', WILD_VALUABLES[foe.loot]] : [foe.loot, 'bag', 0]
+}
+/** O nome do item segurado no motor ("Choice Band") como no jogo ('choice-band'). */
+export const itemSlug = (name) => String(name ?? '').toLowerCase().replace(/['’.]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 /** Aceita o ovo misterioso. */
 export function takeMysteryEgg(run, data) {
   const id = mysteryEgg(data, run)
@@ -2901,7 +2948,7 @@ export function chooseNode(run, data, index, clock = null) {
       out.encounter = { ...out.encounter, foes: [...out.encounter.foes.slice(0, PAIR_TEAM), ...second.foes.slice(0, PAIR_TEAM)], pair: true }
     }
     // Os selvagens e os treinadores do caminho na forma da região (e com o degrau do jogo da corrida).
-    out.encounter = rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, out.encounter), run), run), run)
+    out.encounter = wildForms(wildItems(rivalGrowth(detourFoes(tierFoes(regionalEncounter(data, run, out.encounter), run), run), run), out, data), out, data)
     // O cenário próprio do lugar (loja, cassino, escola...), se ele tiver.
     out.scene = shownScene(run, out.scene, data)
     out.encounter = { ...out.encounter, scene: shownScene(run, out.encounter.scene, data) }
@@ -2975,6 +3022,27 @@ export const TERA_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice'
 const raidPrize = (f) => { const { raidHp, gimmick, title, boost, item, ...rest } = f; return { ...rest, ...(f.tera ? { tera: f.tera } : {}) } }
 /** Quantas Tera Shards o Reide Tera dá (as estrelas + 1). */
 export const raidShards = (run) => (run.encounter?.raid === 'tera' && run.encounter.foes?.[0]?.tera ? (run.encounter.stars ?? 1) + 1 : 0)
+/**
+ * Exp. Candy (como no Sword/Shield): os doces de XP que os reides dão (pelas estrelas). No time (TIME > OPÇÕES), cada um
+ * dá o XP dele direto (sobe de nível e evolui como o Rare Candy). Igual ao app.
+ */
+export const EXP_CANDIES = { 'exp-candy-xs': 100, 'exp-candy-s': 800, 'exp-candy-m': 3000, 'exp-candy-l': 10000, 'exp-candy-xl': 30000 }
+export const RAID_CANDIES = { 1: ['exp-candy-xs', 3], 2: ['exp-candy-s', 2], 3: ['exp-candy-m', 2], 4: ['exp-candy-l', 1], 5: ['exp-candy-xl', 1] }
+export const raidCandy = (stars) => RAID_CANDIES[Math.min(5, Math.max(1, stars ?? 1))]
+/** Usa um Exp. Candy no Pokémon index (null se não dá: sem doce ou no limite de nível do Nuzlocke). */
+export function eatCandy(run, data, index, candy) {
+  const mon = run.team[index]
+  if (!mon || !EXP_CANDIES[candy] || !(run.candies?.[candy] > 0)) return null
+  const cap = levelCapOf(data, run)
+  const now = mon.exp ?? expAt(mon.level)
+  const exp = cap ? Math.min(EXP_CANDIES[candy], expAt(cap) - now) : EXP_CANDIES[candy]
+  if (!(exp > 0)) return null
+  const out = { ...run, candies: { ...run.candies, [candy]: run.candies[candy] - 1 } }
+  const { mon: grown } = gainExp({ ...mon, exp: now }, exp, data, dice(out), regionOf(data, out))
+  out.team = run.team.map((m, i) => (i === index ? grown : m))
+  out.team = withShedinja(out, run.team, out.team, dice(out))
+  return out
+}
 /** Troca o Tera Type do Pokémon index gastando TERA_SHARD_COST Tera Shards do tipo (null se não dá). Igual ao app. */
 export function setTera(run, index, type) {
   const mon = run.team[index]
@@ -3469,6 +3537,9 @@ export function winFloor(run, data, after = {}) {
   })
   if (flipped) delete out.flip
   // O Reide Tera: as Tera Shards do tipo do chefe.
+  // Os Exp. Candy do reide (pelas estrelas).
+  const candy = run.encounter.raid && !fled ? raidCandy(run.encounter.stars) : null
+  if (candy) out.candies = { ...(run.candies ?? {}), [candy[0]]: (run.candies?.[candy[0]] ?? 0) + candy[1] }
   if (raidShards(run) && !fled) out.teraShards = { ...(run.teraShards ?? {}), [run.encounter.foes[0].tera]: (run.teraShards?.[run.encounter.foes[0].tera] ?? 0) + raidShards(run) }
   // O Pokérus: raro; passa para os vizinhos no time e some em POKERUS_FLOORS andares (o dobro de EVs fica). Igual ao app.
   const pokerus = pokerusStep(out, run)
@@ -3665,6 +3736,13 @@ export function winFloor(run, data, after = {}) {
   const league = inLeague(data, out)
   const joy = rand() < JOY_CHANCE && !league
   if (joy) out.team = out.team.map((m) => ({ ...m, hp: 1 }))
+  // O que veio com o selvagem capturado: o remédio vai para a Bolsa, o valioso vira dinheiro (o segurado vem com ele).
+  const loot = wildLoot(after.captured && kind === 'wild' ? foes[after.capturedIndex ?? 0] : null)
+  if (loot?.[1] === 'bag') { const k = loot[0] === 'max-revive' ? 'revive' : loot[0]; out.bag = { ...out.bag, [k]: (out.bag?.[k] ?? 0) + 1 } }
+  if (loot?.[1] === 'money') out.money += loot[2]
+  // Thief / Covet: o item que ele roubou na luta fica com ele (se não segurava nada).
+  if (after.stolen) out.team = out.team.map((m, i) => (after.stolen[i] && !m.item ? { ...m, item: after.stolen[i] } : m))
+  out.team = withVivillon(out.team, data, out)
   const born = hatch(out, after.captured && (kind === 'wild' || kind === 'wildboss'))
   // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
   const fossils = run.dungeon && kind === 'dboss' && !born ? (featuresOf(data, run).museum?.[run.dungeon.place] ?? []).filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t)))) : []
@@ -3677,7 +3755,9 @@ export function winFloor(run, data, after = {}) {
     capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
     ...(coins ? { coins } : {}),
     ...(fossilFound ? { fossil: fossilFound } : {}),
-    ...(run.encounter.raid ? { raid: { kind: run.encounter.raid, stars: run.encounter.stars ?? 1, ...(raidShards(run) ? { shards: raidShards(run), type: foes[0]?.tera } : {}) } } : {}),
+    ...(loot ? { loot } : {}),
+    ...(after.stolen?.some(Boolean) ? { stolen: after.stolen } : {}),
+    ...(run.encounter.raid ? { raid: { kind: run.encounter.raid, stars: run.encounter.stars ?? 1, ...(candy ? { candy } : {}), ...(raidShards(run) ? { shards: raidShards(run), type: foes[0]?.tera } : {}) } } : {}),
     // A Poké Ball em que ele foi capturado (o sprite dela na tela da captura).
     ...(after.captured && after.ball ? { ball: after.ball } : {}),
     cards: kind === 'boss' ? pickCards(rand, run.cardCount ?? 3, run.relics ?? []) : null,
@@ -3776,6 +3856,10 @@ export function capturedMon(run, into = null) {
   let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : foe.minIv ?? 0, Boolean(foe.shiny))
   // O do Hidden Grotto: com a habilidade oculta.
   if (foe.ha) mon = { ...mon, ha: true }
+  // A letra do Unown e o padrão do Vivillon vêm junto.
+  if (foe.variant != null) mon = { ...mon, variant: foe.variant }
+  // O item que o selvagem segurava vem junto (como nos jogos).
+  if (foe.held && foe.item && !mon.item) mon = { ...mon, item: foe.item }
   // O Alfa capturado continua Alfa (maior e mais forte).
   if (foe.alpha) mon = { ...mon, alpha: true }
   // O do Reide Tera continua com o Tera Type dele.
@@ -5215,9 +5299,12 @@ export function withSeen(factory, data = null) {
   for (const id of dexOf(run)) caught.add(id)
   for (const m of run.team ?? []) caught.add(m.id)
   for (const id of [...caught]) if (species(id)) caught.add(species(id))
-  if (seen.size === before[0] && caught.size === before[1]) return factory
+  // As letras do Unown que você já teve (a coleção das Ruínas de Alph: UNOWN_LETTERS).
+  const unown = new Set(factory.unown ?? [])
+  for (const m of [...(run.team ?? []), ...(run.pc ?? [])]) if (m?.id === 201) unown.add(m.variant ?? '')
+  if (seen.size === before[0] && caught.size === before[1] && unown.size === (factory.unown ?? []).length) return factory
   const sorted = (set) => [...set].sort((a, b) => a - b)
-  return { ...factory, seen: sorted(seen), caught: sorted(caught) }
+  return { ...factory, seen: sorted(seen), caught: sorted(caught), ...(unown.size ? { unown: UNOWN_LETTERS.filter((l) => unown.has(l)) } : {}) }
 }
 
 /** Uma forma regional (Alola, Galar, Hisui, Paldea) pelo id. */
@@ -5383,7 +5470,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : mon.ab ? { ability: 'second' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : mon.ab ? { ability: 'second' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}), ...(mon.variant ? { variant: mon.variant } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }
@@ -5400,6 +5487,7 @@ export function foeMember(foe, moveList) {
       ...(foe.shiny ? { shiny: true } : {}),
       ...(foe.ha ? { ability: 'hidden' } : {}),
       ...(foe.alpha ? { alpha: true } : {}),
+      ...(foe.variant ? { variant: foe.variant } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),

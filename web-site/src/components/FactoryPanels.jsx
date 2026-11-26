@@ -29,7 +29,7 @@ import {
   boostOf, memberOf, learnMove, movesLearnedBetween,
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
-  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, MINTS, ABILITY_CAPSULE, ABILITY_PATCH, fossilReady, reviveFossil, FOSSILS, LEAGUE_FLAWLESS,
+  heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, MINTS, ABILITY_CAPSULE, ABILITY_PATCH, fossilReady, reviveFossil, FOSSILS, X_BAG, EXP_CANDIES, eatCandy, UNOWN_LETTERS, unownLetter, LEAGUE_FLAWLESS,
   expAt,
 } from '../lib/factoryRun'
 import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
@@ -150,7 +150,7 @@ function MonChip({ mon, byId, selected, onClick, testid }) {
       disabled={!onClick}
       className={`flex flex-col items-center rounded-xl bg-bg p-1.5 ring-2 ${selected ? 'ring-amber-500' : 'ring-transparent'} ${onClick ? 'cursor-pointer hover:ring-line' : ''}`}
     >
-      <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} className={`h-12 w-12 ${down ? 'opacity-40 grayscale' : ''}`} />
+      <PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} variant={mon.variant} className={`h-12 w-12 ${down ? 'opacity-40 grayscale' : ''}`} />
       <span className="text-[11px] font-bold" data-no-translate>{mon.shiny ? '✨ ' : ''}{t(prettyName(name))}</span>
       {mon.level != null && <span className="text-[10px] text-muted">Nv. {mon.level}</span>}
       {mon.hp != null && (down ? <span className="text-[10px] font-bold text-red-500">{t('Desmaiado')}</span> : <HpBar hp={mon.hp} />)}
@@ -271,7 +271,7 @@ function ForgetPanel({ mon, move, moves, name, types, pick, onPick, actions = nu
       <div className="flex gap-1.5">
         {/* O Pokémon à esquerda (como nos jogos). */}
         <div className="flex w-20 shrink-0 flex-col items-center gap-0.5 text-white">
-          <div className="h-[4.5rem] w-[4.5rem] rounded-xl border-2 border-sky-900 bg-sky-100"><PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} className="h-full w-full" /></div>
+          <div className="h-[4.5rem] w-[4.5rem] rounded-xl border-2 border-sky-900 bg-sky-100"><PokeIcon id={mon.id} shiny={Boolean(mon.shiny)} variant={mon.variant} className="h-full w-full" /></div>
           <p className="w-full truncate text-center text-xs font-black" data-no-translate>{name}</p>
           <p className="text-[11px] font-bold" data-no-translate>Lv{mon.level}</p>
           <div className="flex flex-wrap justify-center gap-0.5">{types.map((type) => <TypeBadge key={type} type={type} small />)}</div>
@@ -401,7 +401,7 @@ function AmiePanel({ run, i, save }) {
   return (
     <div className="flex items-center gap-2 rounded-lg bg-pink-950/60 p-1.5" data-testid="team-amie-panel">
       <button type="button" className="relative h-16 w-16 shrink-0 cursor-pointer" onClick={() => { playCry(m.id); setPets((n) => n + 1) }} data-testid="amie-pet" aria-label={t('Acariciar')}>
-        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-full w-full" />
+        <PokeIcon id={m.id} shiny={Boolean(m.shiny)} variant={m.variant} className="h-full w-full" />
         {pets > 0 && <span key={pets} className="amie-heart pointer-events-none absolute left-1/2 top-0 text-xl">❤️</span>}
       </button>
       <div className="min-w-0 flex-1 space-y-1 text-xs">
@@ -439,6 +439,14 @@ function MonOptions({ run, data, i, save, onLead, part = 'items' }) {
               className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-tera">
               <option value="">💎 {t('Tera')}: {m.tera ? t(TYPE_PT[m.tera]) : '—'}</option>
               {Object.entries(run.teraShards ?? {}).filter(([type, n]) => n >= TERA_SHARD_COST && type !== m.tera).map(([type, n]) => <option key={type} value={type}>💎 {t(TYPE_PT[type])} ({n})</option>)}
+            </select>
+          )}
+          {/* Os Exp. Candy dos reides: cada um dá o XP dele direto. Igual ao app. */}
+          {Object.values(run.candies ?? {}).some((n) => n > 0) && (
+            <select aria-label="Exp. Candy" value="" onChange={(e) => e.target.value && save(eatCandy(run, data, i, e.target.value) ?? run)}
+              className="rounded-lg bg-white px-1 py-1 text-xs font-black text-slate-900" data-testid="team-candy">
+              <option value="">🍬 Exp. Candy</option>
+              {Object.keys(EXP_CANDIES).filter((c) => run.candies?.[c] > 0).map((c) => <option key={c} value={c}>🍬 {prettySlug(c).replace('Exp Candy', 'Exp. Candy')} (+{EXP_CANDIES[c]} XP) ×{run.candies[c]}</option>)}
             </select>
           )}
           {/* A forma pelo item (Rotom Catalog, Gracidea, Meteorite). Igual ao app. */}
@@ -1909,7 +1917,7 @@ function FieldMon({ mon, byId, back = false, follower = false, scene, followScal
       <div className="aspect-square w-full" style={{ transform: `scale(${scale})`, transformOrigin: '50% 100%' }}>
         {/* Andando com você (follower): o tamanho normal da figura, como fora da batalha (na batalha, a animação inteira
             cabe na caixa e quem é largo, como o Koraidon, encolhe). */}
-        <Sprite key={`${p.id}-${mon.shiny}`} path={mon.shiny ? shinyPath(p.sprite) : p.sprite} box={p.box} fill={0.95} align="bottom" back={back} battle={!follower} alt={p.name} />
+        <Sprite key={`${p.id}-${mon.shiny}-${mon.variant ?? ''}`} path={(mon.shiny ? shinyPath(p.sprite) : p.sprite).replace(/\.png$/, mon.variant ? `-${mon.variant}.png` : '.png')} box={p.box} fill={0.95} align="bottom" back={back} battle={!follower} alt={p.name} />
       </div>
       {/* O Pokémon que segue você: tocando nele, ele reage (o balão e o grito), como em HeartGold/SoulSilver. */}
       {onPet && <button type="button" className="absolute inset-0 z-10 cursor-pointer" onClick={onPet} aria-label={t('Ver como ele está')} data-testid="follower-pet" />}
@@ -2184,7 +2192,7 @@ function Credits({ run, data, name, onEnd }) {
       <div ref={inner} className="flex flex-col items-center gap-[1.2cqw] text-center text-white" style={{ transform: 'translateY(100%)' }}>
         <p className="text-[3.4cqw] font-black text-yellow-400">🏆 {t('Campeão de {0}!').replace('{0}', game?.region ?? '')}</p>
         {run.team.map((m, i) => (
-          <div key={i} className="flex flex-col items-center"><PokeIcon id={m.id} shiny={Boolean(m.shiny)} className="h-[9cqw] w-[9cqw]" /><span className="text-[2cqw] font-bold" data-no-translate>{m.nick ?? name(m.id)} · Nv. {m.level}</span></div>
+          <div key={i} className="flex flex-col items-center"><PokeIcon id={m.id} shiny={Boolean(m.shiny)} variant={m.variant} className="h-[9cqw] w-[9cqw]" /><span className="text-[2cqw] font-bold" data-no-translate>{m.nick ?? name(m.id)} · Nv. {m.level}</span></div>
         ))}
         {me && <div className="mt-[2cqw] flex flex-col items-center"><TrainerSprite trainer={me} height={90} still /><span className="text-[2.2cqw] font-black">{me.name}</span></div>}
         <p className="mt-[2cqw] text-[2cqw] text-slate-300">🏅 {t('Insígnias')}: {run.badges ?? 0}</p>
@@ -2216,7 +2224,7 @@ function ContinueCard({ run, data }) {
 
 /** O cartão do treinador (como nos jogos): quem é, a região, as insígnias, o dinheiro, a Pokédex da corrida, o andar e as
  * vitórias. Fica na AJUDA (🪪). Igual ao app. */
-function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null, charm = false }) {
+function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = null, charm = false, unown = [] }) {
   const me = useMyTrainer()
   const [ref, width] = useWidth()
   const game = data?.bosses?.[run.boss.region]
@@ -2243,6 +2251,8 @@ function TrainerCard({ data, run, onDex = null, askNick = false, onAskNick = nul
         {row('⏱️', 'Tempo de jogo', playTimeText(run.playMs), 'card-time')}
         {row('✨', 'Shiny Charm', charm ? `✅ ${SHINY_CHARM}×` : '—', 'card-charm')}
         {quest && row('🌟', 'Lendários', <>{quest.list.map((id) => <span key={id} style={quest.done.includes(id) ? undefined : { filter: 'brightness(0)', opacity: id === quest.id ? 1 : 0.4 }}><PokeIcon id={id} className="h-[3.4cqw] w-[3.4cqw]" /></span>)}<span>{quest.done.length}/{quest.list.length}</span></>, 'card-legends')}
+        {/* As letras do Unown que você já teve (como a coleção das Ruínas de Alph). Igual ao app. */}
+        {unown.length > 0 && row('🔤', 'Unown', <span data-no-translate>{unown.length}/{UNOWN_LETTERS.length} · {unown.map(unownLetter).join(' ')}</span>, 'card-unown')}
         {row('⚔️', 'Vencidos', `${sum.defeated} · 👑 ${sum.bosses}`)}
         {/* Perguntar o apelido ao capturar (vem desligado: a captura segue direto). Igual ao app. */}
         {onAskNick && row('✏️', 'Apelido ao capturar', <button type="button" className="cursor-pointer text-yellow-400" onClick={onAskNick} data-testid="card-ask-nick">{askNick ? `✅ ${t('SIM')}` : `⬜ ${t('NÃO')}`}</button>)}
@@ -2366,7 +2376,7 @@ function DexPanel({ factory, data, run, name, onClose }) {
   )
 }
 
-function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null, charm = false }) {
+function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data = null, run = null, askNick = false, onAskNick = null, charm = false, unown = [] }) {
   // Tela única: 4 tópicos por página (2 × 2), do tamanho do campo, sem rolar; ◀ ▶ troca a página.
   const [page, setPage] = useState(0)
   const [card, setCard] = useState(false)
@@ -2375,7 +2385,7 @@ function HelpPanel({ onClose, onExit = null, onGiveUp = null, onDex = null, data
   return (
     <div className="port-panel flex h-full flex-col gap-2 overflow-hidden p-2" style={{ containerType: 'inline-size' }} data-testid="help-panel">
       <OverlayClose onClose={onClose} title={card ? `🪪 ${t('Cartão do treinador')}` : `❓ ${t('Ajuda')}`} />
-      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} charm={charm} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+      {card && run ? <TrainerCard data={data} run={run} onDex={onDex} askNick={askNick} onAskNick={onAskNick} charm={charm} unown={unown} /> : <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
         {HELP.slice(page * per, page * per + per).map(([icon, title, text]) => (
           <div key={title} className="port-card flex min-h-0 flex-col gap-[0.8cqw] overflow-hidden p-[1.5cqw]">
             <p className="text-[2.2cqw]">{icon} {t(title)}</p>
@@ -2938,7 +2948,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
           <span className="flex shrink-0 gap-0.5">
             {run.team.map((m, i) => (
               <span key={i} className="flex flex-col items-center" title={t(prettyName(byId?.get(m.id)?.name ?? ''))}>
-                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} className={`h-[2.6cqw] w-[2.6cqw] ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
+                <PokeIcon id={m.id} shiny={Boolean(m.shiny)} variant={m.variant} className={`h-[2.6cqw] w-[2.6cqw] ${(m.hp ?? 1) > 0 ? '' : 'opacity-40 grayscale'}`} />
                 <span className="block h-[0.4cqw] w-[2.8cqw] overflow-hidden rounded bg-slate-900">
                   <span className={`block h-full ${(m.hp ?? 1) > 0.5 ? 'bg-emerald-400' : (m.hp ?? 1) > 0.2 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.max(0, Math.min(1, m.hp ?? 1)) * 100}%` }} />
                 </span>
@@ -3106,7 +3116,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     ) : panel === 'region' ? (
       <RegionMap data={data} run={run} onClose={() => setPanel(null)} monName={name} />
     ) : panel === 'help' ? (
-      <HelpPanel data={data} run={run} charm={Boolean(factory.charm)} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
+      <HelpPanel data={data} run={run} charm={Boolean(factory.charm)} unown={factory.unown ?? []} askNick={Boolean(factory.askNick)} onAskNick={() => saveFactory({ ...factory, askNick: !factory.askNick })} onDex={() => setPanel('dex')} onClose={() => setPanel(null)} onExit={onExit} onGiveUp={() => window.confirm(t('Desistir da corrida? A pontuação vira moedas.')) && saveFactory(endRun(factory, run))} />
     ) : panel === 'bag' ? (
       <BagPanel run={run} byId={byId} save={save} onClose={() => setPanel(null)} />
     ) : (
@@ -3292,7 +3302,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         <div className="space-y-2 p-2" data-testid="daycare">
           <OverlayClose onClose={() => setPanel(null)} title={`🏡 ${t('Creche')}`} />
           <div className="flex items-center gap-2 rounded-xl bg-surface p-2">
-            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} className="h-12 w-12" />
+            <PokeIcon id={care.mon.id} shiny={Boolean(care.mon.shiny)} variant={care.mon.variant} className="h-12 w-12" />
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-bold" data-no-translate>{name(care.mon.id)} · Nv. {care.mon.level} → {care.mon.level + steps}</p>
               <p className="text-xs text-muted">{steps >= DAYCARE_EGG ? t('Tem um ovo esperando por você! Ele vai no time (ocupa uma vaga) e choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES) : t('Mais {0} andares e aparece um ovo.').replace('{0}', DAYCARE_EGG - steps)}</p>
@@ -3422,10 +3432,13 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.quest && <p className={`font-black ${p.quest.lost ? 'text-slate-400' : 'text-amber-400'}`} data-testid="factory-quest" data-no-translate>{p.quest.lost ? `🌫️ ${t('{0} sumiu de novo: falta mais uma pista para achar o covil.').replace('{0}', name(p.quest.id))}` : `🌟 ${t('Missão lendária cumprida: {0}! +💰{1}').replace('{0}', name(p.quest.id)).replace('{1}', p.quest.prize)}`}</p>}
         {p.pokerus && <p className="text-sm font-semibold text-purple-400" data-testid="factory-pokerus" data-no-translate>🦠 {t('{0} pegou Pokérus! Ganha o dobro de EVs.').replace('{0}', p.pokerus.map((id) => name(id)).join(', '))}</p>}
         {/* As moedas de Gimmighoul achadas depois da vitória. Igual ao app. */}
+        {/* O item que o selvagem capturado segurava (e o roubado com Thief/Covet). Igual ao app. */}
+        {p.loot && <p className="text-sm font-semibold text-amber-200" data-testid="factory-loot">🎁 {t(p.loot[1] === 'held' ? 'Ele segurava {0}! Continua com ele.' : p.loot[1] === 'money' ? 'Ele segurava {0}! Vendido por 💰{1}.' : 'Ele segurava {0}! Foi para a Bolsa.').replace('{0}', prettySlug(p.loot[0])).replace('{1}', p.loot[2])}</p>}
+        {p.stolen?.map((it, i) => it && run.team[i] && <p key={i} className="text-sm font-semibold text-amber-200" data-testid="factory-stolen">🫳 {t('{0} pegou {1} na luta!').replace('{0}', run.team[i].nick ?? name(run.team[i].id)).replace('{1}', prettySlug(it))}</p>)}
         {p.fossil && <p className="text-sm font-semibold text-amber-200" data-testid="factory-fossil-found">🦴 {t('Você achou um {0}! O laboratório da próxima cidade revive.').replace('{0}', prettySlug(p.fossil))}</p>}
         {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
         {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
-        {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
+        {p.raid && <p className="font-black text-cyan-300" data-testid="factory-raid">{p.raid.kind === 'tera' ? '💎' : '🔴'} {t(p.raid.kind === 'tera' ? 'Reide Tera vencido! O chefe é seu.' : 'Reide Dynamax vencido! O chefe é seu.')} {'★'.repeat(p.raid.stars)}{p.raid.candy ? ` · +${p.raid.candy[1]} ${prettySlug(p.raid.candy[0])}` : ''}{p.raid.shards ? ` · +${p.raid.shards} Tera Shard (${t(TYPE_PT[p.raid.type] ?? p.raid.type)})` : ''}</p>}
         {p.badge && <p className="font-black text-amber-400" data-testid="factory-badge" data-no-translate>🏅 {t('Você recebeu a insígnia de {0}!').replace('{0}', p.badge.name)}</p>}
         {p.badge?.z && <p className="text-sm font-semibold text-sky-400" data-testid="factory-badge-z" data-no-translate>💎 {t('{0} te deu o {1}! Segurando ele, o Pokémon usa o Z-Move.').replace('{0}', p.badge.name).replace('{1}', prettySlug(p.badge.z))}</p>}
         {p.scale && <p className="text-sm font-semibold text-pink-400" data-testid="factory-scale">💗 {t('Você achou uma Heart Scale! Ela paga o Move Reminder.')}</p>}
@@ -4349,6 +4362,10 @@ function itemHelp(id) {
   if (id === 'town-map') return t('Mostra o mapa da rota e deixa escolher o caminho nas bifurcações (sem ele, vai às cegas)')
   if (id === 'repel') return t('Use em AÇÕES: os caminhos de selvagens somem por {0} andares').replace('{0}', REPEL_FLOORS)
   if (id === 'revive') return t('Revive com metade do HP')
+  // Os itens X (vão para a Bolsa e são usados na batalha). Igual ao app.
+  if (id === 'dire-hit') return t('Na batalha: aumenta a chance de golpe crítico de quem está em campo')
+  if (id === 'guard-spec') return t('Na batalha: protege os atributos do time contra quedas por 5 turnos')
+  if (X_BAG.includes(id)) return t('Na batalha: +2 de {0} para quem está em campo').replace('{0}', t({ 'x-attack': 'Ataque', 'x-defense': 'Defesa', 'x-sp-atk': 'Ataque Especial', 'x-sp-def': 'Defesa Especial', 'x-speed': 'Velocidade', 'x-accuracy': 'Precisão' }[id]))
   if (HEAL_SHARE[id]) return HEAL_SHARE[id] >= 1 ? t('Recupera todo o HP') : t('Recupera {0}% do HP').replace('{0}', Math.round(HEAL_SHARE[id] * 100))
   if (id === 'rare-candy') return t('+1 nível')
   if (VITAMINS[id]) return t('+{0} EVs em {1}, sem limite').replace('{0}', VITAMIN_EVS).replace('{1}', STAT_LABEL[VITAMINS[id]])

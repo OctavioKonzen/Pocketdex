@@ -583,3 +583,19 @@ test('Clima: o motor conta os turnos que faltam', () => {
     assert.equal(next.state.weatherTurns, 3);
   } finally { sim.dispose(game.handle); }
 });
+
+test('X items boost the active Pokémon (+2), Dire Hit and Guard Spec. work, and the bag goes down', () => {
+  const game = sim.create({teams: [[mon('Machamp', ['bulkup']), mon('Pikachu', ['thunderbolt'])], [mon('Blissey', ['splash'])]], seed: [1, 2, 3, 4], bags: [{'x-attack': 1, 'dire-hit': 1, 'guard-spec': 1}, {}]});
+  try {
+    const first = sim.choose(game.handle, [{kind: 'item', item: 'x-attack', index: 0}, move(0)]);
+    assert.equal(first.state.sides[0].team[0].boosts.atk, 2);
+    assert.equal(first.state.bags[0]['x-attack'], 0);
+    assert.ok(first.log.some(line => line.startsWith('|-boost|p1a') && line.includes('atk|2')));
+    const second = sim.choose(game.handle, [{kind: 'item', item: 'dire-hit', index: 0}, move(0)]);
+    assert.ok(second.log.some(line => line.includes('-start|p1a') && line.includes('Focus Energy')));
+    const third = sim.choose(game.handle, [{kind: 'item', item: 'guard-spec', index: 0}, move(0)]);
+    assert.ok(third.state.sides[0].conditions.mist >= 0 && 'mist' in third.state.sides[0].conditions);
+    assert.throws(() => sim.choose(game.handle, [{kind: 'item', item: 'x-attack', index: 0}, move(0)]));
+    assert.throws(() => sim.choose(game.handle, [{kind: 'item', item: 'x-speed', index: 1}, move(0)]));
+  } finally { sim.dispose(game.handle); }
+});

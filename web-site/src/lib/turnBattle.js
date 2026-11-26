@@ -97,7 +97,18 @@ export const ITEMS = [
   { slug: 'dusk-ball', name: 'Dusk Ball', ball: true, count: 0 },
   { slug: 'timer-ball', name: 'Timer Ball', ball: true, count: 0 },
   { slug: 'master-ball', name: 'Master Ball', ball: true, count: 0 },
+  // Os itens X (Battle Factory, comprados na loja): sobem o atributo de quem está em campo. Igual ao app.
+  { slug: 'x-attack', name: 'X Attack', x: 'atk', count: 0 },
+  { slug: 'x-defense', name: 'X Defense', x: 'def', count: 0 },
+  { slug: 'x-sp-atk', name: 'X Sp. Atk', x: 'spa', count: 0 },
+  { slug: 'x-sp-def', name: 'X Sp. Def', x: 'spd', count: 0 },
+  { slug: 'x-speed', name: 'X Speed', x: 'spe', count: 0 },
+  { slug: 'x-accuracy', name: 'X Accuracy', x: 'accuracy', count: 0 },
+  { slug: 'dire-hit', name: 'Dire Hit', x: 'crit', count: 0 },
+  { slug: 'guard-spec', name: 'Guard Spec.', x: 'mist', count: 0 },
 ]
+/** Os itens X da Bolsa. */
+export const X_ITEMS = ITEMS.filter((i) => i.x).map((i) => i.slug)
 const newBag = () => Object.fromEntries(ITEMS.map((i) => [i.slug, i.count]))
 const itemOf = (slug) => ITEMS.find((i) => i.slug === slug)
 /** Battle Factory (healPct): quanto cada poção cura do HP máximo. */
@@ -109,6 +120,8 @@ export function canUseItem(battle, side, slug, index) {
   if (item?.ball) return canThrow(battle, slug)
   const mon = battle.sides[side].team[index]
   if (!item || !mon || !(battle.bags[side][slug] > 0)) return false
+  // Item X: só em quem está em campo, de pé.
+  if (item.x) return index === battle.sides[side].active && mon.hp > 0
   return item.revive ? mon.hp <= 0 : mon.hp > 0 && mon.hp < mon.maxHp
 }
 

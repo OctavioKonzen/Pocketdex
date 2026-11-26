@@ -5,7 +5,7 @@
 import { battleMons } from './battleSetup'
 import { t } from './i18n'
 import { getFactoryData, getMoves, getPokemonById, getSpecies } from './data'
-import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, benchShare, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf, RAID_ALLY_NAMES } from './factoryRun'
+import { bagsFor, battleOrder, ROAM_TURNS, bossScene, captureFor, clockOf, fieldOf, isDoubleBattle, weatherOf, benchShare, expAt, expFactor, expProgress, expShares, foeMember, memberOf, movesAt, nuzRule, levelCapOf, RAID_ALLY_NAMES, itemSlug } from './factoryRun'
 import { seededRandom } from './league'
 import { newBattle } from './turnBattle'
 
@@ -103,9 +103,13 @@ export function factoryAfter(battle, run) {
   if (crits) Object.entries(battle.expNow.crits).forEach(([slot, n]) => { const i = battle.factoryOrder?.[Number(slot)] ?? Number(slot); if (i < crits.length) crits[i] += n })
   // A hora (pelo relógio): a Eevee evolui pela amizade em Espeon de dia e Umbreon à noite.
   // O lendário que fugiu: o HP que ficou (para a próxima vez).
+  // Thief / Covet: o item que cada um terminou segurando sem ter entrado com um (na ordem da corrida).
+  const ends = battle.simulator?.state?.sides?.[0]?.team
+  const stolen = ends ? run.team.map(() => null) : null
+  if (stolen) battle.factoryOrder?.forEach((teamIndex, slot) => { const it = itemSlug(ends[slot]?.item); if (it && !run.team[teamIndex]?.item) stolen[teamIndex] = it })
   const foe = battle.sides[1].team[0]
   const fled = battle.fled ? { fled: true, foeHp: foe?.maxHp ? Math.round((Math.max(0, foe.hp) / foe.maxHp) * 1000) / 1000 : 1 } : {}
-  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, ...(battle.captured != null ? { capturedIndex: battle.captured } : {}), fought, ...fled, night: clockOf().night, dusk: clockOf().dusk, ...(gained ? { gained } : {}), ...(crits ? { crits } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}) }
+  return { hp, bag: { ...battle.bags[0] }, captured: battle.captured != null, ...(battle.captured != null ? { capturedIndex: battle.captured } : {}), fought, ...fled, night: clockOf().night, dusk: clockOf().dusk, ...(gained ? { gained } : {}), ...(crits ? { crits } : {}), ...(battle.capturedBall ? { ball: battle.capturedBall } : {}), ...(stolen?.some(Boolean) ? { stolen } : {}) }
 }
 
 /** Quem é o adversário do andar: o chefe (nome, treinador e música) ou um selvagem (sem treinador). */
