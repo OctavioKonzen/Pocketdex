@@ -69,6 +69,9 @@ class BattleMon {
   /// A forma do sprite (a letra do Unown, o padrão do Vivillon). Igual ao site.
   String variant = '';
 
+  /// O Pokémon Sombrio (Orre): a aura roxa. Igual ao site.
+  bool shadow = false;
+
   /// O gênero ('M', 'F' ou '' sem gênero), do simulador: o ♂/♀ na caixa de vida.
   String gender = '';
 
@@ -150,7 +153,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha..variant = variant;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha..variant = variant..shadow = shadow;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -795,6 +798,9 @@ class TurnBattle {
 
   /// O selvagem com Emergency Exit ou Wimp Out foge abaixo da metade do HP (Battle Factory). Igual ao site.
   bool wildExit = false;
+
+  /// O Battle Palace (Battle Frontier): seus Pokémon escolhem o golpe sozinhos. Igual ao site.
+  bool palace = false;
   static const wildExitAbilities = ['emergencyexit', 'wimpout'];
   bool needSwitch = false; // seu Pokémon desmaiou: escolha outro
 
@@ -2215,7 +2221,8 @@ class TurnBattleSetup {
         ..hpRatio = (m.$2?['hpRatio'] as num?)?.toDouble()
         ..ball = m.$2?['ball'] as String?
         ..alpha = m.$2?['alpha'] == true
-        ..variant = '${m.$2?['variant'] ?? ''}');
+        ..variant = '${m.$2?['variant'] ?? ''}'
+        ..shadow = m.$2?['shadow'] == true);
     }
     return out;
   }

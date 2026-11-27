@@ -1855,6 +1855,78 @@ class FactoryRun {
   static String itemSlug(Object? name) => '${name ?? ''}'.toLowerCase().replaceAll(RegExp("['’.]"), '').replaceAll(RegExp('[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-$'), '');
 
   /// Aceita o ovo misterioso.
+  /// Black City / White Forest (Black & White): em Unova, uma vez por corrida, um lugar especial pelo jogo da corrida
+  /// (semente par: Black City, uma batalha de treinador forte que paga [blackMoney] vezes o dinheiro; semente ímpar: White
+  /// Forest, um selvagem raro de outra região com mais chance de shiny). Igual ao site.
+  static const bwFloor = 12, bwChance = 0.18, bwLevels = 3, blackMoney = 3, whiteShiny = 4;
+  static String blackWhiteOf(Json run) => _int(run['seed'] ?? 0) % 2 == 0 ? 'black' : 'white';
+
+  /// A Battle Frontier (Emerald, Platinum, HeartGold/SoulSilver): em Hoenn, Sinnoh e Johto, às vezes um treinador da rota
+  /// vira um desafio de um prédio: Arcade (a roleta muda a batalha), Palace (seus Pokémon agem sozinhos), Pyramid (no
+  /// escuro, e sempre acha um item) ou Pike (3 portas: cura, item ou uma batalha mais forte). Igual ao site.
+  static const frontierRegions = ['Hoenn', 'Sinnoh', 'Johto'];
+  static const frontierFloor = 18, frontierChance = 0.16, pikeLevels = 3;
+  static const frontier = ['arcade', 'palace', 'pyramid', 'pike'];
+  static const arcade = ['weak', 'strong', 'heal', 'jackpot', 'sun', 'rain', 'sand', 'snow'];
+  static const pyramidItems = ['max-potion', 'revive', 'ultra-ball', 'rare-candy', 'leftovers', 'life-orb', 'focus-sash', 'bottle-cap'];
+  static const _pikeOrders = [
+    ['heal', 'item', 'battle'], ['heal', 'battle', 'item'], ['item', 'heal', 'battle'],
+    ['item', 'battle', 'heal'], ['battle', 'heal', 'item'], ['battle', 'item', 'heal'],
+  ];
+
+  /// As três portas do Pike: uma cura, um item e uma luta, em ordem sorteada (a mesma corrida, as mesmas portas).
+  static List<String> pikeDoors(Json run) => _pikeOrders[(followRoll(run, 2246822519) * _pikeOrders.length).floor()];
+
+  /// Abre a porta [i] do Pike: cura o time, ganha um item ou enfrenta o treinador (mais forte). null se não dá.
+  static Json? pikeDoor(Json run, FactoryData data, int i) {
+    final pike = pendingOf(run)?['pike'] as Map?;
+    if (pike == null || i < 0 || i >= 3) return null;
+    final door = pikeDoors(run)[i];
+    final out = {..._copy(run), 'pending': null};
+    final enc = Map<String, dynamic>.from(pike['enc'] as Map);
+    if (door == 'battle') {
+      out['encounter'] = {...enc, 'frontier': 'pike', 'foes': [for (final f in enc['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': _int(f['level']) + pikeLevels}]};
+      return out;
+    }
+    if (door == 'heal') out['team'] = [for (final m in teamOf(run)) {...m, 'hp': 1}..remove('status')];
+    final item = door == 'item' ? pyramidItems[(followRoll(run, 3266489917 + i) * pyramidItems.length).floor()] : null;
+    if (item != null) _giveItem(out, item);
+    out['pending'] = {'event': {'kind': 'pike', 'door': door, if (item != null) 'item': item}};
+    return out;
+  }
+
+  /// Funfest Missions (Black 2 / White 2): na cidade, uma missão rápida com prazo: capturar funfestNeed['catch'] do tipo,
+  /// derrotar funfestNeed['defeat'] do tipo ou vencer funfestNeed['trainers'] treinadores em [funfestFloors] andares.
+  /// Cumprida, dinheiro e um item; passando do prazo, acaba. Uma por cidade. Igual ao site.
+  static const funfestFloors = 6, funfestMoney = 700;
+  static const funfestNeed = {'catch': 2, 'defeat': 4, 'trainers': 3};
+  static const funfestTypes = ['normal', 'fire', 'water', 'grass', 'electric', 'bug', 'flying', 'poison', 'ground', 'rock', 'psychic', 'fighting'];
+  static Json? funfestOffer(FactoryData data, Json run) {
+    final town = run['town'] as Map?;
+    if (town == null || town['funfest'] == true || run['funfest'] != null || run['encounter'] != null || run['pending'] != null || _inLeague(data, run)) return null;
+    final kinds = funfestNeed.keys.toList();
+    final kind = kinds[(_townRoll(run, 1597334677) * kinds.length).floor()];
+    final type = kind == 'trainers' ? '' : funfestTypes[(_townRoll(run, 2654435761) * funfestTypes.length).floor()];
+    return {'kind': kind, 'type': type, 'need': funfestNeed[kind], 'floors': funfestFloors};
+  }
+
+  static Json? acceptFunfest(Json run, FactoryData data) {
+    final offer = funfestOffer(data, run);
+    if (offer == null) return null;
+    return {
+      ..._copy(run),
+      'town': {...Map<String, dynamic>.from(run['town'] as Map), 'funfest': true},
+      'funfest': {'kind': offer['kind'], 'type': offer['type'], 'need': offer['need'], 'done': 0, 'until': _int(run['floor']) + funfestFloors},
+    };
+  }
+
+  /// Pokémon Sombrios (Colosseum / XD): em Orre, os treinadores às vezes usam um Pokémon Sombrio (a aura roxa). Vencendo,
+  /// você o rouba com a Snag Machine (ele vem para o time). Sombrio, ele não ganha XP: guarda; depois de [shadowPurify]
+  /// vitórias lutando, ele é purificado e recebe todo o XP guardado. Igual ao site.
+  static const shadowRegions = ['Orre'];
+  static const shadowChance = 0.45;
+  static const shadowPurify = 5;
+
   static Json takeMysteryEgg(Json run, FactoryData data) {
     final id = mysteryEgg(data, run);
     if (id == null) return run;
@@ -2962,6 +3034,56 @@ class FactoryRun {
           followRoll(out, 1103515245) < rotationChance) {
         out['encounter'] = {...Map<String, dynamic>.from(rotEnc), 'rotation': true};
       }
+      final region = regionOf(data, out);
+      // Black City / White Forest (Unova, uma vez por corrida).
+      final bwEnc = Map<String, dynamic>.from(out['encounter'] as Map);
+      if (region == 'Unova' && run['blackWhite'] == null && bwEnc['boss'] == null && bwEnc['rotation'] != true && _int(out['floor']) >= bwFloor && followRoll(out, 3266489917) < bwChance) {
+        if (blackWhiteOf(run) == 'black' && bwEnc['kind'] == 'trainer') {
+          out['encounter'] = {
+            ...bwEnc,
+            'blackCity': true,
+            'foes': [for (final f in bwEnc['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': _int(f['level']) + bwLevels, 'iv': math.max(_int(f['iv'] ?? 0), 25)}],
+          };
+          out['blackWhite'] = 'black';
+          out['scene'] = 'town-metro';
+        } else if (blackWhiteOf(run) == 'white' && bwEnc['kind'] == 'wild' && bwEnc['horde'] != true) {
+          final f = (encounterFor(data, _int(out['floor']) + bwLevels, rand, null, false, {'kind': 'wild', 'rare': true, 'shiny': whiteShiny})['foes'] as List).first;
+          out['encounter'] = {...bwEnc, 'whiteForest': true, 'foes': [f]};
+          out['blackWhite'] = 'white';
+          out['scene'] = 'forest';
+        }
+      }
+      // A Battle Frontier (Hoenn, Sinnoh e Johto): um treinador da rota vira o desafio de um dos prédios.
+      final fe = Map<String, dynamic>.from(out['encounter'] as Map);
+      if (frontierRegions.contains(region) && fe['kind'] == 'trainer' && fe['rotation'] != true && _int(out['floor']) >= frontierFloor && followRoll(out, 1597334677) < frontierChance) {
+        final facility = frontier[(followRoll(out, 2246822519) * frontier.length).floor()];
+        if (facility == 'pike') {
+          out['encounter'] = null;
+          out['pending'] = {'pike': {'enc': fe}};
+        } else if (facility == 'arcade') {
+          final roll = arcade[(followRoll(out, 3332679573) * arcade.length).floor()];
+          final shift = roll == 'weak' ? -3 : roll == 'strong' ? 3 : 0;
+          out['encounter'] = {
+            ...fe,
+            'frontier': 'arcade',
+            'arcade': roll,
+            'foes': [for (final f in fe['foes'] as List) {...Map<String, dynamic>.from(f as Map), 'level': math.max(2, _int(f['level']) + shift)}],
+            if (weatherTypes[roll] != null) 'weather': roll,
+          };
+          if (roll == 'heal') out['team'] = [for (final m in teamOf(out)) ((m['hp'] as num?) ?? 1) > 0 ? {...m, 'hp': 1} : m];
+        } else {
+          out['encounter'] = {...fe, 'frontier': facility};
+          if (facility == 'pyramid') out['scene'] = 'cave';
+        }
+      }
+      // Pokémon Sombrios (Orre): um dos Pokémon do treinador.
+      final se = out['encounter'] as Map?;
+      if (se != null && shadowRegions.contains(region) && (se['kind'] == 'trainer' || (se['boss'] as Map?)?['kind'] == 'villain') && _int(out['floor']) >= 3 && followRoll(out, 4093082899) < shadowChance) {
+        final list = se['foes'] as List;
+        final k = list.length - 1;
+        out['encounter'] = {...Map<String, dynamic>.from(se), 'foes': [for (var i = 0; i < list.length; i++) i == k ? {...Map<String, dynamic>.from(list[i] as Map), 'shadow': true} : list[i]]};
+      }
+      if (out['encounter'] == null) return out;
       _countHunt(data, out);
       // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
       if (node['plot'] != null) out['encounter'] = {...Map<String, dynamic>.from(out['encounter'] as Map), 'plot': node['plot']};
@@ -3568,7 +3690,10 @@ class FactoryRun {
     final roamer = allFoes.isNotEmpty && allFoes.first['roam'] == true ? _int(allFoes.first['id']) : null;
     final foes = fled ? <Json>[] : allFoes;
     final factor = expFactor(kind);
-    final moneyFactor = kind == 'boss' || kind == 'wildboss' || kind == 'rematch' || kind == 'rival' || kind == 'dboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1;
+    final arcadeRoll = run['encounter']['arcade'];
+    final moneyFactor = (kind == 'boss' || kind == 'wildboss' || kind == 'rematch' || kind == 'rival' || kind == 'dboss' ? 3 : kind == 'ace' ? 2.5 : kind == 'trainer' ? 2 : 1) *
+        (run['encounter']['blackCity'] == true ? blackMoney : 1) *
+        (arcadeRoll == 'jackpot' ? 3 : arcadeRoll == 'strong' ? 2 : 1);
     var money = 0;
     // XP e EVs de cada derrotado: para quem lutou contra ele (fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
     final team = teamOf(out);
@@ -3606,9 +3731,22 @@ class FactoryRun {
     final levels = <Json>[];
     final exp = gains.fold(0, math.max);
     final before = [...team];
+    final purified = <int>[];
     for (var i = 0; i < team.length; i++) {
-      final m = team[i];
+      var m = team[i];
       if (gains[i] == 0) continue;
+      if (_int(m['shadow'] ?? 0) > 0 && !fled) {
+        final left = _int(m['shadow']) - 1;
+        final stored = _int(m['shadowExp'] ?? 0) + gains[i];
+        if (left > 0) {
+          team[i] = {...m, 'shadow': left, 'shadowExp': stored};
+          continue;
+        }
+        // Purificado: volta a ganhar XP e recebe todo o que guardou.
+        purified.add(i);
+        gains[i] = stored;
+        m = {...m}..remove('shadow')..remove('shadowExp');
+      }
       final (mon, from, evolved) = _gainExp({...m, 'evs': _add(m['evs'] as Map?, evs[i])}, gains[i], data, rand, regionOf(data, run), night);
       if (_int(mon['level']) > from || evolved != null) levels.add({'index': i, 'from': from, 'to': mon['level'], 'evolved': evolved});
       // O XP da corrida inteira (para o MVP do resumo no fim). Igual ao site.
@@ -3962,6 +4100,36 @@ class FactoryRun {
       out['team'] = [for (var i = 0; i < t.length; i++) i < stolen.length && stolen[i] != null && (t[i]['item'] == null || t[i]['item'] == '') ? {...t[i], 'item': stolen[i]} : t[i]];
     }
     out['team'] = withVivillon(teamOf(out), data, out);
+    // Funfest Mission: conta o que vale, paga se cumpriu, acaba se passou do prazo.
+    Json? funfest;
+    final ff = run['funfest'] as Map?;
+    if (ff != null && !fled) {
+      final type = '${ff['type'] ?? ''}';
+      bool fits(Map f) => type.isEmpty || ((data.speciesOf(_int(f['id']))?[4] as List?) ?? const []).contains(type);
+      final add = ff['kind'] == 'catch'
+          ? (captured && fits(capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.isNotEmpty ? foes.first : const {}) ? 1 : 0)
+          : ff['kind'] == 'defeat' ? foes.where((f) => fits(f)).length : kind == 'trainer' ? 1 : 0;
+      final done = math.min(_int(ff['need']), _int(ff['done']) + add);
+      if (done >= _int(ff['need'])) {
+        final item = _pick(aceRewards, rand);
+        final cash = (funfestMoney * priceScale(_int(run['floor']))).round();
+        _giveItem(out, item);
+        out['money'] = _int(out['money']) + cash;
+        out['funfest'] = null;
+        funfest = {...Map<String, dynamic>.from(ff), 'done': done, 'won': true, 'item': item, 'money': cash};
+      } else if (_int(run['floor']) >= _int(ff['until'])) {
+        out['funfest'] = null;
+        funfest = {...Map<String, dynamic>.from(ff), 'done': done, 'lost': true};
+      } else {
+        out['funfest'] = {...Map<String, dynamic>.from(ff), 'done': done};
+      }
+    }
+    // A Pyramid da Battle Frontier: sempre acha um item.
+    final pyramid = run['encounter']['frontier'] == 'pyramid' && !fled ? pyramidItems[(followRoll(run, 2654435761) * pyramidItems.length).floor()] : null;
+    if (pyramid != null) _giveItem(out, pyramid);
+    // O Pokémon Sombrio do treinador (Orre): roubado com a Snag Machine.
+    final shadowFoe = !fled && (kind == 'trainer' || kind == 'boss') ? foes.where((f) => f['shadow'] == true).firstOrNull : null;
+    final snag = shadowFoe == null ? null : {'id': shadowFoe['id'], 'level': shadowFoe['level'], 'shadow': shadowPurify, if (shadowFoe['shiny'] == true) 'shiny': true};
     final born = _hatch(out, captured && (kind == 'wild' || kind == 'wildboss'));
     // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
     final fossils = run['dungeon'] != null && kind == 'dboss' && born == null
@@ -3983,7 +4151,7 @@ class FactoryRun {
       // No reide, vencendo, o chefe é seu (sem jogar bola).
       'capture': run['encounter']?['raid'] != null && foes.isNotEmpty
           ? _raidPrize(foes.first as Map)
-          : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil,
+          : captured && (kind == 'wild' || kind == 'wildboss') ? (capturedIndex != null && capturedIndex >= 0 && capturedIndex < foes.length ? foes[capturedIndex] : foes.first) : born ?? fossil ?? snag,
       if (coins > 0) 'coins': coins,
       if (fossilFound != null) 'fossil': fossilFound,
       if (loot != null) 'loot': [loot.$1, loot.$2, loot.$3],
@@ -4008,6 +4176,11 @@ class FactoryRun {
           if (kind == 'boss' && bossCity(data, run) != null) 'city': bossCity(data, run),
         },
       if (mission != null) 'mission': mission,
+      if (funfest != null) 'funfest': funfest,
+      if (pyramid != null) 'pyramid': pyramid,
+      if (purified.isNotEmpty) 'purified': purified,
+      if (snag != null && born == null && fossil == null) 'snag': true,
+      if (run['encounter']['blackCity'] == true) 'blackCity': true else if (run['encounter']['whiteForest'] == true) 'whiteForest': true,
       if (hm != null) 'hm': hm,
       if (badge != null) 'badge': badge,
       if (pokerus.isNotEmpty) 'pokerus': pokerus,
@@ -4123,6 +4296,8 @@ class FactoryRun {
     var mon = newMon(_int(foe['id']), _int(foe['level']), rand, foe['egg'] == true ? eggIvs : _int(foe['minIv'] ?? 0), foe['shiny'] == true);
     // O do Hidden Grotto: com a habilidade oculta.
     if (foe['ha'] == true) mon = {...mon, 'ha': true};
+    // O Pokémon Sombrio roubado continua Sombrio (purifica lutando).
+    if (_int(foe['shadow'] ?? 0) > 0) mon = {...mon, 'shadow': foe['shadow']};
     // A letra do Unown e o padrão do Vivillon vêm junto.
     if (foe['variant'] != null) mon = {...mon, 'variant': foe['variant']};
     // O item que o selvagem segurava vem junto (como nos jogos).
@@ -6985,6 +7160,7 @@ class FactoryRun {
           if (mon['ball'] != null) 'ball': mon['ball'],
           if (mon['alpha'] == true) 'alpha': true,
           if ('${mon['variant'] ?? ''}'.isNotEmpty) 'variant': mon['variant'],
+          if (_int(mon['shadow'] ?? 0) > 0) 'shadow': true,
           if (mon['tera'] != null) 'tera': mon['tera'],
           'bonus': overflowPoints(mon['ivs'] as Map?, mon['evs'] as Map?, _int(mon['level'])), 'boost': boostOf(run, mon), 'hpRatio': hpOf(mon),
         }
@@ -7022,6 +7198,7 @@ class FactoryRun {
         if (foe['ha'] == true) 'ability': 'hidden',
         if (foe['alpha'] == true) 'alpha': true,
         if ('${foe['variant'] ?? ''}'.isNotEmpty) 'variant': foe['variant'],
+        if (foe['shadow'] == true) 'shadow': true,
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],

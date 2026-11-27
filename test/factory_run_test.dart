@@ -466,6 +466,61 @@ void main() {
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
+  test('rodada 16 igual ao site (test/fixtures/round16.json): Battle Frontier, Funfest, Black City/White Forest e Sombrios', () {
+    final expected = jsonDecode(File('test/fixtures/round16.json').readAsStringSync()) as Map;
+    Object? norm(Object? v) => jsonDecode(jsonEncode(v));
+    final base = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'encounter': null, 'pending': null};
+    List sum(Json r) {
+      final e = r['encounter'] as Map?;
+      if (e == null) return [r['pending'] == null ? null : (r['pending'] as Map).keys.toList()];
+      return [
+        e['kind'], e['frontier'], e['arcade'], e['weather'], e['blackCity'] == true, e['whiteForest'] == true,
+        [for (final f in e['foes'] as List) [f['id'], f['level'], f['shadow'] == true, f['shiny'] == true]],
+        r['scene'], r['blackWhite'],
+      ];
+    }
+    final nodes = [
+      for (final g in ['Black/White', 'Emerald', 'Platinum', 'Crystal', 'Colosseum/XD'])
+        for (var k = 0; k < 40; k++)
+          () {
+            final floor = 20 + k % 7;
+            final r = FactoryRun.chooseNode({...base, 'seed': k + 1, 'floor': floor, 'boss': {'region': gameOf(g), 'step': 1}, 'route': {'floor': floor, 'biome': 'grass', 'options': [{'kind': k % 3 != 0 ? 'trainer' : 'wild'}]}}, data, 0);
+            return [g, k, sum(r)];
+          }(),
+    ];
+    final want = expected['nodes'] as List;
+    for (var i = 0; i < nodes.length; i++) {
+      expect(norm(nodes[i]), want[i], reason: 'nó $i');
+    }
+    final pike = [
+      for (var k = 0; k < 8; k++)
+        () {
+          final r = {...base, 'seed': k + 5, 'floor': 22, 'pending': {'pike': {'enc': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 20, 'iv': 0, 'ev': 0}]}}}};
+          return [
+            FactoryRun.pikeDoors(r),
+            [for (var i = 0; i < 3; i++) () { final o = FactoryRun.pikeDoor(r, data, i)!; return [(o['encounter'] as Map?)?['foes']?[0]['level'], (o['pending'] as Map?)?['event']]; }()],
+          ];
+        }(),
+    ];
+    expect(norm(pike), expected['pike']);
+    final town = {...base, 'floor': 1 + FactoryRun.routeLength, 'leg': 1, 'town': {'leg': 1}};
+    expect(norm([for (var k = 0; k < 12; k++) FactoryRun.funfestOffer(data, {...town, 'seed': k + 1})]), expected['fun']);
+    final ff = FactoryRun.acceptFunfest({...town, 'seed': 3}, data)!;
+    expect(norm(ff['funfest']), expected['ff']);
+    final won = FactoryRun.winFloor({...ff, 'town': null, 'funfest': {'kind': 'trainers', 'type': '', 'need': 1, 'done': 0, 'until': (ff['floor'] as num).toInt() + 6}, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
+    expect(norm([won['pending']['funfest'], won['money'], won['funfest']]), expected['won']);
+    final shadowWin = FactoryRun.winFloor({...base, 'floor': 9, 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0, 'shadow': true}]}}, data, hp: [1]);
+    expect(norm([shadowWin['pending']['capture'], shadowWin['pending']['snag']]), expected['snag']);
+    final pyr = FactoryRun.winFloor({...base, 'floor': 25, 'encounter': {'kind': 'trainer', 'frontier': 'pyramid', 'foes': [{'id': 19, 'level': 25, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
+    expect(pyr['pending']['pyramid'], expected['pyramid']);
+    final first = (base['team'] as List).first as Map;
+    final purified = FactoryRun.winFloor({...base, 'floor': 9, 'team': [{...first, 'shadow': 1, 'shadowExp': 40}], 'encounter': {'kind': 'trainer', 'foes': [{'id': 19, 'level': 5, 'iv': 0, 'ev': 0}]}}, data, hp: [1]);
+    final pm = (purified['team'] as List).first as Map;
+    expect(norm([purified['pending']['purified'], pm['shadow'], pm['level'], pm['exp']]), expected['purified']);
+    // O Pokémon roubado continua Sombrio.
+    expect(FactoryRun.capturedMon(shadowWin)!['shadow'], FactoryRun.shadowPurify);
+  });
+
   test('rodada 15 igual ao site (test/fixtures/round15.json): errantes, plano vilão, ovos, trocas, dia e noite e amizade', () {
     final expected = jsonDecode(File('test/fixtures/round15.json').readAsStringSync()) as Map;
     Object? norm(Object? v) => jsonDecode(jsonEncode(v));
@@ -1837,7 +1892,7 @@ void main() {
           'route': {'floor': 40, 'biome': 'grass', 'options': [{'kind': 'trainer'}]},
         };
         final out = _choose(run, data, 0, night ? (night: true, dusk: false, season: 'spring', day: null) : null);
-        n += (out['encounter']['foes'] as List).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
+        n += ((out['encounter'] as Map?)?['foes'] as List? ?? const []).where((f) => ((data.species[f['id']] ?? data.formSpecies[f['id']])?[4] as List? ?? const []).any((t) => t == 'ghost' || t == 'dark')).length;
       }
       return n;
     }

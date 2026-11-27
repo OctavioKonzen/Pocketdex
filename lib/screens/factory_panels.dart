@@ -187,9 +187,12 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
       raid: run['encounter']?['raid'] != null
           ? {'allies': FactoryRun.raidAllyNames['${run['encounter']['raid']}'], 'shield': 2 + _int(run['encounter']['stars'] ?? 1)}
           : null,
-      startWeather: FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data).isNotEmpty
-          ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data)
-          : (place == 'wind' ? 'wind' : ''),
+      // A roleta do Arcade (Battle Frontier) pode começar a luta com um clima.
+      startWeather: '${run['encounter']?['weather'] ?? ''}'.isNotEmpty
+          ? '${run['encounter']['weather']}'
+          : FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data).isNotEmpty
+              ? FactoryRun.weatherOf(run, scene, FactoryRun.clockOf().season, data)
+              : (place == 'wind' ? 'wind' : ''),
       startField: place == 'wind' ? '' : place,
       startExp: {
         // cap: o limite de nível do Nuzlocke (o motor para o XP nele).
@@ -208,6 +211,8 @@ Future<(TurnBattle, List<int>)> factoryBattle(Json run) async {
   if (FactoryRun.foesOf(run).firstOrNull?['roam'] == true) battle.fleeAfter = FactoryRun.roamTurns;
   // O selvagem com Emergency Exit ou Wimp Out (Golisopod, Wimpod): caindo abaixo da metade do HP, foge (como nos jogos).
   if ((kind == 'wild' || kind == 'wildboss') && !doubles && run['encounter']?['raid'] == null) battle.wildExit = true;
+  // O Battle Palace: seus Pokémon agem sozinhos (escolhem o golpe por conta própria).
+  if (run['encounter']?['frontier'] == 'palace') battle.palace = true;
   return (battle, order);
 }
 
@@ -2714,10 +2719,12 @@ const _eventText = {
   'betLost': 'Você perdeu a aposta: −💰{0}.',
   'injuredJoined': 'Você usou {0} e o Pokémon ferido quis ir com você!',
   'noPotion': 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
+  'pikeHeal': 'Atrás da porta, uma enfermeira curou o seu time!',
+  'pikeItem': 'Atrás da porta havia um item: {0}!',
 };
 const _eventIcon = {
   'grotto': '🕳️', 'clue': '🔍', 'bike': '🚲', 'money': '💰', 'berries': '🍒', 'tutor': '📀', 'declined': '👣', 'helped': '🤝', 'secretFound': '💎', 'secretEmpty': '🕳️', //
-  'bought': '🧳', 'betWon': '🎰', 'betLost': '🎰', 'injuredJoined': '💚', 'noPotion': '🩹',
+  'bought': '🧳', 'betWon': '🎰', 'betLost': '🎰', 'injuredJoined': '💚', 'noPotion': '🩹', 'pike': '🐍',
 };
 
 /// As escolhas da rota: o ícone, o texto e os botões. Igual ao site.
@@ -2848,9 +2855,20 @@ String _bossKind(Object? kind) =>
     {'gym': tr('Líder de ginásio'), 'rival': tr('Rival'), 'villain': tr('Vilão'), 'elite': tr('Elite dos Quatro'), 'champion': tr('Campeão')}[kind] ?? '';
 
 /// O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). Igual ao site.
+/// O objetivo da missão da Funfest (com o tipo traduzido). Igual ao site.
+String _funfestGoal(Map f) {
+  final type = '${f['type'] ?? ''}'.isEmpty ? '' : tr(_typePt['${f['type']}'] ?? '${f['type']}');
+  return tr(f['kind'] == 'catch'
+          ? 'Capture {0} Pokémon do tipo {1} em {n} andares.'
+          : f['kind'] == 'defeat' ? 'Derrote {0} Pokémon do tipo {1} em {n} andares.' : 'Vença {0} treinadores em {n} andares.')
+      .replaceAll('{0}', '${f['need']}')
+      .replaceAll('{1}', type);
+}
+
 String? _stepOf(Map? p) {
   if (p == null) return null;
   if (p['choice'] != null) return 'choice';
+  if (p['pike'] != null) return 'pike';
   if (p['seen'] != true && (p['exp'] != null || p['center'] == true || p['event'] != null)) return 'result';
   if (p['capture'] != null) return 'capture';
   if (p['cards'] != null) return 'cards';
@@ -3126,6 +3144,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
                 if (((run['gimmiCoins'] as num?) ?? 0) > 0) Text('🪙 ${run['gimmiCoins']}/${FactoryRun.gimmiCoins}', key: const ValueKey('factory-gimmi'), style: style),
                 if (run['honey'] != null)
                   Text('🍯${max(0, FactoryRun.honeyFloors - ((run['floor'] as num).toInt() - (run['honey']['floor'] as num).toInt()))}', key: const ValueKey('factory-honey'), style: style),
+                if (run['funfest'] case final Map ff)
+                  Tooltip(
+                      message: '${tr('Missão da Funfest')}: ${_funfestGoal(ff).replaceAll('{n}', '${max(0, _int(ff['until']) - _int(run['floor']))}')}',
+                      child: Text('🎪${ff['done']}/${ff['need']}', key: const ValueKey('factory-funfest'), style: style)),
                 if (FactoryRun.repelOn(run)) Text('🧴${FactoryRun.repelLeft(run)}', key: const ValueKey('factory-repel-on'), style: style),
                 if (FactoryRun.seasonEvents[run['event']] case final ev?)
                   Tooltip(message: '${tr(ev.label)}: ${tr(ev.help)}', child: Text(ev.icon, key: const ValueKey('factory-event'), style: style)),
@@ -4482,6 +4504,8 @@ class _FactoryScreenState extends State<FactoryScreen> {
       frame = _resultFrame(run, p!, lead);
     } else if (step == 'choice') {
       frame = _choiceFrame(run, p!, lead, data);
+    } else if (step == 'pike') {
+      frame = _pikeFrame(run, lead, data);
     } else if (step == 'capture') {
       frame = _captureFrame(run, p!, lead, tools);
     } else if (step == 'safari') {
@@ -4825,6 +4849,28 @@ class _FactoryScreenState extends State<FactoryScreen> {
               Text('🫳 ${tr('{0} pegou {1} na luta!').replaceAll('{0}', '${FactoryRun.teamOf(run)[i]['nick'] ?? _name(FactoryRun.teamOf(run)[i]['id'])}').replaceAll('{1}', prettySlug('$it'))}',
                   key: const ValueKey('factory-stolen'),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A))),
+        // A missão da Funfest, a Pyramid, a Snag Machine, a purificação e Black City/White Forest. Igual ao site.
+        if (p['funfest'] case final Map ff)
+          Text(
+              '🎪 ${ff['won'] == true ? tr('Missão da Funfest cumprida! +💰{0} e {1}.').replaceAll('{0}', '${ff['money']}').replaceAll('{1}', prettySlug('${ff['item']}')) : tr('O prazo da missão da Funfest acabou.')}',
+              key: const ValueKey('factory-funfest-end'),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ff['won'] == true ? const Color(0xFFFCD34D) : const Color(0xFF94A3B8))),
+        if (p['pyramid'] != null)
+          Text('🔺 ${tr('Na Battle Pyramid você achou {0}!').replaceAll('{0}', prettySlug('${p['pyramid']}'))}',
+              key: const ValueKey('factory-pyramid'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFDE68A))),
+        if (p['snag'] == true)
+          Text('🟣 ${tr('A Snag Machine pegou o Pokémon Sombrio do treinador!')}',
+              key: const ValueKey('factory-snag'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFC084FC))),
+        for (final i in (p['purified'] as List?) ?? const [])
+          if (_int(i) < FactoryRun.teamOf(run).length)
+            Text('🕊️ ${tr('{0} foi purificado! Ganhou a experiência guardada.').replaceAll('{0}', '${FactoryRun.teamOf(run)[_int(i)]['nick'] ?? _name(FactoryRun.teamOf(run)[_int(i)]['id'])}')}',
+                key: const ValueKey('factory-purified'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF7DD3FC))),
+        if (p['blackCity'] == true)
+          Text('🏙️ ${tr('Black City: os treinadores daqui pagam muito mais!')}',
+              key: const ValueKey('factory-black-city'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        if (p['whiteForest'] == true)
+          Text('🌳 ${tr('White Forest: os Pokémon raros vivem aqui.')}',
+              key: const ValueKey('factory-white-forest'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6EE7B7))),
         // O fóssil achado na rota (o laboratório da próxima cidade revive). Igual ao site.
         if (p['fossil'] != null)
           Text('🦴 ${tr('Você achou um {0}! O laboratório da próxima cidade revive.').replaceAll('{0}', prettySlug('${p['fossil']}'))}',
@@ -4863,7 +4909,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
               key: const ValueKey('factory-event'))
         else if (event != null)
           Text(
-              tr(_eventText['${event['kind']}'] ?? '')
+              tr(_eventText[event['kind'] == 'pike' ? (event['door'] == 'heal' ? 'pikeHeal' : 'pikeItem') : '${event['kind']}'] ?? '')
                   .replaceAll('{0}', const ['money', 'betWon', 'betLost'].contains(event['kind']) ? '${event['money']}' : _itemName('${event['item'] ?? ''}'))
                   .replaceAll('{1}', '${event['kind'] == 'secretFound' ? event['money'] : event['count'] ?? ''}'),
               key: const ValueKey('factory-event'))
@@ -5498,6 +5544,37 @@ class _FactoryScreenState extends State<FactoryScreen> {
         _menuButton(tr(info.$3), widget.busy || poor || (choice['kind'] == 'follow' && FactoryRun.teamDown(run)) ? null : () => decide(true),
             key: const ValueKey('choice-yes')),
         _menuButton(tr(info.$4), widget.busy ? null : () => decide(false), key: const ValueKey('choice-no')),
+      ]),
+    );
+  }
+
+  /// O Battle Pike (Battle Frontier): três portas; atrás delas, uma cura, um item e uma luta mais forte. Igual ao site.
+  Widget _pikeFrame(Json run, Map? lead, FactoryData data) {
+    final scene = '${run['scene'] ?? 'grass'}';
+    void door(int i) {
+      final next = FactoryRun.pikeDoor(run, data, i);
+      if (next == null) return;
+      if (next['encounter'] != null) {
+        setState(() => saveFactory({...currentFactory(), 'run': next}));
+        widget.onBattle(next);
+      } else {
+        _save(next);
+      }
+    }
+
+    return _frame(
+      run: run,
+      field: _field(scene, key: const ValueKey('factory-pike'), (w, h) => [
+            _far(Text('🐍', style: TextStyle(fontSize: w * 0.12)), w, h),
+            if (lead != null) _fieldMon(lead, w, h, back: true),
+          ]),
+      text: [
+        Text('🐍 ${tr('Battle Pike: três portas. Atrás de uma pode ter uma cura, um item ou um treinador mais forte. Qual você abre?')}',
+            key: const ValueKey('factory-pike-text')),
+      ],
+      menu: _menuGrid([
+        for (var i = 0; i < 3; i++)
+          _menuButton('🚪 ${tr('PORTA {0}').replaceAll('{0}', '${i + 1}')}', widget.busy ? null : () => door(i), key: ValueKey('pike-door-$i')),
       ]),
     );
   }
@@ -6585,6 +6662,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
               _menuButton('🦴 ${tr('REVIVER O FÓSSIL')}', widget.busy ? null : () => _save(FactoryRun.reviveFossil(run, data) ?? run),
                   sub: tr('O laboratório revive o {0}: vem {1}.').replaceAll('{0}', prettySlug(fossil)).replaceAll('{1}', _name(FactoryRun.fossils[fossil])),
                   key: const ValueKey('town-fossil')),
+            // A missão da Funfest (Black 2 / White 2): um objetivo rápido com prazo. Igual ao site.
+            if (FactoryRun.funfestOffer(data, run) case final offer?)
+              _menuButton('🎪 ${tr('MISSÃO DA FUNFEST')}', widget.busy ? null : () => _save(FactoryRun.acceptFunfest(run, data) ?? run),
+                  sub: _funfestGoal(offer).replaceAll('{n}', '${offer['floors']}'), key: const ValueKey('town-funfest')),
             // O ovo misterioso: um morador te dá um ovo sem dizer de quem é.
             if (FactoryRun.mysteryEgg(data, run) != null)
               _menuButton('❔ ${tr('RECEBER O OVO MISTERIOSO')}', widget.busy ? null : () => _save(FactoryRun.takeMysteryEgg(run, data)),

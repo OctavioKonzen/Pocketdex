@@ -2501,7 +2501,21 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     }
   }
 
+  // O Battle Palace: quando é a sua vez, o seu Pokémon escolhe o golpe sozinho. Igual ao site.
+  bool _palaceArmed = false;
+  void _palaceTick() {
+    if (!_b.palace || _palaceArmed || _busy || _introOn || widget.online != null || _b.winner != null || _b.needSwitch || _b.shiftPending) return;
+    _palaceArmed = true;
+    _wait(900).then((_) {
+      _palaceArmed = false;
+      if (!mounted || _busy || _b.winner != null || _b.needSwitch || _b.shiftPending) return;
+      final pick = _b.recommend(0).firstOrNull;
+      _fight(pick?['kind'] == 'move' ? ((pick!['index'] as num?)?.toInt() ?? 0) : 0);
+    });
+  }
+
   Widget _battleBody(BuildContext context) {
+    _palaceTick();
     if (_b.mode != 'singles') {
       return _MultiBattleView(
           foeName: widget.foeName, foeTrainer: widget.foeTrainer,
@@ -4141,7 +4155,7 @@ class _PortSprite extends StatelessWidget {
     final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back, variant: SpriteVariant.of(id, variant));
     if (src == null) return fallback;
     // O Alfa: maior e com o brilho vermelho. Igual ao site.
-    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : null;
+    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : mon.shadow ? const Color(0xFF6B21A8) : null;
     Widget img = Image.network(
       src.url,
       key: ValueKey('port-sprite-$id-$back-$variant'),
@@ -4282,12 +4296,13 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (widget.dmax || widget.mon.alpha)
+                  if (widget.dmax || widget.mon.alpha || widget.mon.shadow)
                     ImageFiltered(
-                      key: widget.dmax ? null : const ValueKey('alpha-glow'),
-                      imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      key: widget.dmax ? null : ValueKey(widget.mon.alpha ? 'alpha-glow' : 'shadow-glow'),
+                      imageFilter: ImageFilter.blur(sigmaX: widget.mon.shadow && !widget.mon.alpha && !widget.dmax ? 4 : 3, sigmaY: widget.mon.shadow && !widget.mon.alpha && !widget.dmax ? 4 : 3),
                       child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : const Color(0xFFDC2626), BlendMode.srcIn),
+                        // O Alfa: vermelho; o Sombrio (Orre): roxo. Igual ao site.
+                        colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : widget.mon.alpha ? const Color(0xFFDC2626) : const Color(0xFF6B21A8), BlendMode.srcIn),
                         child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true, variant: widget.variant),
                       ),
                     ),
