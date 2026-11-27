@@ -1,0 +1,8 @@
+node_modules
+dist
+# Gerados por tool/build_web_data.py
+public/data
+public/sprites
+public/img
+public/cries
+public/sounds
