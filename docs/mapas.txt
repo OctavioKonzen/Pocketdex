@@ -1,0 +1,1982 @@
+MAPAS DO POKELIKE — tudo o que cada região precisa de cenário
+======================================================================
+Cada linha: o lugar, o que ele é e o cenário que o jogo usa hoje (entre colchetes).
+Os cenários de hoje são por TIPO de lugar (ex.: toda caverna usa [cave]). Para ficar "como no jogo",
+cada item marcado com ► precisaria de um cenário próprio.
+
+
+######################################################################
+# Kanto — Red/Blue
+######################################################################
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+    ► Vilão: Giovanni  [base da equipe]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Koga (tipo poison)  [gym-poison]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+    ► Vilão: Giovanni  [base da equipe]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Cinnabar Island  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 19 · Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Pokémon Mansion  [mansion]
+    ► Lugar da cidade: Cinnabar Lab  [lab]
+    ► Lugar da cidade: Cinnabar Beach  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Vilão: Giovanni  [base da equipe]
+    ► Elite dos Quatro: Lorelei (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Agatha (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Lance (tipo dragon)  [elite-dragon]
+    ► Campeão: Blue  [champion-kanto]
+
+######################################################################
+# Kanto — Yellow
+######################################################################
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+      Rival: Blue (luta na rota)
+    ► Vilão: Giovanni  [base da equipe]
+    ► Ginásio: líder Koga (tipo bug)  [gym-bug]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+      Rival: Blue (luta na rota)
+    ► Vilão: Giovanni  [base da equipe]
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Cinnabar Island  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 19 · Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Pokémon Mansion  [mansion]
+    ► Lugar da cidade: Cinnabar Lab  [lab]
+    ► Lugar da cidade: Cinnabar Beach  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Vilão: Giovanni  [base da equipe]
+    ► Elite dos Quatro: Lorelei (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Agatha (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Lance (tipo dragon)  [elite-dragon]
+    ► Campeão: Blue  [champion-kanto]
+
+######################################################################
+# Johto — Gold/Silver
+######################################################################
+
+► Violet City  — cidade histórica  [town-old]
+    Rota até aqui: Route 29 · Route 30 · Route 31  — campo de grama  [grass]
+    ► Lugar no caminho: Dark Cave  — caverna  [cave]
+    ► Lugar da cidade: Sprout Tower  [tower]
+    ► Lugar da cidade: Ruins of Alph  [ruins]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Falkner (tipo normal)  [gym-normal]
+
+► Azalea Town  — vila pequena  [town-village]
+    Rota até aqui: Route 32 · Route 33  — campo de grama  [grass]
+    ► Lugar no caminho: Union Cave  — caverna  [cave]
+    ► Lugar da cidade: Slowpoke Well  [sewer]
+    ► Ginásio: líder Bugsy (tipo bug)  [gym-bug]
+
+► Goldenrod City  — metrópole  [town-metro]
+    Rota até aqui: Route 34  — campo de grama  [grass]
+    ► Lugar no caminho: Ilex Forest  — floresta  [forest]
+    ► Lugar da cidade: Goldenrod Tunnel  [sewer]
+    ► Lugar da cidade: Radio Tower  [radio]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Whitney (tipo fairy)  [gym-fairy]
+
+► Ecruteak City  — cidade histórica  [town-old]
+    Rota até aqui: Route 35 · Route 36 · Route 37  — campo de grama  [grass]
+    ► Lugar no caminho: National Park  — campo de flores  [flowers]
+    ► Lugar da cidade: Burned Tower  [burnedtower]
+    ► Lugar da cidade: Bell Tower  [tower]
+    ► Vilão: Executiva  [base da equipe]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Morty (tipo ghost)  [gym-ghost]
+
+► Cianwood City  — ilha  [town-island]
+    Rota até aqui: Route 40 · Route 41  — mar/rio  [water]
+    ► Lugar no caminho: Whirl Islands  — caverna  [whirl]
+    ► Lugar da cidade: Cianwood Beach  [beach]
+    ► Ginásio: líder Chuck (tipo fighting)  [gym-fighting]
+
+► Olivine City  — porto  [town-port]
+    Rota até aqui: Route 38 · Route 39  — praia  [beach]
+    ► Lugar da cidade: Glitter Lighthouse  [lighthouse]
+    ► Lugar da cidade: Olivine Beach  [beach]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Vilão: Executiva  [base da equipe]
+    ► Ginásio: líder Jasmine (tipo steel)  [gym-steel]
+
+► Mahogany Town  — vila pequena  [town-village]
+    Rota até aqui: Route 42  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Mortar  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Pryce (tipo water)  [gym-water]
+
+► Blackthorn City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 44 · Ice Path  — caverna de gelo  [icecave]
+    ► Lugar no caminho: Lake of Rage  — pântano  [lake]
+    ► Lugar da cidade: Dragon's Den  [dragonsden]
+    ► Ginásio: líder Clair (tipo dragon)  [gym-dragon]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Elite dos Quatro: Will (tipo psychic)  [elite-psychic]
+    ► Elite dos Quatro: Koga (tipo poison)  [elite-poison]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Karen (tipo dark)  [elite-dark]
+    ► Campeão: Lance  [champion-johto]
+      Rival: Silver (luta na rota)
+      Rival: Silver (luta na rota)
+      Rival: Red (luta na rota)
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+    ► Ginásio: líder Janine (tipo poison)  [gym-poison]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Seafoam Islands  — ilha  [town-island]
+    Rota até aqui: Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Seafoam Beach  [beach]
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Viridian City  — vila pequena  [town-village]
+    Rota até aqui: Route 21 · Route 1  — praia  [beach]
+    ► Ginásio: líder Blue (tipo flying)  [gym-flying]
+
+######################################################################
+# Johto — Crystal
+######################################################################
+
+► Violet City  — cidade histórica  [town-old]
+    Rota até aqui: Route 29 · Route 30 · Route 31  — campo de grama  [grass]
+    ► Lugar no caminho: Dark Cave  — caverna  [cave]
+    ► Lugar da cidade: Sprout Tower  [tower]
+    ► Lugar da cidade: Ruins of Alph  [ruins]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Falkner (tipo normal)  [gym-normal]
+
+► Azalea Town  — vila pequena  [town-village]
+    Rota até aqui: Route 32 · Route 33  — campo de grama  [grass]
+    ► Lugar no caminho: Union Cave  — caverna  [cave]
+    ► Lugar da cidade: Slowpoke Well  [sewer]
+    ► Ginásio: líder Bugsy (tipo bug)  [gym-bug]
+
+► Goldenrod City  — metrópole  [town-metro]
+    Rota até aqui: Route 34  — campo de grama  [grass]
+    ► Lugar no caminho: Ilex Forest  — floresta  [forest]
+    ► Lugar da cidade: Goldenrod Tunnel  [sewer]
+    ► Lugar da cidade: Radio Tower  [radio]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Whitney (tipo fairy)  [gym-fairy]
+
+► Ecruteak City  — cidade histórica  [town-old]
+    Rota até aqui: Route 35 · Route 36 · Route 37  — campo de grama  [grass]
+    ► Lugar no caminho: National Park  — campo de flores  [flowers]
+    ► Lugar da cidade: Burned Tower  [burnedtower]
+    ► Lugar da cidade: Bell Tower  [tower]
+    ► Vilão: Executiva  [base da equipe]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Morty (tipo ghost)  [gym-ghost]
+
+► Cianwood City  — ilha  [town-island]
+    Rota até aqui: Route 40 · Route 41  — mar/rio  [water]
+    ► Lugar no caminho: Whirl Islands  — caverna  [whirl]
+    ► Lugar da cidade: Cianwood Beach  [beach]
+    ► Ginásio: líder Chuck (tipo fighting)  [gym-fighting]
+
+► Olivine City  — porto  [town-port]
+    Rota até aqui: Route 38 · Route 39  — praia  [beach]
+    ► Lugar da cidade: Glitter Lighthouse  [lighthouse]
+    ► Lugar da cidade: Olivine Beach  [beach]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Vilão: Executiva  [base da equipe]
+    ► Ginásio: líder Jasmine (tipo steel)  [gym-steel]
+
+► Mahogany Town  — vila pequena  [town-village]
+    Rota até aqui: Route 42  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Mortar  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+      Rival: Silver (luta na rota)
+    ► Vilão: Executivo  [base da equipe]
+    ► Ginásio: líder Pryce (tipo water)  [gym-water]
+
+► Blackthorn City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 44 · Ice Path  — caverna de gelo  [icecave]
+    ► Lugar no caminho: Lake of Rage  — pântano  [lake]
+    ► Lugar da cidade: Dragon's Den  [dragonsden]
+    ► Ginásio: líder Clair (tipo dragon)  [gym-dragon]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Elite dos Quatro: Will (tipo psychic)  [elite-psychic]
+    ► Elite dos Quatro: Koga (tipo poison)  [elite-poison]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Karen (tipo dark)  [elite-dark]
+    ► Campeão: Lance  [champion-johto]
+      Rival: Silver (luta na rota)
+      Rival: Silver (luta na rota)
+      Rival: Red (luta na rota)
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+    ► Ginásio: líder Janine (tipo poison)  [gym-poison]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Seafoam Islands  — ilha  [town-island]
+    Rota até aqui: Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Seafoam Beach  [beach]
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Viridian City  — vila pequena  [town-village]
+    Rota até aqui: Route 21 · Route 1  — praia  [beach]
+    ► Ginásio: líder Blue (tipo flying)  [gym-flying]
+
+######################################################################
+# Hoenn — Ruby/Sapphire
+######################################################################
+
+► Rustboro City  — metrópole  [town-metro]
+    Rota até aqui: Route 101 · Route 102 · Route 104  — campo de grama  [grass]
+    ► Lugar no caminho: Petalburg Woods  — floresta  [forest]
+    ► Lugar da cidade: Devon Corporation  [lab]
+    ► Lugar da cidade: Trainers' School  [school]
+    ► Ginásio: líder Roxanne (tipo rock)  [gym-rock]
+
+► Dewford Town  — ilha  [town-island]
+    Rota até aqui: Route 105 · Route 106  — mar/rio  [water]
+    ► Lugar no caminho: Granite Cave  — caverna  [cave]
+    ► Lugar da cidade: Dewford Beach  [beach]
+    ► Ginásio: líder Brawly (tipo fighting)  [gym-fighting]
+
+► Mauville City  — metrópole  [town-metro]
+    Rota até aqui: Route 109 · Route 110  — praia  [beach]
+    ► Lugar no caminho: New Mauville  — usina  [plant]
+    ► Vilão: Archie  [base da equipe]
+    ► Vilão: Maxie  [base da equipe]
+    ► Ginásio: líder Wattson (tipo electric)  [gym-electric]
+
+► Lavaridge Town  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 111 · Route 112  — montanha  [mountain]
+    ► Lugar no caminho: Fiery Path  — caverna de lava  [lavacave]
+    ► Lugar da cidade: Lavaridge Herb Shop  [store]
+    ► Ginásio: líder Flannery (tipo fire)  [gym-fire]
+
+► Petalburg City  — vila pequena  [town-village]
+    Rota até aqui: Route 111 · Route 102  — deserto  [desert]
+    ► Lugar no caminho: Mirage Tower  — torre  [tower]
+    ► Vilão: Archie  [base da equipe]
+    ► Vilão: Maxie  [base da equipe]
+    ► Ginásio: líder Norman (tipo normal)  [gym-normal]
+
+► Fortree City  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 119  — floresta  [forest]
+    ► Lugar no caminho: Weather Institute  — usina  [lab]
+    ► Ginásio: líder Winona (tipo flying)  [gym-flying]
+
+► Mossdeep City  — ilha  [town-island]
+    Rota até aqui: Route 124 · Route 125  — mar/rio  [water]
+    ► Lugar no caminho: Shoal Cave  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Space Center  [space]
+    ► Lugar da cidade: Mossdeep Beach  [beach]
+    ► Vilão: Archie  [base da equipe]
+    ► Vilão: Maxie  [base da equipe]
+    ► Ginásio: líder Tate & Liza (tipo rock)  [gym-rock]
+
+► Sootopolis City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 126 · Route 127  — mar/rio  [water]
+    ► Lugar no caminho: Seafloor Cavern  — caverna  [seacave]
+    ► Lugar da cidade: Cave of Origin  [origin]
+    ► Ginásio: líder Wallace (tipo water)  [gym-water]
+
+► Ever Grande City  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Sky Pillar  — torre  [skypillar]
+    ► Elite dos Quatro: Sidney (tipo dark)  [elite-dark]
+    ► Elite dos Quatro: Phoebe (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Glacia (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Drake (tipo dragon)  [elite-dragon]
+    ► Campeão: Steven  [champion-hoenn]
+
+######################################################################
+# Hoenn — Emerald
+######################################################################
+
+► Rustboro City  — metrópole  [town-metro]
+    Rota até aqui: Route 101 · Route 102 · Route 104  — campo de grama  [grass]
+    ► Lugar no caminho: Petalburg Woods  — floresta  [forest]
+    ► Lugar da cidade: Devon Corporation  [lab]
+    ► Lugar da cidade: Trainers' School  [school]
+      Rival: Wally (luta na rota)
+      Rival: May (luta na rota)
+    ► Ginásio: líder Roxanne (tipo rock)  [gym-rock]
+
+► Dewford Town  — ilha  [town-island]
+    Rota até aqui: Route 105 · Route 106  — mar/rio  [water]
+    ► Lugar no caminho: Granite Cave  — caverna  [cave]
+    ► Lugar da cidade: Dewford Beach  [beach]
+    ► Ginásio: líder Brawly (tipo fighting)  [gym-fighting]
+
+► Mauville City  — metrópole  [town-metro]
+    Rota até aqui: Route 109 · Route 110  — praia  [beach]
+    ► Lugar no caminho: New Mauville  — usina  [plant]
+      Rival: May (luta na rota)
+    ► Vilão: Maxie  [base da equipe]
+    ► Ginásio: líder Wattson (tipo electric)  [gym-electric]
+
+► Lavaridge Town  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 111 · Route 112  — montanha  [mountain]
+    ► Lugar no caminho: Fiery Path  — caverna de lava  [lavacave]
+    ► Lugar da cidade: Lavaridge Herb Shop  [store]
+      Rival: May (luta na rota)
+    ► Ginásio: líder Flannery (tipo fire)  [gym-fire]
+
+► Petalburg City  — vila pequena  [town-village]
+    Rota até aqui: Route 111 · Route 102  — deserto  [desert]
+    ► Lugar no caminho: Mirage Tower  — torre  [tower]
+      Rival: Wally (luta na rota)
+    ► Vilão: Archie  [base da equipe]
+    ► Vilão: Maxie  [base da equipe]
+    ► Ginásio: líder Norman (tipo normal)  [gym-normal]
+
+► Fortree City  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 119  — floresta  [forest]
+    ► Lugar no caminho: Weather Institute  — usina  [lab]
+      Rival: May (luta na rota)
+    ► Ginásio: líder Winona (tipo flying)  [gym-flying]
+
+► Mossdeep City  — ilha  [town-island]
+    Rota até aqui: Route 124 · Route 125  — mar/rio  [water]
+    ► Lugar no caminho: Shoal Cave  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Space Center  [space]
+    ► Lugar da cidade: Mossdeep Beach  [beach]
+    ► Vilão: Maxie  [base da equipe]
+      Rival: May (luta na rota)
+    ► Ginásio: líder Tate & Liza (tipo psychic)  [gym-psychic]
+
+► Sootopolis City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 126 · Route 127  — mar/rio  [water]
+    ► Lugar no caminho: Seafloor Cavern  — caverna  [seacave]
+    ► Lugar da cidade: Cave of Origin  [origin]
+    ► Ginásio: líder Juan (tipo water)  [gym-water]
+
+► Ever Grande City  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Sky Pillar  — torre  [skypillar]
+    ► Elite dos Quatro: Sidney (tipo dark)  [elite-dark]
+    ► Elite dos Quatro: Phoebe (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Glacia (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Drake (tipo dragon)  [elite-dragon]
+    ► Campeão: Wallace  [champion-hoenn]
+
+######################################################################
+# Kanto — FireRed/LeafGreen
+######################################################################
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+    ► Vilão: Giovanni  [base da equipe]
+    ► Ginásio: líder Koga (tipo poison)  [gym-poison]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Cinnabar Island  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 19 · Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Pokémon Mansion  [mansion]
+    ► Lugar da cidade: Cinnabar Lab  [lab]
+    ► Lugar da cidade: Cinnabar Beach  [beach]
+    ► Vilão: Giovanni  [base da equipe]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Viridian City  — vila pequena  [town-village]
+    Rota até aqui: Route 21 · Route 1  — praia  [beach]
+      Rival: Blue (luta na rota)
+    ► Ginásio: líder Giovanni (tipo ground)  [gym-ground]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Elite dos Quatro: Lorelei (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Agatha (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Lance (tipo dragon)  [elite-dragon]
+    ► Campeão: Blue  [champion-kanto]
+
+######################################################################
+# Sinnoh — Diamond/Pearl
+######################################################################
+
+► Oreburgh City  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 201 · Route 202 · Route 203  — campo de grama  [grass]
+    ► Lugar no caminho: Oreburgh Gate  — caverna  [cave]
+    ► Lugar da cidade: Oreburgh Mining Museum  [museum]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Roark (tipo rock)  [gym-rock]
+
+► Eterna City  — cidade histórica  [town-old]
+    Rota até aqui: Route 204 · Route 205  — floresta  [forest]
+    ► Lugar no caminho: Eterna Forest  — floresta  [forest]
+    ► Lugar da cidade: Galactic Eterna Building  [base-galactic]
+      Rival: Barry (luta na rota)
+    ► Vilão: Mars  [base da equipe]
+    ► Ginásio: líder Gardenia (tipo grass)  [gym-grass]
+
+► Hearthome City  — metrópole  [town-metro]
+    Rota até aqui: Route 206 · Route 207 · Route 208  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Coronet  — montanha  [mountain]
+    ► Lugar da cidade: Hearthome Contest Hall  [stage]
+      Rival: Barry (luta na rota)
+    ► Vilão: Jupiter  [base da equipe]
+    ► Ginásio: líder Fantina (tipo ghost)  [gym-ghost]
+
+► Veilstone City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 209 · Route 210 · Route 215  — montanha  [mountain]
+    ► Lugar no caminho: Lost Tower  — torre  [tower]
+    ► Lugar da cidade: Galactic HQ  [base-galactic]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Maylene (tipo fighting)  [gym-fighting]
+
+► Pastoria City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 213 · Route 214  — pântano  [swamp]
+    ► Lugar no caminho: Ruin Maniac Cave  — caverna  [cave]
+    ► Lugar da cidade: Valor Lakefront  [lakeside]
+    ► Ginásio: líder Wake (tipo water)  [gym-water]
+
+► Canalave City  — porto  [town-port]
+    Rota até aqui: Route 218  — mar/rio  [water]
+    ► Lugar no caminho: Iron Island  — caverna  [cave]
+    ► Lugar da cidade: Canalave Library  [library]
+    ► Lugar da cidade: Canalave Harbor  [beach]
+      Rival: Barry (luta na rota)
+    ► Vilão: Saturn  [base da equipe]
+    ► Ginásio: líder Byron (tipo steel)  [gym-steel]
+
+► Snowpoint City  — cidade de neve  [town-snow]
+    Rota até aqui: Route 216 · Route 217  — neve  [snow]
+    ► Lugar no caminho: Lake Acuity  — neve  [acuity]
+    ► Lugar da cidade: Snowpoint Temple  [temple]
+    ► Lugar da cidade: Snowpoint Harbor  [beach]
+    ► Vilão: Mars  [base da equipe]
+    ► Vilão: Saturn  [base da equipe]
+    ► Vilão: Cyrus  [base da equipe]
+      Rival: Barry (luta na rota)
+    ► Vilão: Cyrus  [base da equipe]
+    ► Ginásio: líder Candice (tipo ice)  [gym-ice]
+
+► Sunyshore City  — porto  [town-port]
+    Rota até aqui: Route 222  — praia  [beach]
+    ► Lugar da cidade: Vista Lighthouse  [lighthouse]
+    ► Lugar da cidade: Sunyshore Beach  [beach]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Volkner (tipo electric)  [gym-electric]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Spear Pillar  — templo  [spearpillar]
+    ► Elite dos Quatro: Aaron (tipo bug)  [elite-bug]
+    ► Elite dos Quatro: Bertha (tipo ground)  [elite-ground]
+    ► Elite dos Quatro: Flint (tipo fire)  [elite-fire]
+    ► Elite dos Quatro: Lucian (tipo psychic)  [elite-psychic]
+    ► Campeão: Cynthia  [champion-sinnoh]
+
+######################################################################
+# Sinnoh — Platinum
+######################################################################
+
+► Oreburgh City  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 201 · Route 202 · Route 203  — campo de grama  [grass]
+    ► Lugar no caminho: Oreburgh Gate  — caverna  [cave]
+    ► Lugar da cidade: Oreburgh Mining Museum  [museum]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Roark (tipo rock)  [gym-rock]
+
+► Eterna City  — cidade histórica  [town-old]
+    Rota até aqui: Route 204 · Route 205  — floresta  [forest]
+    ► Lugar no caminho: Eterna Forest  — floresta  [forest]
+    ► Lugar da cidade: Galactic Eterna Building  [base-galactic]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Gardenia (tipo grass)  [gym-grass]
+
+► Hearthome City  — metrópole  [town-metro]
+    Rota até aqui: Route 206 · Route 207 · Route 208  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Coronet  — montanha  [mountain]
+    ► Lugar da cidade: Hearthome Contest Hall  [stage]
+    ► Vilão: Mars  [base da equipe]
+    ► Vilão: Cyrus  [base da equipe]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Fantina (tipo ghost)  [gym-ghost]
+
+► Veilstone City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 209 · Route 210 · Route 215  — montanha  [mountain]
+    ► Lugar no caminho: Lost Tower  — torre  [tower]
+    ► Lugar da cidade: Galactic HQ  [base-galactic]
+    ► Vilão: Jupiter  [base da equipe]
+    ► Vilão: Saturn  [base da equipe]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Maylene (tipo fighting)  [gym-fighting]
+
+► Pastoria City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 213 · Route 214  — pântano  [swamp]
+    ► Lugar no caminho: Ruin Maniac Cave  — caverna  [cave]
+    ► Lugar da cidade: Valor Lakefront  [lakeside]
+    ► Vilão: Mars  [base da equipe]
+    ► Vilão: Cyrus  [base da equipe]
+    ► Ginásio: líder Wake (tipo water)  [gym-water]
+
+► Canalave City  — porto  [town-port]
+    Rota até aqui: Route 218  — mar/rio  [water]
+    ► Lugar no caminho: Iron Island  — caverna  [cave]
+    ► Lugar da cidade: Canalave Library  [library]
+    ► Lugar da cidade: Canalave Harbor  [beach]
+      Rival: Barry (luta na rota)
+    ► Vilão: Jupiter  [base da equipe]
+    ► Vilão: Saturn  [base da equipe]
+    ► Ginásio: líder Byron (tipo steel)  [gym-steel]
+
+► Snowpoint City  — cidade de neve  [town-snow]
+    Rota até aqui: Route 216 · Route 217  — neve  [snow]
+    ► Lugar no caminho: Lake Acuity  — neve  [acuity]
+    ► Lugar da cidade: Snowpoint Temple  [temple]
+    ► Lugar da cidade: Snowpoint Harbor  [beach]
+      Rival: Barry (luta na rota)
+    ► Vilão: Mars  [base da equipe]
+    ► Vilão: Cyrus  [base da equipe]
+    ► Ginásio: líder Candice (tipo ice)  [gym-ice]
+
+► Sunyshore City  — porto  [town-port]
+    Rota até aqui: Route 222  — praia  [beach]
+    ► Lugar da cidade: Vista Lighthouse  [lighthouse]
+    ► Lugar da cidade: Sunyshore Beach  [beach]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Volkner (tipo electric)  [gym-electric]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Spear Pillar  — templo  [spearpillar]
+    ► Elite dos Quatro: Aaron (tipo bug)  [elite-bug]
+    ► Elite dos Quatro: Bertha (tipo ground)  [elite-ground]
+    ► Elite dos Quatro: Flint (tipo fire)  [elite-fire]
+    ► Elite dos Quatro: Lucian (tipo psychic)  [elite-psychic]
+    ► Campeão: Cynthia  [champion-sinnoh]
+      Rival: Barry (luta na rota)
+    ► Vilão: Jupiter  [base da equipe]
+    ► Vilão: Mars  [base da equipe]
+
+######################################################################
+# Johto — HeartGold/SoulSilver
+######################################################################
+
+► Violet City  — cidade histórica  [town-old]
+    Rota até aqui: Route 29 · Route 30 · Route 31  — campo de grama  [grass]
+    ► Lugar no caminho: Dark Cave  — caverna  [cave]
+    ► Lugar da cidade: Sprout Tower  [tower]
+    ► Lugar da cidade: Ruins of Alph  [ruins]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Falkner (tipo normal)  [gym-normal]
+
+► Azalea Town  — vila pequena  [town-village]
+    Rota até aqui: Route 32 · Route 33  — campo de grama  [grass]
+    ► Lugar no caminho: Union Cave  — caverna  [cave]
+    ► Lugar da cidade: Slowpoke Well  [sewer]
+    ► Ginásio: líder Bugsy (tipo bug)  [gym-bug]
+
+► Goldenrod City  — metrópole  [town-metro]
+    Rota até aqui: Route 34  — campo de grama  [grass]
+    ► Lugar no caminho: Ilex Forest  — floresta  [forest]
+    ► Lugar da cidade: Goldenrod Tunnel  [sewer]
+    ► Lugar da cidade: Radio Tower  [radio]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Whitney (tipo normal)  [gym-normal]
+
+► Ecruteak City  — cidade histórica  [town-old]
+    Rota até aqui: Route 35 · Route 36 · Route 37  — campo de grama  [grass]
+    ► Lugar no caminho: National Park  — campo de flores  [flowers]
+    ► Lugar da cidade: Burned Tower  [burnedtower]
+    ► Lugar da cidade: Bell Tower  [tower]
+    ► Vilão: Proton  [base da equipe]
+    ► Vilão: Petrel  [base da equipe]
+    ► Vilão: Ariana  [base da equipe]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Morty (tipo ghost)  [gym-ghost]
+
+► Cianwood City  — ilha  [town-island]
+    Rota até aqui: Route 40 · Route 41  — mar/rio  [water]
+    ► Lugar no caminho: Whirl Islands  — caverna  [whirl]
+    ► Lugar da cidade: Cianwood Beach  [beach]
+      Rival: Eusine (luta na rota)
+    ► Vilão: Archer  [base da equipe]
+    ► Ginásio: líder Chuck (tipo fighting)  [gym-fighting]
+
+► Olivine City  — porto  [town-port]
+    Rota até aqui: Route 38 · Route 39  — praia  [beach]
+    ► Lugar da cidade: Glitter Lighthouse  [lighthouse]
+    ► Lugar da cidade: Olivine Beach  [beach]
+      Rival: Silver (luta na rota)
+    ► Vilão: Proton  [base da equipe]
+    ► Vilão: Petrel  [base da equipe]
+    ► Vilão: Ariana  [base da equipe]
+    ► Ginásio: líder Jasmine (tipo steel)  [gym-steel]
+
+► Mahogany Town  — vila pequena  [town-village]
+    Rota até aqui: Route 42  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Mortar  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+      Rival: Silver (luta na rota)
+    ► Ginásio: líder Pryce (tipo ice)  [gym-ice]
+
+► Blackthorn City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 44 · Ice Path  — caverna de gelo  [icecave]
+    ► Lugar no caminho: Lake of Rage  — pântano  [lake]
+    ► Lugar da cidade: Dragon's Den  [dragonsden]
+    ► Ginásio: líder Clair (tipo dragon)  [gym-dragon]
+
+► Indigo Plateau  — Liga Pokémon  [town-league]
+    Rota até aqui: Route 23 · Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Cerulean Cave  — caverna  [cave]
+    ► Elite dos Quatro: Will (tipo psychic)  [elite-psychic]
+    ► Elite dos Quatro: Koga (tipo poison)  [elite-poison]
+    ► Elite dos Quatro: Bruno (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Karen (tipo dark)  [elite-dark]
+    ► Campeão: Lance  [champion-johto]
+      Rival: Silver (luta na rota)
+      Rival: Red (luta na rota)
+
+► Pewter City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Viridian Forest  — floresta  [forest]
+    ► Lugar da cidade: Pewter Museum  [museum]
+    ► Ginásio: líder Brock (tipo rock)  [gym-rock]
+
+► Cerulean City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 3 · Route 4  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Moon  — caverna  [cave]
+    ► Lugar da cidade: Nugget Bridge  [bridge]
+    ► Ginásio: líder Misty (tipo water)  [gym-water]
+
+► Vermilion City  — porto  [town-port]
+    Rota até aqui: Route 5 · Route 6  — campo de grama  [grass]
+    ► Lugar no caminho: Underground Path  — esgoto/túnel  [sewer]
+    ► Lugar da cidade: S.S. Anne  [ship]
+    ► Lugar da cidade: Vermilion Harbor  [beach]
+    ► Ginásio: líder Lt. Surge (tipo electric)  [gym-electric]
+
+► Celadon City  — metrópole  [town-metro]
+    Rota até aqui: Route 9 · Rock Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Rocket Hideout  [base-rocket]
+    ► Lugar da cidade: Pokémon Tower  [tower]
+    ► Ginásio: líder Erika (tipo grass)  [gym-grass]
+
+► Fuchsia City  — vila pequena  [town-village]
+    Rota até aqui: Route 12 · Route 15  — campo de grama  [grass]
+    ► Lugar da cidade: Fuchsia Beach  [beach]
+    ► Ginásio: líder Janine (tipo poison)  [gym-poison]
+
+► Saffron City  — metrópole  [town-metro]
+    Rota até aqui: Route 7 · Route 8  — cidade  [city]
+    ► Lugar no caminho: Power Plant  — usina  [plant]
+    ► Lugar da cidade: Silph Co.  [silph]
+    ► Lugar da cidade: Fighting Dojo  [dojo]
+    ► Ginásio: líder Sabrina (tipo psychic)  [gym-psychic]
+
+► Seafoam Islands  — ilha  [town-island]
+    Rota até aqui: Route 20  — mar/rio  [water]
+    ► Lugar no caminho: Seafoam Islands  — caverna de gelo  [seafoam]
+    ► Lugar da cidade: Seafoam Beach  [beach]
+    ► Ginásio: líder Blaine (tipo fire)  [gym-fire]
+
+► Viridian City  — vila pequena  [town-village]
+    Rota até aqui: Route 21 · Route 1  — praia  [beach]
+    ► Ginásio: líder Blue (tipo flying)  [gym-flying]
+
+######################################################################
+# Unova — Black/White
+######################################################################
+
+► Striaton City  — vila pequena  [town-village]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Dreamyard  — ruínas  [ruins]
+      Rival: Bianca (luta na rota)
+      Rival: Cheren (luta na rota)
+    ► Ginásio: líder Cilan (tipo grass)  [gym-grass]
+
+► Nacrene City  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 3  — campo de grama  [grass]
+    ► Lugar no caminho: Wellspring Cave  — caverna  [cave]
+    ► Lugar da cidade: Nacrene Museum  [museum]
+      Rival: Cheren (luta na rota)
+    ► Vilão: N  [base da equipe]
+    ► Ginásio: líder Lenora (tipo normal)  [gym-normal]
+
+► Castelia City  — metrópole  [town-metro]
+    Rota até aqui: Pinwheel Forest · Skyarrow Bridge  — floresta  [forest]
+    ► Lugar no caminho: Pinwheel Forest  — floresta  [forest]
+    ► Lugar da cidade: Castelia Sewers  [sewer]
+    ► Lugar da cidade: Castelia Pier  [beach]
+      Rival: Bianca (luta na rota)
+      Rival: Cheren (luta na rota)
+    ► Ginásio: líder Burgh (tipo bug)  [gym-bug]
+
+► Nimbasa City  — metrópole  [town-metro]
+    Rota até aqui: Route 4  — deserto  [desert]
+    ► Lugar no caminho: Relic Castle  — ruínas  [ruins]
+    ► Lugar da cidade: Battle Subway  [subway]
+    ► Lugar da cidade: Nimbasa Amusement Park  [park]
+    ► Vilão: N  [base da equipe]
+      Rival: Bianca (luta na rota)
+      Rival: Cheren (luta na rota)
+    ► Ginásio: líder Elesa (tipo electric)  [gym-electric]
+
+► Driftveil City  — porto  [town-port]
+    Rota até aqui: Route 5 · Driftveil Drawbridge  — campo de grama  [grass]
+    ► Lugar da cidade: Cold Storage  [coldstorage]
+    ► Lugar da cidade: Driftveil Market  [store]
+    ► Vilão: N  [base da equipe]
+    ► Vilão: Ghetsis  [base da equipe]
+    ► Ginásio: líder Clay (tipo ground)  [gym-ground]
+
+► Mistralton City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 6  — montanha  [mountain]
+    ► Lugar no caminho: Chargestone Cave  — caverna de cristal  [crystal]
+      Rival: Cheren (luta na rota)
+      Rival: Bianca (luta na rota)
+    ► Vilão: N  [base da equipe]
+    ► Ginásio: líder Skyla (tipo flying)  [gym-flying]
+
+► Icirrus City  — cidade de neve  [town-snow]
+    Rota até aqui: Route 7  — neve  [snow]
+    ► Lugar no caminho: Twist Mountain  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Dragonspiral Tower  [tower]
+      Rival: Cheren (luta na rota)
+      Rival: Bianca (luta na rota)
+    ► Ginásio: líder Brycen (tipo ice)  [gym-ice]
+
+► Opelucid City  — cidade histórica  [town-old]
+    Rota até aqui: Route 8 · Route 9  — pântano  [swamp]
+    ► Lugar no caminho: Moor of Icirrus  — pântano  [swamp]
+    ► Vilão: N  [base da equipe]
+      Rival: Cheren (luta na rota)
+    ► Ginásio: líder Drayden (tipo dragon)  [gym-dragon]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Giant Chasm  — caverna de gelo  [icecave]
+    ► Elite dos Quatro: Marshal (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Grimsley (tipo dark)  [elite-dark]
+    ► Elite dos Quatro: Caitlin (tipo psychic)  [elite-psychic]
+    ► Elite dos Quatro: Shauntal (tipo ghost)  [elite-ghost]
+    ► Campeão: Alder  [champion-unova]
+      Rival: Cynthia (luta na rota)
+
+######################################################################
+# Unova — Black 2/White 2
+######################################################################
+
+► Aspertia City  — vila pequena  [town-village]
+    Rota até aqui: Route 19  — campo de grama  [grass]
+    ► Lugar no caminho: Floccesy Ranch  — campo de flores  [flowers]
+      Rival: Hugh (luta na rota)
+    ► Ginásio: líder Cheren (tipo normal)  [gym-normal]
+
+► Virbank City  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 20  — campo de grama  [grass]
+    ► Lugar da cidade: Virbank Complex  [plant]
+    ► Lugar da cidade: Pokéstar Studios  [stage]
+      Rival: Hugh (luta na rota)
+    ► Ginásio: líder Roxie (tipo poison)  [gym-poison]
+
+► Castelia City  — metrópole  [town-metro]
+    Rota até aqui: Pinwheel Forest · Skyarrow Bridge  — floresta  [forest]
+    ► Lugar no caminho: Pinwheel Forest  — floresta  [forest]
+    ► Lugar da cidade: Castelia Sewers  [sewer]
+    ► Lugar da cidade: Castelia Pier  [beach]
+      Rival: Hugh (luta na rota)
+    ► Vilão: Zinzolin  [base da equipe]
+      Rival: Hugh (luta na rota)
+    ► Ginásio: líder Burgh (tipo bug)  [gym-bug]
+
+► Nimbasa City  — metrópole  [town-metro]
+    Rota até aqui: Route 4  — deserto  [desert]
+    ► Lugar no caminho: Relic Castle  — ruínas  [ruins]
+    ► Lugar da cidade: Battle Subway  [subway]
+    ► Lugar da cidade: Nimbasa Amusement Park  [park]
+    ► Vilão: Colress  [base da equipe]
+      Rival: Hugh (luta na rota)
+    ► Vilão: Zinzolin  [base da equipe]
+    ► Ginásio: líder Elesa (tipo electric)  [gym-electric]
+
+► Driftveil City  — porto  [town-port]
+    Rota até aqui: Route 5 · Driftveil Drawbridge  — campo de grama  [grass]
+    ► Lugar da cidade: Cold Storage  [coldstorage]
+    ► Lugar da cidade: Driftveil Market  [store]
+      Rival: Hugh (luta na rota)
+    ► Vilão: Ghetsis  [base da equipe]
+    ► Ginásio: líder Clay (tipo ground)  [gym-ground]
+
+► Mistralton City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 6  — montanha  [mountain]
+    ► Lugar no caminho: Chargestone Cave  — caverna de cristal  [crystal]
+      Rival: Hugh (luta na rota)
+    ► Vilão: Zinzolin  [base da equipe]
+    ► Vilão: Colress  [base da equipe]
+    ► Ginásio: líder Skyla (tipo flying)  [gym-flying]
+
+► Opelucid City  — cidade histórica  [town-old]
+    Rota até aqui: Route 8 · Route 9  — pântano  [swamp]
+    ► Lugar no caminho: Moor of Icirrus  — pântano  [swamp]
+      Rival: Hugh (luta na rota)
+      Rival: Hugh (luta na rota)
+    ► Vilão: Zinzolin  [base da equipe]
+    ► Ginásio: líder Drayden (tipo dragon)  [gym-dragon]
+
+► Humilau City  — ilha  [town-island]
+    Rota até aqui: Route 21 · Route 22  — praia  [beach]
+    ► Lugar no caminho: Seaside Cave  — caverna do mar  [seacave]
+    ► Lugar da cidade: Plasma Frigate  [base-plasma]
+    ► Lugar da cidade: Humilau Beach  [beach]
+      Rival: Hugh (luta na rota)
+    ► Ginásio: líder Marlon (tipo water)  [gym-water]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Giant Chasm  — caverna de gelo  [icecave]
+    ► Elite dos Quatro: Shauntal (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Marshal (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Grimsley (tipo dark)  [elite-dark]
+    ► Elite dos Quatro: Caitlin (tipo psychic)  [elite-psychic]
+    ► Campeão: Iris  [champion-unova]
+      Rival: N (luta na rota)
+      Rival: Benga (luta na rota)
+    ► Vilão: Colress  [base da equipe]
+      Rival: Alder (luta na rota)
+      Rival: Cynthia (luta na rota)
+
+######################################################################
+# Kalos — X/Y
+######################################################################
+
+► Santalune City  — vila pequena  [town-village]
+    Rota até aqui: Route 2 · Santalune Forest  — floresta  [forest]
+    ► Lugar no caminho: Santalune Forest  — floresta  [forest]
+      Rival: Shauna (luta na rota)
+      Rival: Tierno (luta na rota)
+      Rival: Serena (luta na rota)
+      Rival: Trevor (luta na rota)
+    ► Ginásio: líder Viola (tipo bug)  [gym-bug]
+
+► Cyllage City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 7 · Route 8  — praia  [beach]
+    ► Lugar no caminho: Connecting Cave  — caverna  [cave]
+    ► Lugar da cidade: Cyllage Beach  [beach]
+    ► Ginásio: líder Grant (tipo rock)  [gym-rock]
+
+► Shalour City  — porto  [town-port]
+    Rota até aqui: Route 10 · Route 11  — praia  [beach]
+    ► Lugar no caminho: Reflection Cave  — caverna de cristal  [crystal]
+    ► Lugar da cidade: Tower of Mastery  [tower]
+    ► Lugar da cidade: Shalour Beach  [beach]
+      Rival: Serena (luta na rota)
+    ► Vilão: Lysandre  [base da equipe]
+    ► Ginásio: líder Korrina (tipo fighting)  [gym-fighting]
+
+► Coumarine City  — porto  [town-port]
+    Rota até aqui: Route 12  — praia  [beach]
+    ► Lugar no caminho: Glittering Cave  — caverna de cristal  [crystal]
+    ► Lugar da cidade: Coumarine Harbor  [beach]
+    ► Vilão: Aliana  [base da equipe]
+    ► Vilão: Mable  [base da equipe]
+      Rival: Serena (luta na rota)
+    ► Ginásio: líder Ramos (tipo grass)  [gym-grass]
+
+► Lumiose City  — metrópole  [town-metro]
+    Rota até aqui: Route 13  — deserto  [desert]
+    ► Lugar no caminho: Kalos Power Plant  — usina  [plant]
+    ► Lugar da cidade: Lysandre Labs  [base-flare]
+    ► Lugar da cidade: Prism Tower  [tower]
+    ► Lugar da cidade: Lumiose Sewers  [sewer]
+      Rival: Shauna (luta na rota)
+      Rival: Tierno (luta na rota)
+    ► Vilão: Lysandre  [base da equipe]
+    ► Vilão: Bryony  [base da equipe]
+    ► Vilão: Celosia  [base da equipe]
+    ► Vilão: Xerosic  [base da equipe]
+    ► Ginásio: líder Clemont (tipo electric)  [gym-electric]
+
+► Laverre City  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 14  — pântano  [swamp]
+    ► Lugar no caminho: Lost Hotel  — ruínas  [hotel]
+    ► Lugar da cidade: Poké Ball Factory  [plant]
+      Rival: Serena (luta na rota)
+    ► Vilão: Aliana  [base da equipe]
+    ► Vilão: Mable  [base da equipe]
+    ► Ginásio: líder Valerie (tipo fairy)  [gym-fairy]
+
+► Anistar City  — cidade histórica  [town-old]
+    Rota até aqui: Route 15 · Route 16  — floresta  [forest]
+    ► Lugar no caminho: Frost Cavern  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Anistar Sundial  [ruins]
+    ► Vilão: Lysandre  [base da equipe]
+      Rival: Serena (luta na rota)
+    ► Ginásio: líder Olympia (tipo psychic)  [gym-psychic]
+
+► Snowbelle City  — cidade de neve  [town-snow]
+    Rota até aqui: Route 17 · Route 19  — neve  [snow]
+    ► Lugar no caminho: Pokémon Village  — floresta  [forest]
+    ► Lugar da cidade: Team Flare Secret HQ  [base-flare]
+    ► Ginásio: líder Wulfric (tipo ice)  [gym-ice]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Terminus Cave  — caverna  [cave]
+    ► Elite dos Quatro: Malva (tipo fire)  [elite-fire]
+    ► Elite dos Quatro: Wikstrom (tipo steel)  [elite-steel]
+    ► Elite dos Quatro: Drasna (tipo dragon)  [elite-dragon]
+    ► Elite dos Quatro: Siebold (tipo water)  [elite-water]
+    ► Campeão: Diantha  [champion-kalos]
+      Rival: AZ (luta na rota)
+
+######################################################################
+# Hoenn — Omega Ruby/Alpha Sapphire
+######################################################################
+
+► Rustboro City  — metrópole  [town-metro]
+    Rota até aqui: Route 101 · Route 102 · Route 104  — campo de grama  [grass]
+    ► Lugar no caminho: Petalburg Woods  — floresta  [forest]
+    ► Lugar da cidade: Devon Corporation  [lab]
+    ► Lugar da cidade: Trainers' School  [school]
+      Rival: Brendan/May (luta na rota)
+      Rival: Wally (luta na rota)
+    ► Ginásio: líder Roxanne (tipo rock)  [gym-rock]
+
+► Dewford Town  — ilha  [town-island]
+    Rota até aqui: Route 105 · Route 106  — mar/rio  [water]
+    ► Lugar no caminho: Granite Cave  — caverna  [cave]
+    ► Lugar da cidade: Dewford Beach  [beach]
+    ► Ginásio: líder Brawly (tipo fighting)  [gym-fighting]
+
+► Mauville City  — metrópole  [town-metro]
+    Rota até aqui: Route 109 · Route 110  — praia  [beach]
+    ► Lugar no caminho: New Mauville  — usina  [plant]
+      Rival: Brendan/May (luta na rota)
+    ► Vilão: Tabitha  [base da equipe]
+    ► Vilão: Shelly  [base da equipe]
+    ► Vilão: Courtney  [base da equipe]
+    ► Vilão: Matt  [base da equipe]
+    ► Ginásio: líder Wattson (tipo electric)  [gym-electric]
+
+► Lavaridge Town  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 111 · Route 112  — montanha  [mountain]
+    ► Lugar no caminho: Fiery Path  — caverna de lava  [lavacave]
+    ► Lugar da cidade: Lavaridge Herb Shop  [store]
+    ► Vilão: Maxie  [base da equipe]
+    ► Vilão: Archie  [base da equipe]
+    ► Ginásio: líder Flannery (tipo fire)  [gym-fire]
+
+► Petalburg City  — vila pequena  [town-village]
+    Rota até aqui: Route 111 · Route 102  — deserto  [desert]
+    ► Lugar no caminho: Mirage Tower  — torre  [tower]
+      Rival: Brendan/May (luta na rota)
+      Rival: Wally (luta na rota)
+    ► Vilão: Tabitha  [base da equipe]
+    ► Vilão: Shelly  [base da equipe]
+    ► Vilão: Courtney  [base da equipe]
+    ► Vilão: Matt  [base da equipe]
+    ► Ginásio: líder Norman (tipo normal)  [gym-normal]
+
+► Fortree City  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 119  — floresta  [forest]
+    ► Lugar no caminho: Weather Institute  — usina  [lab]
+    ► Vilão: Maxie  [base da equipe]
+    ► Vilão: Archie  [base da equipe]
+    ► Ginásio: líder Winona (tipo flying)  [gym-flying]
+
+► Mossdeep City  — ilha  [town-island]
+    Rota até aqui: Route 124 · Route 125  — mar/rio  [water]
+    ► Lugar no caminho: Shoal Cave  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Space Center  [space]
+    ► Lugar da cidade: Mossdeep Beach  [beach]
+      Rival: Brendan/May (luta na rota)
+    ► Vilão: Tabitha  [base da equipe]
+    ► Vilão: Shelly  [base da equipe]
+    ► Vilão: Courtney  [base da equipe]
+    ► Vilão: Matt  [base da equipe]
+    ► Ginásio: líder Tate & Liza (tipo rock)  [gym-rock]
+
+► Sootopolis City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 126 · Route 127  — mar/rio  [water]
+    ► Lugar no caminho: Seafloor Cavern  — caverna  [seacave]
+    ► Lugar da cidade: Cave of Origin  [origin]
+    ► Ginásio: líder Wallace (tipo water)  [gym-water]
+
+► Ever Grande City  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Sky Pillar  — torre  [skypillar]
+    ► Elite dos Quatro: Sidney (tipo dark)  [elite-dark]
+    ► Elite dos Quatro: Phoebe (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Glacia (tipo ice)  [elite-ice]
+    ► Elite dos Quatro: Drake (tipo dragon)  [elite-dragon]
+    ► Campeão: Steven  [champion-hoenn]
+
+######################################################################
+# Alola — Sun/Moon
+######################################################################
+
+► Verdant Cavern  — ilha  [town-island]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Verdant Cavern  — caverna  [cave]
+    ► Lugar da cidade: Hau'oli Shopping District  [store]
+    ► Lugar da cidade: Hau'oli Beach  [beach]
+      Rival: Hau (luta na rota)
+      Rival: Gladion (luta na rota)
+    ► Ginásio: líder Ilima (tipo normal)  [gym-normal]
+
+► Iki Town  — ilha  [town-island]
+    Rota até aqui: Route 1  — campo de grama  [grass]
+    ► Lugar no caminho: Ten Carat Hill  — caverna  [cave]
+    ► Lugar da cidade: Iki Town Dais  [temple]
+    ► Ginásio: líder Hala (tipo fighting)  [gym-fighting]
+
+► Brooklet Hill  — ilha  [town-island]
+    Rota até aqui: Route 5  — campo de grama  [grass]
+    ► Lugar no caminho: Brooklet Hill  — pântano  [swamp]
+      Rival: Hau (luta na rota)
+    ► Vilão: Guzma  [base da equipe]
+    ► Ginásio: líder Lana (tipo water)  [gym-water]
+
+► Wela Volcano Park  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 7  — campo de grama  [grass]
+    ► Lugar no caminho: Wela Volcano Park  — vulcão  [volcano]
+      Rival: Hau (luta na rota)
+      Rival: Gladion (luta na rota)
+    ► Vilão: Plumeria  [base da equipe]
+    ► Vilão: Lusamine  [base da equipe]
+    ► Ginásio: líder Kiawe (tipo fire)  [gym-fire]
+
+► Lush Jungle  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 8  — campo de grama  [grass]
+    ► Lugar no caminho: Lush Jungle  — floresta  [forest]
+    ► Ginásio: líder Mallow (tipo grass)  [gym-grass]
+
+► Ruins of Life  — ilha  [town-island]
+    Rota até aqui: Route 4 · Route 5  — praia  [beach]
+    ► Lugar da cidade: Ruins of Life  [ruins]
+    ► Lugar da cidade: Hano Beach  [beach]
+      Rival: Hau (luta na rota)
+      Rival: Dexio (luta na rota)
+      Rival: Sina (luta na rota)
+    ► Vilão: Guzma  [base da equipe]
+    ► Vilão: Faba  [base da equipe]
+      Rival: Ryuki (luta na rota)
+    ► Ginásio: líder Olivia (tipo rock)  [gym-rock]
+
+► Hokulani Observatory  — cidade de montanha  [town-mountain]
+    Rota até aqui: Mount Hokulani  — montanha  [mountain]
+    ► Lugar da cidade: Hokulani Observatory  [observatory]
+      Rival: Hau (luta na rota)
+      Rival: Gladion (luta na rota)
+    ► Vilão: Plumeria  [base da equipe]
+    ► Vilão: Lusamine  [base da equipe]
+    ► Ginásio: líder Molayne (tipo steel)  [gym-steel]
+
+► Malie City  — cidade histórica  [town-old]
+    Rota até aqui: Route 10 · Route 11  — cidade  [city]
+    ► Lugar no caminho: Blush Mountain  — usina  [plant]
+    ► Lugar da cidade: Malie Garden  [flowers]
+    ► Lugar da cidade: Malie Library  [library]
+    ► Vilão: Guzma  [base da equipe]
+    ► Ginásio: líder Nanu (tipo dark)  [gym-dark]
+
+► Vast Poni Canyon  — cidade de montanha  [town-mountain]
+    Rota até aqui: Poni Plains  — montanha  [mountain]
+    ► Lugar no caminho: Vast Poni Canyon  — caverna  [cave]
+      Rival: Hau (luta na rota)
+    ► Ginásio: líder Hapu (tipo ground)  [gym-ground]
+
+► Mount Lanakila  — cidade de neve  [town-snow]
+    Rota até aqui: Route 17 · Mount Lanakila  — neve  [snow]
+    ► Lugar no caminho: Mount Lanakila  — caverna de gelo  [icecave]
+    ► Elite dos Quatro: Acerola (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Hala (tipo fighting)  [elite-fighting]
+    ► Elite dos Quatro: Kahili (tipo flying)  [elite-flying]
+    ► Elite dos Quatro: Olivia (tipo rock)  [elite-rock]
+    ► Campeão: Kukui  [champion-alola]
+      Rival: Dexio (luta na rota)
+    ► Vilão: Guzma  [base da equipe]
+    ► Vilão: Faba  [base da equipe]
+      Rival: Anabel (luta na rota)
+      Rival: Blue (luta na rota)
+      Rival: Red (luta na rota)
+
+######################################################################
+# Alola — Ultra Sun/Ultra Moon
+######################################################################
+
+► Verdant Cavern  — ilha  [town-island]
+    Rota até aqui: Route 1 · Route 2  — campo de grama  [grass]
+    ► Lugar no caminho: Verdant Cavern  — caverna  [cave]
+    ► Lugar da cidade: Hau'oli Shopping District  [store]
+    ► Lugar da cidade: Hau'oli Beach  [beach]
+      Rival: Hau (luta na rota)
+      Rival: Gladion (luta na rota)
+    ► Ginásio: líder Ilima (tipo normal)  [gym-normal]
+
+► Iki Town  — ilha  [town-island]
+    Rota até aqui: Route 1  — campo de grama  [grass]
+    ► Lugar no caminho: Ten Carat Hill  — caverna  [cave]
+    ► Lugar da cidade: Iki Town Dais  [temple]
+    ► Ginásio: líder Hala (tipo fighting)  [gym-fighting]
+
+► Brooklet Hill  — ilha  [town-island]
+    Rota até aqui: Route 5  — campo de grama  [grass]
+    ► Lugar no caminho: Brooklet Hill  — pântano  [swamp]
+      Rival: Hau (luta na rota)
+    ► Vilão: Soliera  [base da equipe]
+    ► Vilão: Dulse  [base da equipe]
+    ► Ginásio: líder Lana (tipo water)  [gym-water]
+
+► Wela Volcano Park  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Route 7  — campo de grama  [grass]
+    ► Lugar no caminho: Wela Volcano Park  — vulcão  [volcano]
+    ► Vilão: Guzma  [base da equipe]
+      Rival: Gladion (luta na rota)
+      Rival: Dexio (luta na rota)
+    ► Vilão: Plumeria  [base da equipe]
+    ► Vilão: Lusamine  [base da equipe]
+    ► Ginásio: líder Kiawe (tipo fire)  [gym-fire]
+
+► Lush Jungle  — cidade na floresta  [town-forest]
+    Rota até aqui: Route 8  — campo de grama  [grass]
+    ► Lugar no caminho: Lush Jungle  — floresta  [forest]
+      Rival: Hau (luta na rota)
+    ► Vilão: Soliera  [base da equipe]
+    ► Vilão: Dulse  [base da equipe]
+    ► Ginásio: líder Mallow (tipo grass)  [gym-grass]
+
+► Ruins of Life  — ilha  [town-island]
+    Rota até aqui: Route 4 · Route 5  — praia  [beach]
+    ► Lugar da cidade: Ruins of Life  [ruins]
+    ► Lugar da cidade: Hano Beach  [beach]
+      Rival: Sina (luta na rota)
+    ► Vilão: Guzma  [base da equipe]
+    ► Vilão: Faba  [base da equipe]
+      Rival: Ryuki (luta na rota)
+    ► Ginásio: líder Olivia (tipo rock)  [gym-rock]
+
+► Hokulani Observatory  — cidade de montanha  [town-mountain]
+    Rota até aqui: Mount Hokulani  — montanha  [mountain]
+    ► Lugar da cidade: Hokulani Observatory  [observatory]
+      Rival: Hau (luta na rota)
+    ► Vilão: Soliera  [base da equipe]
+    ► Vilão: Dulse  [base da equipe]
+    ► Ginásio: líder Sophocles (tipo electric)  [gym-electric]
+
+► Malie City  — cidade histórica  [town-old]
+    Rota até aqui: Route 10 · Route 11  — cidade  [city]
+    ► Lugar no caminho: Blush Mountain  — usina  [plant]
+    ► Lugar da cidade: Malie Garden  [flowers]
+    ► Lugar da cidade: Malie Library  [library]
+      Rival: Gladion (luta na rota)
+      Rival: Dexio (luta na rota)
+    ► Vilão: Plumeria  [base da equipe]
+    ► Vilão: Lusamine  [base da equipe]
+    ► Ginásio: líder Nanu (tipo dark)  [gym-dark]
+
+► Seafolk Village  — porto  [town-port]
+    Rota até aqui: Route 15  — mar/rio  [water]
+    ► Lugar da cidade: Seafolk Village Pier  [beach]
+    ► Vilão: Guzma  [base da equipe]
+      Rival: Hau (luta na rota)
+    ► Vilão: Soliera  [base da equipe]
+    ► Vilão: Dulse  [base da equipe]
+    ► Ginásio: líder Mina (tipo fairy)  [gym-fairy]
+
+► Vast Poni Canyon  — cidade de montanha  [town-mountain]
+    Rota até aqui: Poni Plains  — montanha  [mountain]
+    ► Lugar no caminho: Vast Poni Canyon  — caverna  [cave]
+    ► Ginásio: líder Hapu (tipo ground)  [gym-ground]
+
+► Mount Lanakila  — cidade de neve  [town-snow]
+    Rota até aqui: Route 17 · Mount Lanakila  — neve  [snow]
+    ► Lugar no caminho: Mount Lanakila  — caverna de gelo  [icecave]
+    ► Elite dos Quatro: Acerola (tipo ghost)  [elite-ghost]
+    ► Elite dos Quatro: Olivia (tipo rock)  [elite-rock]
+    ► Elite dos Quatro: Kahili (tipo flying)  [elite-flying]
+    ► Elite dos Quatro: Molayne (tipo steel)  [elite-steel]
+    ► Campeão: Hau  [champion-alola]
+    ► Vilão: Cyrus  [base da equipe]
+    ► Vilão: Ghetsis  [base da equipe]
+    ► Vilão: Lysandre  [base da equipe]
+    ► Vilão: Maxie  [base da equipe]
+      Rival: Blue (luta na rota)
+      Rival: Lillie (luta na rota)
+      Rival: Red (luta na rota)
+
+######################################################################
+# Galar — Sword/Shield
+######################################################################
+
+► Turffield  — cidade de flores  [town-flower]
+    Rota até aqui: Route 1 · Wild Area · Route 3  — campo de grama  [grass]
+    ► Lugar no caminho: Galar Mine  — caverna  [cave]
+    ► Lugar da cidade: Turffield Geoglyph  [ruins]
+      Rival: Hop (luta na rota)
+      Rival: Bede (luta na rota)
+      Rival: Marnie (luta na rota)
+    ► Ginásio: líder Milo (tipo grass)  [gym-grass]
+
+► Hulbury  — porto  [town-port]
+    Rota até aqui: Route 4 · Route 5  — campo de grama  [grass]
+    ► Lugar no caminho: Galar Mine No. 2  — caverna  [cave]
+    ► Lugar da cidade: Hulbury Harbor  [beach]
+      Rival: Hop (luta na rota)
+    ► Ginásio: líder Nessa (tipo water)  [gym-water]
+
+► Motostoke  — cidade industrial  [town-industrial]
+    Rota até aqui: Motostoke Riverbank  — campo de grama  [grass]
+    ► Lugar no caminho: Wild Area  — campo de grama  [wildarea]
+    ► Vilão: Equipe Yell  [base da equipe]
+      Rival: Hop (luta na rota)
+    ► Ginásio: líder Kabu (tipo fire)  [gym-fire]
+
+► Stow-on-Side  — cidade do deserto  [town-desert]
+    Rota até aqui: Route 6  — deserto  [desert]
+    ► Lugar da cidade: Stow-on-Side Ruins  [ruins]
+      Rival: Hop (luta na rota)
+      Rival: Bede (luta na rota)
+      Rival: Marnie (luta na rota)
+    ► Vilão: Equipe Yell  [base da equipe]
+    ► Ginásio: líder Bea (tipo fighting)  [gym-fighting]
+
+► Ballonlea  — cidade na floresta  [town-forest]
+    Rota até aqui: Glimwood Tangle  — floresta  [forest]
+    ► Lugar no caminho: Glimwood Tangle  — floresta  [forest]
+      Rival: Hop (luta na rota)
+      Rival: Hop (luta na rota)
+    ► Ginásio: líder Opal (tipo fairy)  [gym-fairy]
+
+► Circhester  — cidade de neve  [town-snow]
+    Rota até aqui: Route 8  — neve  [snow]
+    ► Lugar no caminho: Route 8 Ruins  — ruínas  [ruins]
+      Rival: Hop (luta na rota)
+      Rival: Bede (luta na rota)
+      Rival: Marnie (luta na rota)
+    ► Ginásio: líder Gordie (tipo rock)  [gym-rock]
+
+► Spikemuth  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 9  — praia  [beach]
+    ► Lugar no caminho: Route 9 Tunnel  — caverna  [cave]
+    ► Lugar da cidade: Spikemuth Back Alley  [sewer]
+      Rival: Hop (luta na rota)
+    ► Vilão: Equipe Yell  [base da equipe]
+    ► Ginásio: líder Piers (tipo dark)  [gym-dark]
+
+► Hammerlocke  — cidade histórica  [town-old]
+    Rota até aqui: Route 9 · Route 10  — cidade  [city]
+    ► Lugar da cidade: Energy Plant  [plant]
+    ► Lugar da cidade: Hammerlocke Vault  [ruins]
+      Rival: Hop (luta na rota)
+    ► Ginásio: líder Raihan (tipo dragon)  [gym-dragon]
+
+► Wyndon  — metrópole  [town-metro]
+    Rota até aqui: Route 10  — neve  [snow]
+    ► Lugar da cidade: Rose Tower  [tower]
+    ► Vilão: Oleana  [base da equipe]
+    ► Vilão: Rose  [base da equipe]
+    ► Campeão: Leon  [champion-galar]
+      Rival: Hop (luta na rota)
+      Rival: Hop (luta na rota)
+      Rival: Sordward e Shielbert (luta na rota)
+
+######################################################################
+# Sinnoh — Brilliant Diamond/Shining Pearl
+######################################################################
+
+► Oreburgh City  — cidade industrial  [town-industrial]
+    Rota até aqui: Route 201 · Route 202 · Route 203  — campo de grama  [grass]
+    ► Lugar no caminho: Oreburgh Gate  — caverna  [cave]
+    ► Lugar da cidade: Oreburgh Mining Museum  [museum]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Roark (tipo rock)  [gym-rock]
+
+► Eterna City  — cidade histórica  [town-old]
+    Rota até aqui: Route 204 · Route 205  — floresta  [forest]
+    ► Lugar no caminho: Eterna Forest  — floresta  [forest]
+    ► Lugar da cidade: Galactic Eterna Building  [base-galactic]
+    ► Ginásio: líder Gardenia (tipo grass)  [gym-grass]
+
+► Hearthome City  — metrópole  [town-metro]
+    Rota até aqui: Route 206 · Route 207 · Route 208  — campo de grama  [grass]
+    ► Lugar no caminho: Mt. Coronet  — montanha  [mountain]
+    ► Lugar da cidade: Hearthome Contest Hall  [stage]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Fantina (tipo ghost)  [gym-ghost]
+
+► Veilstone City  — cidade de montanha  [town-mountain]
+    Rota até aqui: Route 209 · Route 210 · Route 215  — montanha  [mountain]
+    ► Lugar no caminho: Lost Tower  — torre  [tower]
+    ► Lugar da cidade: Galactic HQ  [base-galactic]
+    ► Vilão: Cyrus  [base da equipe]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Maylene (tipo fighting)  [gym-fighting]
+
+► Pastoria City  — cidade sobre a água  [town-water]
+    Rota até aqui: Route 213 · Route 214  — pântano  [swamp]
+    ► Lugar no caminho: Ruin Maniac Cave  — caverna  [cave]
+    ► Lugar da cidade: Valor Lakefront  [lakeside]
+    ► Ginásio: líder Wake (tipo water)  [gym-water]
+
+► Canalave City  — porto  [town-port]
+    Rota até aqui: Route 218  — mar/rio  [water]
+    ► Lugar no caminho: Iron Island  — caverna  [cave]
+    ► Lugar da cidade: Canalave Library  [library]
+    ► Lugar da cidade: Canalave Harbor  [beach]
+      Rival: Barry (luta na rota)
+    ► Vilão: Cyrus  [base da equipe]
+    ► Ginásio: líder Byron (tipo steel)  [gym-steel]
+
+► Snowpoint City  — cidade de neve  [town-snow]
+    Rota até aqui: Route 216 · Route 217  — neve  [snow]
+    ► Lugar no caminho: Lake Acuity  — neve  [acuity]
+    ► Lugar da cidade: Snowpoint Temple  [temple]
+    ► Lugar da cidade: Snowpoint Harbor  [beach]
+      Rival: Barry (luta na rota)
+    ► Ginásio: líder Candice (tipo ice)  [gym-ice]
+
+► Sunyshore City  — porto  [town-port]
+    Rota até aqui: Route 222  — praia  [beach]
+    ► Lugar da cidade: Vista Lighthouse  [lighthouse]
+    ► Lugar da cidade: Sunyshore Beach  [beach]
+    ► Ginásio: líder Volkner (tipo electric)  [gym-electric]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: Victory Road  — caverna  [cave]
+    ► Lugar no caminho: Spear Pillar  — templo  [spearpillar]
+    ► Elite dos Quatro: Aaron (tipo bug)  [elite-bug]
+    ► Elite dos Quatro: Bertha (tipo ground)  [elite-ground]
+    ► Elite dos Quatro: Flint (tipo fire)  [elite-fire]
+    ► Elite dos Quatro: Lucian (tipo psychic)  [elite-psychic]
+    ► Campeão: Cynthia  [champion-sinnoh]
+      Rival: Barry (luta na rota)
+      Rival: Barry (luta na rota)
+
+######################################################################
+# Paldea — Scarlet/Violet
+######################################################################
+
+► Cortondo  — cidade de flores  [town-flower]
+    Rota até aqui: South Province (Area One)  — campo de grama  [grass]
+    ► Lugar no caminho: Inlet Grotto  — caverna  [cave]
+      Rival: Nemona (luta na rota)
+    ► Ginásio: líder Katy (tipo bug)  [gym-bug]
+
+► Artazon  — cidade de flores  [town-flower]
+    Rota até aqui: South Province (Area Three)  — campo de flores  [flowers]
+      Rival: Nemona (luta na rota)
+    ► Ginásio: líder Brassius (tipo grass)  [gym-grass]
+
+► Levincia  — porto  [town-port]
+    Rota até aqui: East Province (Area One)  — praia  [beach]
+    ► Lugar da cidade: Team Star Dark Crew  [base-star]
+    ► Lugar da cidade: Levincia Beach  [beach]
+    ► Vilão: Giacomo  [base da equipe]
+    ► Ginásio: líder Iono (tipo electric)  [gym-electric]
+
+► Cascarrafa  — cidade do deserto  [town-desert]
+    Rota até aqui: Asado Desert  — deserto  [desert]
+    ► Lugar no caminho: Asado Desert  — dunas  [dunes]
+      Rival: Nemona (luta na rota)
+    ► Vilão: Mela  [base da equipe]
+    ► Ginásio: líder Kofu (tipo water)  [gym-water]
+
+► Medali  — vila pequena  [town-village]
+    Rota até aqui: West Province (Area Two)  — campo de grama  [grass]
+      Rival: Nemona (luta na rota)
+    ► Vilão: Atticus  [base da equipe]
+    ► Ginásio: líder Larry (tipo normal)  [gym-normal]
+
+► Montenevera  — cidade de neve  [town-snow]
+    Rota até aqui: Glaseado Mountain  — montanha  [mountain]
+    ► Lugar no caminho: Dalizapa Passage  — caverna de gelo  [icecave]
+    ► Vilão: Ortega  [base da equipe]
+      Rival: Nemona (luta na rota)
+    ► Ginásio: líder Ryme (tipo ghost)  [gym-ghost]
+
+► Alfornada  — cidade de montanha  [town-mountain]
+    Rota até aqui: South Province (Area Six)  — montanha  [mountain]
+    ► Lugar no caminho: Alfornada Cavern  — caverna  [cave]
+    ► Lugar da cidade: Team Star Fighting Crew  [base-star]
+    ► Vilão: Eri  [base da equipe]
+    ► Ginásio: líder Tulip (tipo psychic)  [gym-psychic]
+
+► Glaseado  — cidade de neve  [town-snow]
+    Rota até aqui: Glaseado Mountain  — neve  [snow]
+    ► Lugar no caminho: Dalizapa Passage  — caverna de gelo  [icecave]
+      Rival: Nemona (luta na rota)
+    ► Vilão: Penny  [base da equipe]
+    ► Ginásio: líder Grusha (tipo ice)  [gym-ice]
+
+► Pokémon League  — Liga Pokémon  [town-league]
+    Rota até aqui: West Province (Area One)  — campo de grama  [grass]
+    ► Lugar no caminho: Area Zero  — caverna de cristal  [crystal]
+    ► Elite dos Quatro: Hassel (tipo dragon)  [elite-dragon]
+    ► Elite dos Quatro: Poppy (tipo steel)  [elite-steel]
+    ► Elite dos Quatro: Larry (tipo flying)  [elite-flying]
+    ► Elite dos Quatro: Rika (tipo ground)  [elite-ground]
+    ► Campeão: Geeta  [champion-paldea]
+      Rival: Arven (luta na rota)
+      Rival: Nemona (luta na rota)
+
+######################################################################
+# Hisui — Legends: Arceus
+######################################################################
+
+► Obsidian Fieldlands  — vila pequena  [town-village]
+    Rota até aqui: Obsidian Fieldlands  — campo de grama  [grass]
+    ► Lugar no caminho: Grandtree Arena  — floresta  [forest]
+    ► Lugar da cidade: Lake Verity  [lakeside]
+      Rival: Akari (luta na rota)
+    ► Ginásio: líder Lian (tipo rock)  [gym-rock]
+
+► Crimson Mirelands  — vila pequena  [town-village]
+    Rota até aqui: Crimson Mirelands  — pântano  [swamp]
+    ► Lugar no caminho: Brava Arena  — ruínas  [ruins]
+    ► Lugar da cidade: Diamond Settlement  [city]
+    ► Lugar da cidade: Lake Valor  [lakeside]
+      Rival: Adaman (luta na rota)
+    ► Ginásio: líder Arezu (tipo grass)  [gym-grass]
+
+► Cobalt Coastlands  — ilha  [town-island]
+    Rota até aqui: Cobalt Coastlands  — mar/rio  [water]
+    ► Lugar no caminho: Firespit Island  — vulcão  [volcano]
+    ► Lugar da cidade: Tombolo Walk  [beach]
+      Rival: Akari (luta na rota)
+      Rival: Irida (luta na rota)
+    ► Ginásio: líder Melli (tipo fire)  [gym-fire]
+
+► Coronet Highlands  — cidade de montanha  [town-mountain]
+    Rota até aqui: Coronet Highlands  — montanha  [mountain]
+    ► Lugar no caminho: Wayward Cave  — caverna  [cave]
+    ► Lugar da cidade: Moonview Arena  [ruins]
+    ► Vilão: Kamado  [base da equipe]
+    ► Ginásio: líder Ingo (tipo electric)  [gym-electric]
+
+► Alabaster Icelands  — cidade de neve  [town-snow]
+    Rota até aqui: Alabaster Icelands  — neve  [snow]
+    ► Lugar no caminho: Avalugg's Legacy  — caverna de gelo  [icecave]
+    ► Lugar da cidade: Pearl Settlement  [city]
+    ► Lugar da cidade: Lake Acuity  [acuity]
+      Rival: Akari (luta na rota)
+    ► Ginásio: líder Gaeric (tipo ice)  [gym-ice]
+
+► Temple of Sinnoh  — Liga Pokémon  [town-league]
+    Rota até aqui: Mount Coronet  — montanha  [mountain]
+    ► Lugar no caminho: Spear Pillar  — templo  [spearpillar]
+    ► Campeão: Volo  [champion-hisui]
+
+######################################################################
+# Orre — Colosseum/XD
+######################################################################
+
+► Pyrite Town  — cidade industrial  [town-industrial]
+    Rota até aqui: Orre Desert  — deserto  [desert]
+    ► Lugar no caminho: Pyrite Cave  — caverna  [cave]
+    ► Lugar da cidade: The Under  [sewer]
+    ► Ginásio: líder Miror B. (tipo water)  [gym-water]
+
+► Agate Village  — vila pequena  [town-village]
+    Rota até aqui: Mt. Battle Road  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Battle  — montanha  [mountain]
+    ► Lugar da cidade: Relic Stone  [ruins]
+      Rival: Wes (luta na rota)
+    ► Ginásio: líder Dakim (tipo ground)  [gym-ground]
+
+► Phenac City  — metrópole  [town-metro]
+    Rota até aqui: Orre Desert  — deserto  [desert]
+    ► Lugar no caminho: Phenac Stadium  — cidade  [city]
+    ► Ginásio: líder Venus (tipo normal)  [gym-normal]
+
+► Cipher Lab  — cidade industrial  [town-industrial]
+    Rota até aqui: Orre Desert  — deserto  [desert]
+    ► Lugar no caminho: Cipher Key Lair  — caverna  [cave]
+    ► Ginásio: líder Ein (tipo electric)  [gym-electric]
+
+► Desert Resort  — cidade do deserto  [town-desert]
+    Rota até aqui: Orre Desert  — deserto  [desert]
+    ► Lugar no caminho: Cave Poké Spot  — caverna  [cave]
+      Rival: Wes (luta na rota)
+    ► Ginásio: líder Nascour (tipo psychic)  [gym-psychic]
+
+► Realgam Tower  — Liga Pokémon  [town-league]
+    Rota até aqui: Orre Desert  — deserto  [desert]
+    ► Lugar no caminho: Orre Colosseum  — cidade  [city]
+    ► Campeão: Evice  [champion-orre]
+
+######################################################################
+# Fiore — Ranger
+######################################################################
+
+► Fall City  — vila pequena  [town-village]
+    Rota até aqui: Kisara Plain  — campo de grama  [grass]
+    ► Lugar no caminho: Lyra Forest  — floresta  [forest]
+      Rival: Solana (luta na rota)
+    ► Ginásio: líder Billy Jo (tipo bug)  [gym-bug]
+
+► Summerland  — porto  [town-port]
+    Rota até aqui: Fiore Coast  — praia  [beach]
+    ► Lugar no caminho: Panula Cave  — caverna  [cave]
+    ► Lugar da cidade: Summerland Beach  [beach]
+    ► Ginásio: líder Lavana (tipo fire)  [gym-fire]
+
+► Wintown  — cidade de neve  [town-snow]
+    Rota até aqui: Fiore Snowfield  — neve  [snow]
+    ► Lugar no caminho: Wintown Cave  — caverna de gelo  [icecave]
+      Rival: Solana (luta na rota)
+    ► Ginásio: líder Clyde (tipo electric)  [gym-electric]
+
+► Sekra Range  — cidade de montanha  [town-mountain]
+    Rota até aqui: Sekra Range  — montanha  [mountain]
+    ► Lugar no caminho: Sekra Cave  — caverna  [cave]
+    ► Ginásio: líder Garret (tipo psychic)  [gym-psychic]
+
+► Fiore Temple  — Liga Pokémon  [town-league]
+    Rota até aqui: Fiore Lake Road  — campo de grama  [grass]
+    ► Lugar no caminho: Fiore Temple  — templo  [temple]
+    ► Campeão: Gordor  [champion-fiore]
+
+######################################################################
+# Almia — Shadows of Almia
+######################################################################
+
+► Pueltown  — porto  [town-port]
+    Rota até aqui: Almia Coast  — praia  [beach]
+    ► Lugar no caminho: Marine Cave  — caverna do mar  [seacave]
+    ► Lugar da cidade: Pueltown Harbor  [beach]
+      Rival: Keith (luta na rota)
+    ► Ginásio: líder Heath (tipo water)  [gym-water]
+
+► Chicole Village  — cidade na floresta  [town-forest]
+    Rota até aqui: Chicole Path  — floresta  [forest]
+    ► Lugar no caminho: Altru Park  — floresta  [forest]
+    ► Ginásio: líder Wendy (tipo grass)  [gym-grass]
+
+► Boyleland  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Mt. Tember Road  — montanha  [mountain]
+    ► Lugar no caminho: Volcano Cave  — caverna de lava  [lavacave]
+    ► Ginásio: líder Sven (tipo fire)  [gym-fire]
+
+► Haruba Village  — cidade do deserto  [town-desert]
+    Rota até aqui: Haruba Desert  — deserto  [desert]
+    ► Lugar no caminho: Hippowdon Temple  — templo  [temple]
+      Rival: Keith (luta na rota)
+
+► Altru Building  — metrópole  [town-metro]
+    Rota até aqui: Altru Road  — campo de grama  [grass]
+    ► Lugar no caminho: Dim Sun Hideout  — caverna  [cave]
+    ► Ginásio: líder Kincaid (tipo dark)  [gym-dark]
+
+► Almia Castle  — Liga Pokémon  [town-league]
+    Rota até aqui: Almia Castle Road  — campo de grama  [grass]
+    ► Lugar no caminho: Almia Castle  — torre  [tower]
+    ► Campeão: Blake Hall  [champion-almia]
+
+######################################################################
+# Oblivia — Guardian Signs
+######################################################################
+
+► Renbow Island  — porto  [town-port]
+    Rota até aqui: Renbow Coast  — praia  [beach]
+    ► Lugar no caminho: Renbow Cave  — caverna do mar  [seacave]
+      Rival: Summer (luta na rota)
+    ► Ginásio: líder Purple Eyes (tipo poison)  [gym-poison]
+
+► Mitonga Island  — cidade na floresta  [town-forest]
+    Rota até aqui: Mitonga Jungle  — floresta  [forest]
+    ► Lugar no caminho: Mitonga Ruins  — ruínas  [ruins]
+    ► Ginásio: líder Blue Eyes (tipo water)  [gym-water]
+
+► Layuda Island  — cidade do deserto  [town-desert]
+    Rota até aqui: Layuda Dunes  — deserto  [desert]
+    ► Lugar no caminho: Layuda Temple  — templo  [temple]
+      Rival: Summer (luta na rota)
+
+► Faldera Island  — cidade de vulcão  [town-volcano]
+    Rota até aqui: Faldera Road  — montanha  [mountain]
+    ► Lugar no caminho: Faldera Volcano  — vulcão  [volcano]
+    ► Ginásio: líder Red Eyes (tipo fire)  [gym-fire]
+
+► Oblivia Ruins  — Liga Pokémon  [town-league]
+    Rota até aqui: Oblivia Sea  — mar/rio  [water]
+    ► Lugar no caminho: Sophian Island  — templo  [temple]
+    ► Campeão: Ice  [champion-oblivia]
+
+######################################################################
+# Kitakami — The Teal Mask
+######################################################################
+
+► Apple Hills  — vila pequena  [town-village]
+    Rota até aqui: Kitakami Road  — campo de grama  [grass]
+    ► Lugar no caminho: Reveler’s Road  — floresta  [forest]
+    ► Lugar da cidade: Mossui Fields  [grass]
+      Rival: Kieran (luta na rota)
+      Rival: Carmine (luta na rota)
+    ► Ginásio: líder Munkidori (tipo grass)  [gym-grass]
+
+► Oni Mountain  — cidade de montanha  [town-mountain]
+    Rota até aqui: Oni Mountain  — montanha  [mountain]
+    ► Lugar no caminho: Fellhorn Gorge  — caverna  [cave]
+    ► Ginásio: líder Okidogi (tipo poison)  [gym-poison]
+
+► Kitakami Hall  — vila pequena  [town-village]
+    Rota até aqui: Loyalty Plaza  — campo de grama  [grass]
+    ► Lugar no caminho: Wistful Fields  — campo de grama  [grass]
+    ► Ginásio: líder Fezandipiti (tipo ghost)  [gym-ghost]
+
+► Timeless Woods  — cidade na floresta  [town-forest]
+    Rota até aqui: Kitakami Wilds  — floresta  [forest]
+    ► Lugar no caminho: Timeless Woods  — floresta  [forest]
+      Rival: Perrin (luta na rota)
+
+► Crystal Pool  — Liga Pokémon  [town-league]
+    Rota até aqui: Oni’s Maw  — montanha  [mountain]
+    ► Lugar no caminho: Crystal Pool  — caverna  [cave]
+    ► Campeão: Kieran  [champion-kitakami]
+
+######################################################################
+# Blueberry — The Indigo Disk
+######################################################################
+
+► Savanna Biome  — cidade de flores  [town-flower]
+    Rota até aqui: Savanna Biome  — campo de grama  [grass]
+    ► Lugar no caminho: Torchlit Labyrinth  — caverna  [cave]
+      Rival: Carmine (luta na rota)
+    ► Ginásio: líder Crispin (tipo fire)  [gym-fire]
+
+► Coastal Biome  — porto  [town-port]
+    Rota até aqui: Coastal Biome  — praia  [beach]
+    ► Lugar no caminho: Coastal Plaza  — praia  [beach]
+    ► Ginásio: líder Lacey (tipo fairy)  [gym-fairy]
+
+► Canyon Biome  — cidade de montanha  [town-mountain]
+    Rota até aqui: Canyon Biome  — montanha  [mountain]
+    ► Lugar no caminho: Canyon Plaza  — caverna  [cave]
+    ► Ginásio: líder Amarys (tipo steel)  [gym-steel]
+
+► Polar Biome  — cidade de neve  [town-snow]
+    Rota até aqui: Polar Biome  — neve  [snow]
+    ► Lugar no caminho: Chargestone Cavern  — caverna de gelo  [icecave]
+    ► Ginásio: líder Drayton (tipo dragon)  [gym-dragon]
+
+► League Club Room  — Liga Pokémon  [town-league]
+    Rota até aqui: Central Plaza  — campo de grama  [grass]
+    ► Lugar no caminho: Area Zero Underdepths  — caverna de cristal  [crystal]
+    ► Campeão: Kieran  [champion-blueberry]
+
+######################################################################
+# Sevii — Sevii Islands
+######################################################################
+
+► Three Island  — ilha  [town-island]
+    Rota até aqui: Bond Bridge  — mar/rio  [water]
+    ► Lugar no caminho: Berry Forest  — floresta  [forest]
+    ► Lugar da cidade: Three Isle Port  [beach]
+    ► Ginásio: líder Paxton (tipo poison)  [gym-poison]
+
+► Four Island  — ilha  [town-island]
+    Rota até aqui: Four Island Shore  — praia  [beach]
+    ► Lugar no caminho: Icefall Cave  — caverna de gelo  [icecave]
+      Rival: Lorelei (luta na rota)
+
+► Five Island  — ilha  [town-island]
+    Rota até aqui: Water Labyrinth  — mar/rio  [water]
+    ► Lugar no caminho: Memorial Pillar  — ruínas  [ruins]
+    ► Lugar da cidade: Rocket Warehouse  [base-rocket]
+    ► Vilão: Executivo  [base da equipe]
+    ► Vilão: Executiva  [base da equipe]
+
+► Six Island  — ilha  [town-island]
+    Rota até aqui: Outcast Island  — mar/rio  [water]
+    ► Lugar no caminho: Dotted Hole  — caverna  [cave]
+    ► Lugar da cidade: Ruin Valley  [ruins]
+    ► Ginásio: líder Gideon (tipo electric)  [gym-electric]
+
+► Seven Island  — cidade de montanha  [town-mountain]
+    Rota até aqui: Sevault Canyon  — montanha  [mountain]
+    ► Lugar no caminho: Tanoby Ruins  — ruínas  [ruins]
+    ► Lugar da cidade: Trainer Tower  [tower]
+    ► Campeão: Blue  [champion-sevii]
+
+######################################################################
+# Armor — The Isle of Armor
+######################################################################
+
+► Soothing Wetlands  — vila pequena  [town-village]
+    Rota até aqui: Fields of Honor  — pântano  [swamp]
+    ► Lugar no caminho: Forest of Focus  — floresta  [forest]
+    ► Ginásio: líder Avery (tipo psychic)  [gym-psychic]
+
+► Challenge Beach  — porto  [town-port]
+    Rota até aqui: Challenge Road  — praia  [beach]
+    ► Lugar no caminho: Brawlers’ Cave  — caverna  [cave]
+    ► Lugar da cidade: Courageous Cavern  [seacave]
+    ► Ginásio: líder Klara (tipo poison)  [gym-poison]
+
+► Tower of Two Fists  — cidade de montanha  [town-mountain]
+    Rota até aqui: Training Lowlands  — montanha  [mountain]
+    ► Lugar no caminho: Potbottom Desert  — deserto  [desert]
+    ► Ginásio: líder Kubfu (tipo fighting)  [gym-fighting]
+
+► Master Dojo  — Liga Pokémon  [town-league]
+    Rota até aqui: Fields of Honor  — campo de grama  [grass]
+    ► Lugar no caminho: Warm-Up Tunnel  — caverna  [cave]
+    ► Campeão: Mustard  [champion-armor]
+
+######################################################################
+# Crown — The Crown Tundra
+######################################################################
+
+► Ballimere Lake  — cidade de neve  [town-snow]
+    Rota até aqui: Slippery Slope  — neve  [snow]
+    ► Lugar no caminho: Giant’s Bed  — campo de grama  [grass]
+    ► Lugar da cidade: Dyna Tree Hill  [forest]
+      Rival: Peony (luta na rota)
+
+► Split-Decision Ruins  — cidade de neve  [town-snow]
+    Rota até aqui: Frigid Sea  — neve  [snow]
+    ► Lugar no caminho: Iceberg Ruins  — caverna de gelo  [icecave]
+    ► Ginásio: líder Regieleki (tipo electric)  [gym-electric]
+
+► Crown Shrine  — cidade histórica  [town-old]
+    Rota até aqui: Crown Shrine Path  — neve  [snow]
+    ► Lugar no caminho: Old Cemetery  — ruínas  [ruins]
+    ► Ginásio: líder Calyrex (tipo psychic)  [gym-psychic]
+
+► Freezington  — cidade de neve  [town-snow]
+    Rota até aqui: Snowslide Slope  — neve  [snow]
+    ► Lugar no caminho: Max Lair  — caverna  [cave]
+    ► Campeão: Peony  [champion-crown]
+
+######################################################################
+# Orange — Liga Laranja
+######################################################################
+
+► Mikan Island  — ilha  [town-island]
+    Rota até aqui: Orange Archipelago  — mar/rio  [water]
+    ► Lugar no caminho: Pinkan Island  — floresta  [forest]
+    ► Lugar da cidade: Mikan Beach  [beach]
+    ► Ginásio: líder Cissy (tipo water)  [gym-water]
+
+► Navel Island  — ilha  [town-island]
+    Rota até aqui: Navel Island Road  — montanha  [mountain]
+    ► Lugar no caminho: Mt. Navel  — montanha  [mountain]
+    ► Ginásio: líder Danny (tipo poison)  [gym-poison]
+
+► Trovita Island  — ilha  [town-island]
+    Rota até aqui: Orange Archipelago  — mar/rio  [water]
+    ► Lugar no caminho: Shamouti Island  — templo  [temple]
+    ► Lugar da cidade: Trovita Beach  [beach]
+    ► Ginásio: líder Rudy (tipo psychic)  [gym-psychic]
+
+► Kumquat Island  — ilha  [town-island]
+    Rota até aqui: Kumquat Shore  — praia  [beach]
+    ► Lugar no caminho: Kumquat Resort  — cidade  [city]
+    ► Ginásio: líder Luana (tipo ground)  [gym-ground]
+
+► Pummelo Island  — Liga Pokémon  [town-league]
+    Rota até aqui: Orange Archipelago  — mar/rio  [water]
+    ► Lugar no caminho: Pummelo Stadium  — league  [league]
+    ► Campeão: Drake  [champion-orange]
