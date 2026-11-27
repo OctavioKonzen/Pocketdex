@@ -758,7 +758,8 @@ function factoryTrace(F, data) {
       run = { ...run, pending: null }
     }
     // O desafio do ginásio é obrigatório: vence antes de enfrentar o líder (igual ao app).
-    const pick = i % options.length
+    // Na caverna escura, segue o primeiro caminho (o de sempre).
+    const pick = F.darkCave(run) ? 0 : i % options.length
     if (F.gymLocked(data, run, options[pick])) run = { ...run, gymEdge: { leg: F.legOf(run), won: true } }
     run = F.chooseNode(run, data, pick)
     const encounter = run.encounter
@@ -2893,5 +2894,24 @@ describe('Pokémon Dominante e Ultra Beasts', () => {
     expect(trace.totems.filter(([, name]) => !F.KAHUNAS.includes(name)).every(([, , s]) => s[1])).toBe(true)
     expect(trace.totems.filter(([, name]) => F.KAHUNAS.includes(name)).every(([, , s]) => !s[1])).toBe(true)
     expect(trace.wild.some(([, s]) => s[3] && s[4] === F.BEAST_BALLS && s[6] === 'space')).toBe(true)
+  })
+})
+
+describe('cavernas escuras', () => {
+  it('cada andar se divide; sem Flash, dois caminhos; com Flash, três; o andar do chefe não (igual ao app)', async () => {
+    const F = await import('./factoryRun')
+    const base = { ...F.startRun(F.emptyFactory(), data, 1, 42), encounter: null, pending: null, floor: 12, dungeon: { place: 'mt-moon', scene: 'cave', start: 10 } }
+    for (let seed = 1; seed <= 10; seed++) {
+      const dark = F.routeOptions({ ...base, seed }, data, seededRandom(seed))
+      expect(dark.options.length).toBe(2)
+      expect(dark.options[0].kind).not.toBe(dark.options[1].kind)
+      const lit = F.routeOptions({ ...base, seed, hms: ['flash'] }, data, seededRandom(seed))
+      expect(lit.options.length).toBe(3)
+      expect(lit.options.slice(0, 2)).toEqual(dark.options)
+    }
+    expect(F.darkCave(base)).toBe(true)
+    expect(F.darkCave({ ...base, dungeon: { ...base.dungeon, scene: 'sewer' } })).toBe(false)
+    const last = F.routeOptions({ ...base, floor: 10 + F.DUNGEON_LENGTH - 1 }, data, seededRandom(1))
+    expect(last.options.length).toBe(1)
   })
 })

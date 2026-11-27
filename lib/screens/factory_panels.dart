@@ -6456,7 +6456,10 @@ class _FactoryScreenState extends State<FactoryScreen> {
           key: ValueKey('map-node-$k'));
     }
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
-    final hasMap = run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
+    // Na caverna escura, só o Flash ilumina (o Mapa não ajuda no escuro). Igual ao site.
+    final hasMap = FactoryRun.darkCave(run)
+        ? FactoryRun.hasHm(run, 'flash')
+        : run['townMap'] == true || (FactoryRun.hasHm(run, 'flash') && FactoryRun.darkBiomes.contains(route['biome']));
     final cut = !meeting && !town ? FactoryRun.cutPath(run) : null;
     final smash = !meeting && !town ? FactoryRun.smashPath(run) : null;
     final strength = !meeting && !town ? FactoryRun.strengthPath(run) : null;
@@ -6464,7 +6467,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
     final burst = FactoryRun.outbreakOf(data, clock.day);
     // O andar (pequeno, num canto): na rota, até a cidade; num lugar, até o chefe dele.
     final floorTag = dungeon != null
-        ? '${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}/${FactoryRun.dungeonLength}'
+        ? '${FactoryRun.darkCave(run) ? 'B${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}F · ' : ''}${min(FactoryRun.dungeonLength, FactoryRun.dungeonPos(run) + 1)}/${FactoryRun.dungeonLength}'
         : town
             ? '${min(FactoryRun.cityLength, pos - FactoryRun.routeLength + 1)}/${FactoryRun.cityLength}'
             : '${pos + 1}/${FactoryRun.routeLength}';
@@ -6499,7 +6502,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
       if (!town && dungeon == null && pos == 0 && !meeting && legend != null && target['kind'] == 'elite')
         '🌟 ${tr(_legendClues[target['kind'] == 'elite' ? _legendClues.length - 1 : min(_legendClues.length - 2, ((run['badges'] as num?) ?? 0).toInt())])}',
       if (dungeon != null && FactoryRun.dungeonPos(run) == 0)
-        '🕳️ ${tr('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
+        '🕳️ ${tr(FactoryRun.darkCave(run) ? 'Você entrou em {0}: {1} andares no escuro, com bifurcações, e um chefe no fim. Depois, de volta para {2}.' : 'Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replaceAll('{0}', insideName ?? '').replaceAll('{1}', '${FactoryRun.dungeonLength}').replaceAll('{2}', backTo)}',
       ...before,
       if (meeting && before.isEmpty && boss['kind'] == 'rival')
         '💬 ${boss['name']}: ${tr(_rivalLines[min(_rivalLines.length - 1, ((run['rivalWins'] as num?) ?? 0).toInt())])}'
@@ -6552,7 +6555,7 @@ class _FactoryScreenState extends State<FactoryScreen> {
                       ? _hmHint(run, options[k] as Map?)
                       : k == 0
                           ? tr('Continuar por onde você está')
-                          : tr('Não dá para saber aonde ele leva (o Mapa mostra)'),
+                          : tr(FactoryRun.darkCave(run) ? 'Está escuro: não dá para ver o que tem lá (o Flash ilumina)' : 'Não dá para saber aonde ele leva (o Mapa mostra)'),
                   key: ValueKey('map-node-$k')),
           if (hasMap || !fork)
             for (var k = 0; k < options.length; k++)

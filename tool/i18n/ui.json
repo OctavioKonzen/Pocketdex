@@ -15916,5 +15916,17 @@
   "fr": "5× plus efficace sur les Ultra-Chimères ; presque inutile sur les autres",
   "es": "5× mejor con los Ultraentes; casi inútil con los demás",
   "pt": "5× melhor nas Ultra Beasts; quase nada nos outros"
+ },
+ "Você entrou em {0}: {1} andares no escuro, com bifurcações, e um chefe no fim. Depois, de volta para {2}.": {
+  "en": "You entered {0}: {1} dark floors with forks, and a boss at the end. Then, back to {2}.",
+  "fr": "Vous êtes entré dans {0} : {1} étages dans le noir, avec des embranchements, et un boss à la fin. Ensuite, retour à {2}.",
+  "es": "Entraste en {0}: {1} pisos a oscuras, con bifurcaciones, y un jefe al final. Después, de vuelta a {2}.",
+  "pt": "Você entrou em {0}: {1} andares no escuro, com bifurcações, e um chefe no fim. Depois, de volta para {2}."
+ },
+ "Está escuro: não dá para ver o que tem lá (o Flash ilumina)": {
+  "en": "It's dark: you can't see what's there (Flash lights it up)",
+  "fr": "Il fait noir : impossible de voir ce qu'il y a (Flash éclaire)",
+  "es": "Está oscuro: no se ve qué hay (Destello lo ilumina)",
+  "pt": "Está escuro: não dá para ver o que tem lá (o Flash ilumina)"
  }
 }

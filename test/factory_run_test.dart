@@ -131,7 +131,8 @@ void main() {
         }
         run = {...run, 'pending': null};
       }
-      run = _choose(run, data, i % options.length);
+      // Na caverna escura, segue o primeiro caminho (o de sempre).
+      run = _choose(run, data, FactoryRun.darkCave(run) ? 0 : i % options.length);
       final encounter = run['encounter'] == null ? null : Map<String, dynamic>.from(run['encounter'] as Map);
       final foes = FactoryRun.foesOf(run);
       if (encounter != null) {
@@ -464,6 +465,21 @@ void main() {
     expect(FactoryRun.teamOf(FactoryRun.capture(won)).last['id'], fossil['id']);
     final other = FactoryRun.winFloor({...museum, 'dungeon': {'place': 'viridian-forest', 'scene': 'forest', 'start': 12}, 'encounter': foes}, data, hp: [1]);
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
+  });
+
+  test('cavernas escuras: cada andar se divide; sem Flash, dois caminhos; com Flash, três; o andar do chefe não (igual ao site)', () {
+    final base = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'encounter': null, 'pending': null, 'floor': 12, 'dungeon': {'place': 'mt-moon', 'scene': 'cave', 'start': 10}};
+    for (var seed = 1; seed <= 10; seed++) {
+      final dark = FactoryRun.routeOptions({...base, 'seed': seed}, data, League.seededRandom(seed))['options'] as List;
+      expect(dark.length, 2);
+      expect(dark[0]['kind'], isNot(dark[1]['kind']));
+      final lit = FactoryRun.routeOptions({...base, 'seed': seed, 'hms': ['flash']}, data, League.seededRandom(seed))['options'] as List;
+      expect(lit.length, 3);
+      expect(jsonEncode(lit.sublist(0, 2)), jsonEncode(dark));
+    }
+    expect(FactoryRun.darkCave(base), isTrue);
+    expect(FactoryRun.darkCave({...base, 'dungeon': {...base['dungeon'] as Map, 'scene': 'sewer'}}), isFalse);
+    expect((FactoryRun.routeOptions({...base, 'floor': 10 + FactoryRun.dungeonLength - 1}, data, League.seededRandom(1))['options'] as List).length, 1);
   });
 
   test('rodada 17 igual ao site (test/fixtures/round17.json): Pokémon Dominante e Ultra Beasts', () {

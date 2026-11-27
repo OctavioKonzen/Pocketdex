@@ -30,7 +30,7 @@ import {
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
   heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, MINTS, ABILITY_CAPSULE, ABILITY_PATCH, fossilReady, reviveFossil, FOSSILS, X_BAG, EXP_CANDIES, eatCandy, UNOWN_LETTERS, unownLetter, LEAGUE_FLAWLESS,
-  expAt, pikeDoors, pikeDoor, funfestOffer, acceptFunfest,
+  expAt, darkCave, pikeDoors, pikeDoor, funfestOffer, acceptFunfest,
 } from '../lib/factoryRun'
 import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
@@ -3967,7 +3967,8 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // O líder no ginásio do tipo dele, a Elite dos Quatro na Liga, o Campeão na sala dele; rival e vilões na rota (o vilão, na base da equipe).
     const meetScene = town ? shownScene(run, 'city', data) : meeting && CITY_KIND_SET.has(boss.kind) ? bossScene(data, boss, route.biome) : route.biome
     // Sem o Mapa: nada do mapa e, na bifurcação, segue às cegas.
-    const hasMap = Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
+    // Na caverna escura, só o Flash ilumina (o Mapa não ajuda no escuro).
+    const hasMap = darkCave(run) ? hasHm(run, 'flash') : Boolean(run.townMap) || (hasHm(run, 'flash') && DARK_BIOMES.includes(route.biome))
     const cut = !meeting && !town ? cutPath(run) : null
     const smash = !meeting && !town ? smashPath(run) : null
     const strength = !meeting && !town ? strengthPath(run) : null
@@ -3977,7 +3978,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
     // O HUD do mapa: hora, clima, efeito do lugar, estação, o lendário que foge e o plano vilão.
     const hudProps = { run, data, scene: shownScene(run, town ? 'city' : route.biome, data), clock, monName: name }
     const hud = <MapHud {...hudProps} />
-    const floorTag = inside ? `${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
+    const floorTag = inside ? `${darkCave(run) ? `B${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}F · ` : ''}${Math.min(DUNGEON_LENGTH, dungeonPos(run) + 1)}/${DUNGEON_LENGTH}` : town ? `${Math.min(CITY_LENGTH, pos - ROUTE_LENGTH + 1)}/${CITY_LENGTH}` : `${pos + 1}/${ROUTE_LENGTH}`
     // Os caminhos viram cartas que deslizam por cima do campo (na rota); na cidade, os botões do menu de sempre.
     // Em todo lugar (rota, cidade, rival), os caminhos são cartas; só a conversa (meeting) fica nos botões. Igual ao app.
     const asCards = !meeting
@@ -4004,7 +4005,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
           </Btn>
         ) : (
           <Btn key={k} i={k} kind={node.kind} hidden testid={`map-node-${k}`} disabled={busy || nodeBlocked(run, node) || (isBattleNode(node) && down)} onClick={() => pickNode(k)}
-            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t('Não dá para saber aonde ele leva (o Mapa mostra)')}>
+            sub={nodeBlocked(run, node) ? hmHint(run, node) : k === 0 ? t('Continuar por onde você está') : t(darkCave(run) ? 'Está escuro: não dá para ver o que tem lá (o Flash ilumina)' : 'Não dá para saber aonde ele leva (o Mapa mostra)')}>
             {k === 0 ? `➡️ ${t('SEGUIR EM FRENTE')}` : `↗️ ${t('OUTRO CAMINHO')}${route.options.length > 2 ? ` ${k}` : ''}`}
           </Btn>
         ))) || []),
@@ -4068,7 +4069,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       ...route.options.filter((o) => o.call).map((o) => `📞 ${o.caller}: ${t(CALL_TEXT[o.call])}`),
       !meeting && run.chain && `📶 ${t('Corrente do Poké Radar')}: ${name(run.chain.id)} ×${run.chain.n} · ✨ ${radarShiny(run.chain)}×`,
       !town && !inside && pos === 0 && !meeting && legend != null && target.kind === 'elite' && `🌟 ${t(LEGEND_CLUES[target.kind === 'elite' ? LEGEND_CLUES.length - 1 : Math.min(LEGEND_CLUES.length - 2, run.badges ?? 0)])}`,
-      inside && dungeonPos(run) === 0 && `🕳️ ${t('Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
+      inside && dungeonPos(run) === 0 && `🕳️ ${t(darkCave(run) ? 'Você entrou em {0}: {1} andares no escuro, com bifurcações, e um chefe no fim. Depois, de volta para {2}.' : 'Você entrou em {0}: {1} andares, sem desvios, e um chefe no fim. Depois, de volta para {2}.').replace('{0}', t(inside.name)).replace('{1}', DUNGEON_LENGTH).replace('{2}', backTo)}`,
       ...before,
       meeting && !before.length && boss.kind === 'rival' && `💬 ${boss.name}: ${t(RIVAL_LINES[Math.min(RIVAL_LINES.length - 1, run.rivalWins ?? 0)])}${run.rivalWins ? ` ${t('(Você já me venceu {0} vezes. Meu time ficou mais forte!)').replace('{0}', run.rivalWins)}` : ''}`,
       meeting && !before.length && boss.kind === 'villain' && `💬 ${boss.name}: ${t(VILLAIN_LINES[(run.floor + run.seed) % VILLAIN_LINES.length])}`,

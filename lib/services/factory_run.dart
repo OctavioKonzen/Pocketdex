@@ -2148,6 +2148,24 @@ class FactoryRun {
   /// Os lugares com batalha perto das cidades (10 andares e um chefe no fim; depois volta para a cidade). A base da
   /// equipe vilã também é um lugar desses (o vilão é o chefe dela). Igual ao site.
   static const dungeonLength = 10;
+
+  /// As cavernas escuras (Mt. Moon, Rock Tunnel, as de gelo, lava, veneno e do mar): cada andar (B1F, B2F...) tem
+  /// bifurcações. Sem Flash, você não vê o que tem em cada caminho (e o Mapa não ajuda no escuro) e acha menos caminhos;
+  /// com Flash, enxerga tudo e acha um caminho a mais. Igual ao site.
+  static const darkCaves = ['cave', 'icecave', 'lavacave', 'poisoncave', 'seacave'];
+  static bool darkCave(Json? run) => run?['dungeon'] is Map && darkCaves.contains(run!['dungeon']['scene']);
+
+  /// Os caminhos de um andar da caverna: o de sempre, outro diferente e, com Flash, mais um.
+  static Json _caveFork(Json run, Json main, bool wildOnly, String biome) {
+    final wild = {'kind': 'wild', 'biome': biome};
+    final other = main['kind'] == 'wild' ? (wildOnly || followRoll(run, 1597334677) < 0.35 ? {'kind': 'event'} : {'kind': 'trainer'}) : wild;
+    final options = <Json>[main, other];
+    if (hasHm(run, 'flash')) {
+      final extra = [{'kind': 'event'}, if (!wildOnly) {'kind': 'trainer'}, wild].where((o) => !options.any((x) => x['kind'] == o['kind'])).firstOrNull;
+      if (extra != null) options.add(extra);
+    }
+    return {'floor': _int(run['floor']), 'biome': biome, 'options': options};
+  }
   static const dungeons = <String, ({String scene, String name})>{
     'sewer': (scene: 'sewer', name: 'Esgoto'),
     'haunted': (scene: 'tower', name: 'Casa assombrada'),
@@ -2539,9 +2557,11 @@ class FactoryRun {
       }
       final r = rand();
       // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-      if (r < 0.55 && !base && !onlyWild && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return only({'kind': 'trainer'});
-      if (onlyWild) return only(r < 0.9 ? wild() : {'kind': 'event'});
-      return only(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
+      // Na caverna escura, o andar se divide (sem Flash, às cegas).
+      Json one(Json node) => darkCave(run) ? _caveFork(run, node, onlyWild, biome) : only(node);
+      if (r < 0.55 && !base && !onlyWild && intimidate.contains(_leadOf(run)?['id']) && rand() < intimidateChance) return one({'kind': 'trainer'});
+      if (onlyWild) return one(r < 0.9 ? wild() : {'kind': 'event'});
+      return one(r < 0.55 ? wild() : r < 0.9 || floor <= 2 ? {'kind': 'trainer'} : {'kind': 'event'});
     }
     final options = <Json>[rand() < 0.55 ? wild() : {'kind': 'trainer'}];
     final count = floor <= 2 ? 2 : 3;

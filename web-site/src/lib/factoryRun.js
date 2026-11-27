@@ -2624,6 +2624,24 @@ export const biomesLinked = (a, b) => !a || a === b || a === 'grass' || a === 'c
  * vilão é o chefe dela). Igual ao app.
  */
 export const DUNGEON_LENGTH = 10
+/**
+ * As cavernas escuras (Mt. Moon, Rock Tunnel, as de gelo, lava, veneno e do mar): cada andar (B1F, B2F...) tem
+ * bifurcações. Sem Flash, você não vê o que tem em cada caminho (e o Mapa não ajuda no escuro) e acha menos caminhos;
+ * com Flash, enxerga tudo e acha um caminho a mais. Igual ao app.
+ */
+export const DARK_CAVES = ['cave', 'icecave', 'lavacave', 'poisoncave', 'seacave']
+export const darkCave = (run) => Boolean(run?.dungeon && DARK_CAVES.includes(run.dungeon.scene))
+/** Os caminhos de um andar da caverna: o de sempre, outro diferente e, com Flash, mais um. */
+function caveFork(run, main, wildOnly, biome) {
+  const wild = { kind: 'wild', biome }
+  const other = main.kind === 'wild' ? (wildOnly || followRoll(run, 1597334677) < 0.35 ? { kind: 'event' } : { kind: 'trainer' }) : wild
+  const options = [main, other]
+  if (hasHm(run, 'flash')) {
+    const extra = [{ kind: 'event' }, ...(wildOnly ? [] : [{ kind: 'trainer' }]), wild].find((o) => !options.some((x) => x.kind === o.kind))
+    if (extra) options.push(extra)
+  }
+  return { floor: run.floor, biome, options }
+}
 export const DUNGEONS = {
   sewer: { scene: 'sewer', name: 'Esgoto' },
   haunted: { scene: 'tower', name: 'Casa assombrada' },
@@ -2829,9 +2847,11 @@ export function routeOptions(run, data, rand) {
     }
     const r = rand()
     // Intimidate em quem vai na frente: às vezes os selvagens fogem (vem um treinador no lugar).
-    if (r < 0.55 && !base && !wildOnly && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return only({ kind: 'trainer' })
-    if (wildOnly) return only(r < 0.9 ? wild() : { kind: 'event' })
-    return only(r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' })
+    // Na caverna escura, o andar se divide (sem Flash, às cegas).
+    const one = darkCave(run) ? (node) => caveFork(run, node, wildOnly, biome) : only
+    if (r < 0.55 && !base && !wildOnly && INTIMIDATE.includes(leadOf(run)?.id) && rand() < INTIMIDATE_CHANCE) return one({ kind: 'trainer' })
+    if (wildOnly) return one(r < 0.9 ? wild() : { kind: 'event' })
+    return one(r < 0.55 ? wild() : r < 0.9 || run.floor <= 2 ? { kind: 'trainer' } : { kind: 'event' })
   }
   const options = [rand() < 0.55 ? wild() : { kind: 'trainer' }]
   const count = run.floor <= 2 ? 2 : 3
