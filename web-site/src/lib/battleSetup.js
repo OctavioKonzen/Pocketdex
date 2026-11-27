@@ -125,6 +125,9 @@ export async function battleMons(members) {
       ...(member.set?.variant ? { variant: member.set.variant } : {}),
       // O Pokémon Sombrio (Orre): a aura roxa.
       ...(member.set?.shadow ? { shadow: true } : {}),
+      // O Pokémon Dominante (Alola): maior, com a aura. A Ultra Beast.
+      ...(member.set?.totem ? { totem: true } : {}),
+      ...(member.set?.ultra ? { ultra: true } : {}),
       simulation: {set: {species: globalThis.PocketDexSim.species(f.base.name)?.name || calc.speciesName(f.base.name), moves: slugs, level: f.side.level, nature: f.side.nature, ability: globalThis.PocketDexSim.ability(setAbility(member.set, f.form) || f.form.abilities?.[0]?.[0])?.name || f.side.ability, item: globalThis.PocketDexSim.item(member.set?.item)?.name || f.side.item, ivs: f.side.ivs, evs: f.side.evs, shiny: Boolean(member.set?.shiny)}, ...(member.set?.levelCap ? {levelCap: member.set.levelCap} : {}), ...(member.set?.bonus ? {bonus: member.set.bonus} : {}), ...(member.set?.boost ? {boost: member.set.boost} : {}), ...(member.set?.hpRatio != null ? {hpRatio: member.set.hpRatio} : {})},
     })
   }

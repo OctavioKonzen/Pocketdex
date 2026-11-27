@@ -72,6 +72,10 @@ class BattleMon {
   /// O Pokémon Sombrio (Orre): a aura roxa. Igual ao site.
   bool shadow = false;
 
+  /// O Pokémon Dominante (Alola): maior, com a aura dourada. A Ultra Beast (o texto do Ultra Wormhole). Igual ao site.
+  bool totem = false;
+  bool ultra = false;
+
   /// O gênero ('M', 'F' ou '' sem gênero), do simulador: o ♂/♀ na caixa de vida.
   String gender = '';
 
@@ -153,7 +157,7 @@ class BattleMon {
       zType: zType,
       noDmax: noDmax,
       ability: _orig.ability).._simSet = _simSet..simulationSpecies = simulationSpecies..simulationAbility = simulationAbility..simulationItem = simulationItem
-        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha..variant = variant..shadow = shadow;
+        ..levelCap = levelCap..bonus = bonus..boost = boost..hpRatio = hpRatio..ball = ball..alpha = alpha..variant = variant..shadow = shadow..totem = totem..ultra = ultra;
 }
 
 /// Resultado de um golpe: os danos possíveis de cada acerto e a eficácia (0 = não afeta).
@@ -417,6 +421,7 @@ const battleItems = [
   BattleItem('net-ball', 'Net Ball', ball: true, count: 0),
   BattleItem('dusk-ball', 'Dusk Ball', ball: true, count: 0),
   BattleItem('timer-ball', 'Timer Ball', ball: true, count: 0),
+  BattleItem('beast-ball', 'Beast Ball', ball: true, count: 0),
   BattleItem('master-ball', 'Master Ball', ball: true, count: 0),
   // Os itens X (Battle Factory, comprados na loja): sobem o atributo de quem está em campo. Igual ao site.
   BattleItem('x-attack', 'X Attack', x: 'atk', count: 0),
@@ -2222,7 +2227,9 @@ class TurnBattleSetup {
         ..ball = m.$2?['ball'] as String?
         ..alpha = m.$2?['alpha'] == true
         ..variant = '${m.$2?['variant'] ?? ''}'
-        ..shadow = m.$2?['shadow'] == true);
+        ..shadow = m.$2?['shadow'] == true
+        ..totem = m.$2?['totem'] == true
+        ..ultra = m.$2?['ultra'] == true);
     }
     return out;
   }

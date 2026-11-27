@@ -2858,3 +2858,40 @@ describe('Frontier, Funfest, Black City/White Forest e Sombrios', () => {
     expect(trace.pyramid).toBeTruthy()
   })
 })
+
+// Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js -t "round17.json"
+function round17Trace(F) {
+  const base = { ...F.startRun(F.emptyFactory(), data, 1, 42), encounter: null, pending: null }
+  const sum = (r) => r.encounter ? [r.encounter.kind, !!r.encounter.totem, !!r.encounter.pair, !!r.encounter.ultra, r.encounter.beastBalls ?? null, r.encounter.foes.map((f) => [f.id, f.level, f.iv, f.boost ?? 0, !!f.totem, !!f.ultra]), r.scene ?? null, r.bag?.['beast-ball'] ?? 0] : null
+  const totems = ['Sun/Moon', 'Ultra Sun/Ultra Moon'].flatMap((game) => {
+    const g = data.bosses.findIndex((b) => b.game === game)
+    return data.bosses[g].leaders.map((l, step) => [l, step]).filter(([l]) => l.kind === 'gym').map(([l, step]) => {
+      const r = F.chooseNode({ ...base, floor: 20, boss: { region: g, step }, route: { floor: 20, biome: 'city', options: [{ kind: 'boss' }] } }, data, 0)
+      return [game, l.name, sum(r)]
+    })
+  })
+  const g = data.bosses.findIndex((b) => b.game === 'Sun/Moon')
+  const wild = Array.from({ length: 60 }, (_, k) => {
+    const floor = 15 + (k % 9)
+    const r = F.chooseNode({ ...base, seed: k + 1, floor, boss: { region: g, step: 1 }, route: { floor, biome: 'grass', options: [{ kind: 'wild' }] } }, data, 0)
+    return [k, sum(r)]
+  })
+  const ub = wild.find(([, s]) => s?.[3])
+  const ultraRun = ub ? F.chooseNode({ ...base, seed: ub[0] + 1, floor: 15 + (ub[0] % 9), boss: { region: g, step: 1 }, route: { floor: 15 + (ub[0] % 9), biome: 'grass', options: [{ kind: 'wild' }] } }, data, 0) : null
+  return { totems, wild, capture: ultraRun ? F.captureFor(ultraRun, data) : null }
+}
+
+describe('Pokémon Dominante e Ultra Beasts', () => {
+  it('dá o mesmo que test/fixtures/round17.json', async () => {
+    const F = await import('./factoryRun')
+    const trace = JSON.parse(JSON.stringify(round17Trace(F)))
+    const url = new URL('../../../test/fixtures/round17.json', import.meta.url)
+    const { writeFileSync } = await import('node:fs')
+    if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
+    expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
+    // Os Capitães trazem o Totem; os Kahunas não.
+    expect(trace.totems.filter(([, name]) => !F.KAHUNAS.includes(name)).every(([, , s]) => s[1])).toBe(true)
+    expect(trace.totems.filter(([, name]) => F.KAHUNAS.includes(name)).every(([, , s]) => !s[1])).toBe(true)
+    expect(trace.wild.some(([, s]) => s[3] && s[4] === F.BEAST_BALLS && s[6] === 'space')).toBe(true)
+  })
+})

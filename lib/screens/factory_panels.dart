@@ -2848,6 +2848,7 @@ const _ballHelp = {
   'net-ball': '3,5× melhor em Água e Inseto',
   'dusk-ball': '3× melhor em cavernas e torres',
   'timer-ball': 'Melhora a cada turno (até 4×)',
+  'beast-ball': '5× melhor nas Ultra Beasts; quase nada nos outros',
   'master-ball': 'Captura sempre',
 };
 
@@ -4868,6 +4869,9 @@ class _FactoryScreenState extends State<FactoryScreen> {
         if (p['blackCity'] == true)
           Text('🏙️ ${tr('Black City: os treinadores daqui pagam muito mais!')}',
               key: const ValueKey('factory-black-city'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        if (p['totem'] == true)
+          Text('👑 ${tr('Você venceu o Pokémon Dominante!')}',
+              key: const ValueKey('factory-totem'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFCD34D))),
         if (p['whiteForest'] == true)
           Text('🌳 ${tr('White Forest: os Pokémon raros vivem aqui.')}',
               key: const ValueKey('factory-white-forest'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6EE7B7))),

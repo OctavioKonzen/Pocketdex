@@ -96,6 +96,7 @@ export const ITEMS = [
   { slug: 'net-ball', name: 'Net Ball', ball: true, count: 0 },
   { slug: 'dusk-ball', name: 'Dusk Ball', ball: true, count: 0 },
   { slug: 'timer-ball', name: 'Timer Ball', ball: true, count: 0 },
+  { slug: 'beast-ball', name: 'Beast Ball', ball: true, count: 0 },
   { slug: 'master-ball', name: 'Master Ball', ball: true, count: 0 },
   // Os itens X (Battle Factory, comprados na loja): sobem o atributo de quem está em campo. Igual ao app.
   { slug: 'x-attack', name: 'X Attack', x: 'atk', count: 0 },

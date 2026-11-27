@@ -48,7 +48,7 @@ export const MAX_TEAM = 6
 export const START_LEVEL = 5
 export const START_BALLS = 5
 /** As Poké Balls (a chance de cada uma está no motor de batalha: BALLS em tool/battle-engine/engine.mjs). */
-export const BALL_IDS = ['poke-ball', 'great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball', 'master-ball']
+export const BALL_IDS = ['poke-ball', 'great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball', 'beast-ball', 'master-ball']
 /** A Bolsa do começo da corrida (os itens gastos na batalha não voltam). */
 export const START_BAG = { 'poke-ball': START_BALLS, potion: 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, revive: 1 }
 /** Quanto cada item da Bolsa cura (parte do HP máximo; igual na batalha: healPct do motor). */
@@ -1637,6 +1637,26 @@ export function acceptFunfest(run, data) {
 export const SHADOW_REGIONS = ['Orre']
 export const SHADOW_CHANCE = 0.45
 export const SHADOW_PURIFY = 5
+/**
+ * Pokémon Dominante (Totem, Sun/Moon): em Alola, o desafio de cada Capitão (os Kahunas não) é contra o Totem: o último
+ * Pokémon dele, TOTEM_LEVELS níveis acima, maior, com a aura (TOTEM_BOOST a mais em tudo), e ele chama um aliado (o
+ * penúltimo do time luta junto, em dupla quando dá). Igual ao app.
+ */
+export const TOTEM_REGIONS = ['Alola']
+export const KAHUNAS = ['Hala', 'Olivia', 'Nanu', 'Hapu']
+export const TOTEM_LEVELS = 2
+export const TOTEM_BOOST = 0.2
+/**
+ * Ultra Beasts (Ultra Sun / Ultra Moon): em Alola, às vezes um Ultra Wormhole se abre no lugar do selvagem e sai uma
+ * Ultra Beast (ULTRA_LEVELS níveis acima). Quem não tem, ganha BEAST_BALLS Beast Balls (5× nas Ultra Beasts, quase nada
+ * nos outros). Igual ao app.
+ */
+export const ULTRA_BEASTS = [793, 794, 795, 796, 797, 798, 799, 803, 804, 805, 806]
+export const ULTRA_REGIONS = ['Alola']
+export const ULTRA_FLOOR = 15
+export const ULTRA_CHANCE = 0.07
+export const ULTRA_LEVELS = 4
+export const BEAST_BALLS = 3
 /** Aceita o ovo misterioso. */
 export function takeMysteryEgg(run, data) {
   const id = mysteryEgg(data, run)
@@ -3017,6 +3037,24 @@ export function chooseNode(run, data, index, clock = null) {
         if (facility === 'pyramid') out.scene = 'cave'
       }
     }
+    // O Pokémon Dominante (Alola): o desafio do Capitão.
+    const te = out.encounter
+    if (te && TOTEM_REGIONS.includes(region) && te.boss?.kind === 'gym' && !KAHUNAS.includes(te.boss.name) && te.foes.length) {
+      const ace = te.foes[te.foes.length - 1]
+      const ally = te.foes.length >= 2 ? te.foes[te.foes.length - 2] : null
+      const totem = { ...ace, totem: true, level: ace.level + TOTEM_LEVELS, boost: round3((ace.boost ?? 0) + TOTEM_BOOST) }
+      out.encounter = { ...te, totem: true, foes: ally ? [totem, ally] : [totem], ...(ally ? { pair: true } : {}) }
+    }
+    // A Ultra Beast (Alola): o Ultra Wormhole no lugar do selvagem.
+    const ue = out.encounter
+    if (ue && ULTRA_REGIONS.includes(region) && ue.kind === 'wild' && !ue.horde && ue.foes.length === 1 && !ue.alpha && !ue.radar && !ue.grotto && !ue.call && out.floor >= ULTRA_FLOOR && followRoll(out, 2891336453) < ULTRA_CHANCE) {
+      const f = ue.foes[0]
+      const id = ULTRA_BEASTS[Math.floor(followRoll(out, 1664525) * ULTRA_BEASTS.length)]
+      const gift = (out.bag?.['beast-ball'] ?? 0) < BEAST_BALLS
+      if (gift) out.bag = { ...out.bag, 'beast-ball': BEAST_BALLS }
+      out.encounter = { ...ue, ultra: true, ...(gift ? { beastBalls: BEAST_BALLS } : {}), foes: [{ id, level: f.level + ULTRA_LEVELS, iv: Math.max(f.iv ?? 0, 20), ev: f.ev ?? 0, ultra: true }] }
+      out.scene = 'space'
+    }
     // Pokémon Sombrios (Orre): um dos Pokémon do treinador.
     const se = out.encounter
     if (se && SHADOW_REGIONS.includes(region) && (se.kind === 'trainer' || se.boss?.kind === 'villain') && out.floor >= 3 && followRoll(out, 4093082899) < SHADOW_CHANCE) {
@@ -3926,6 +3964,7 @@ export function winFloor(run, data, after = {}) {
     ...(purified.length ? { purified } : {}),
     ...(snag && !born && !fossil ? { snag: true } : {}),
     ...(run.encounter.blackCity ? { blackCity: true } : run.encounter.whiteForest ? { whiteForest: true } : {}),
+    ...(run.encounter.totem ? { totem: true } : {}),
     ...(hm ? { hm } : {}),
     ...(badge ? { badge } : {}),
     ...(pokerus.length ? { pokerus } : {}),
@@ -5590,7 +5629,7 @@ export function captureFor(run, data) {
   if (nuzRule(run, 'noLegendary') && foes.some((f) => [1, 2].includes(speciesOf(data, f.id)?.[2]))) return null
   // Monotipo: só quem tem um tipo do inicial.
   if (run.mono && !foes.some((f) => (speciesOf(data, f.id)?.[4] ?? []).some((t) => run.mono.includes(t)))) return null
-  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), dex: dexOf(run).length, ...(run.catchBonus || mealOn(run, 'sandwich') ? { bonus: (run.catchBonus ?? 0) + (mealOn(run, 'sandwich') ? SANDWICH_CATCH : 0) } : {}) }
+  return { rates: foes.map((f) => speciesOf(data, f.id)?.[5] ?? 45), dusk: DARK_BIOMES.includes(biome), ...(run.encounter?.ultra ? { beast: true } : {}), dex: dexOf(run).length, ...(run.catchBonus || mealOn(run, 'sandwich') ? { bonus: (run.catchBonus ?? 0) + (mealOn(run, 'sandwich') ? SANDWICH_CATCH : 0) } : {}) }
 }
 
 /**
@@ -5651,6 +5690,8 @@ export function foeMember(foe, moveList) {
       ...(foe.alpha ? { alpha: true } : {}),
       ...(foe.variant ? { variant: foe.variant } : {}),
       ...(foe.shadow ? { shadow: true } : {}),
+      ...(foe.totem ? { totem: true } : {}),
+      ...(foe.ultra ? { ultra: true } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),

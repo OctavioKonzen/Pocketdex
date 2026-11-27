@@ -466,6 +466,37 @@ void main() {
     expect(FactoryRun.pendingOf(other)!['capture'], isNull);
   });
 
+  test('rodada 17 igual ao site (test/fixtures/round17.json): Pokémon Dominante e Ultra Beasts', () {
+    final expected = jsonDecode(File('test/fixtures/round17.json').readAsStringSync()) as Map;
+    Object? norm(Object? v) => jsonDecode(jsonEncode(v));
+    final base = {...FactoryRun.startRun(FactoryRun.empty(), data, 1, 42)!, 'encounter': null, 'pending': null};
+    List? sum(Json r) {
+      final e = r['encounter'] as Map?;
+      if (e == null) return null;
+      return [
+        e['kind'], e['totem'] == true, e['pair'] == true, e['ultra'] == true, e['beastBalls'],
+        [for (final f in e['foes'] as List) [f['id'], f['level'], f['iv'], f['boost'] ?? 0, f['totem'] == true, f['ultra'] == true]],
+        r['scene'], (r['bag'] as Map?)?['beast-ball'] ?? 0,
+      ];
+    }
+    final totems = [
+      for (final game in ['Sun/Moon', 'Ultra Sun/Ultra Moon'])
+        for (final (step, l) in (data.bosses[gameOf(game)]['leaders'] as List).indexed)
+          if (l['kind'] == 'gym')
+            [game, l['name'], sum(FactoryRun.chooseNode({...base, 'floor': 20, 'boss': {'region': gameOf(game), 'step': step}, 'route': {'floor': 20, 'biome': 'city', 'options': [{'kind': 'boss'}]}}, data, 0))],
+    ];
+    expect(norm(totems), expected['totems']);
+    final g = gameOf('Sun/Moon');
+    Json wildAt(int k) {
+      final floor = 15 + k % 9;
+      return FactoryRun.chooseNode({...base, 'seed': k + 1, 'floor': floor, 'boss': {'region': g, 'step': 1}, 'route': {'floor': floor, 'biome': 'grass', 'options': [{'kind': 'wild'}]}}, data, 0);
+    }
+    final wild = [for (var k = 0; k < 60; k++) [k, sum(wildAt(k))]];
+    expect(norm(wild), expected['wild']);
+    final ub = wild.firstWhere((w) => (w[1] as List?)?[3] == true);
+    expect(norm(FactoryRun.captureFor(wildAt(ub[0] as int), data)), expected['capture']);
+  });
+
   test('rodada 16 igual ao site (test/fixtures/round16.json): Battle Frontier, Funfest, Black City/White Forest e Sombrios', () {
     final expected = jsonDecode(File('test/fixtures/round16.json').readAsStringSync()) as Map;
     Object? norm(Object? v) => jsonDecode(jsonEncode(v));

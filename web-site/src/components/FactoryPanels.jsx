@@ -3450,6 +3450,7 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {p.snag && <p className="text-sm font-semibold text-purple-400" data-testid="factory-snag">🟣 {t('A Snag Machine pegou o Pokémon Sombrio do treinador!')}</p>}
         {p.purified?.map((i) => run.team[i] && <p key={`pur-${i}`} className="text-sm font-semibold text-sky-300" data-testid="factory-purified">🕊️ {t('{0} foi purificado! Ganhou a experiência guardada.').replace('{0}', run.team[i].nick ?? name(run.team[i].id))}</p>)}
         {p.blackCity && <p className="text-sm font-semibold" data-testid="factory-black-city">🏙️ {t('Black City: os treinadores daqui pagam muito mais!')}</p>}
+        {p.totem && <p className="text-sm font-semibold text-amber-300" data-testid="factory-totem">👑 {t('Você venceu o Pokémon Dominante!')}</p>}
         {p.whiteForest && <p className="text-sm font-semibold text-emerald-300" data-testid="factory-white-forest">🌳 {t('White Forest: os Pokémon raros vivem aqui.')}</p>}
         {p.fossil && <p className="text-sm font-semibold text-amber-200" data-testid="factory-fossil-found">🦴 {t('Você achou um {0}! O laboratório da próxima cidade revive.').replace('{0}', prettySlug(p.fossil))}</p>}
         {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
@@ -4365,6 +4366,7 @@ const BALL_HELP = {
   'net-ball': '3,5× melhor em Água e Inseto',
   'dusk-ball': '3× melhor em cavernas e torres',
   'timer-ball': 'Melhora a cada turno (até 4×)',
+  'beast-ball': '5× melhor nas Ultra Beasts; quase nada nos outros',
 }
 
 /** O que cada item segurado faz na batalha (como nos jogos). */

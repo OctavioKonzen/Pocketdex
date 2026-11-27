@@ -15898,5 +15898,23 @@
   "fr": "Battez {0} Dresseurs en {n} étages.",
   "es": "Vence a {0} Entrenadores en {n} pisos.",
   "pt": "Vença {0} treinadores em {n} andares."
+ },
+ "Um Ultra Wormhole se abriu! {0} apareceu!": {
+  "en": "An Ultra Wormhole opened! {0} appeared!",
+  "fr": "Un Ultra-Brèche s'est ouverte ! {0} est apparu !",
+  "es": "¡Se abrió un Ultraumbral! ¡Apareció {0}!",
+  "pt": "Um Ultra Wormhole se abriu! {0} apareceu!"
+ },
+ "Você venceu o Pokémon Dominante!": {
+  "en": "You defeated the Totem Pokémon!",
+  "fr": "Vous avez vaincu le Pokémon Dominant !",
+  "es": "¡Venciste al Pokémon Dominante!",
+  "pt": "Você venceu o Pokémon Dominante!"
+ },
+ "5× melhor nas Ultra Beasts; quase nada nos outros": {
+  "en": "5× better on Ultra Beasts; almost useless on others",
+  "fr": "5× plus efficace sur les Ultra-Chimères ; presque inutile sur les autres",
+  "es": "5× mejor con los Ultraentes; casi inútil con los demás",
+  "pt": "5× melhor nas Ultra Beasts; quase nada nos outros"
  }
 }

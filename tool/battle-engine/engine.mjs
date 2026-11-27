@@ -329,8 +329,10 @@ const BALLS = {
   'net-ball': (battle, foe) => (foe.hasType(['Water', 'Bug']) ? 3.5 : 1),
   'dusk-ball': (battle, foe, capture) => (capture.dusk ? 3 : 1),
   'timer-ball': (battle) => Math.min(4, 1 + (battle.turn * 1229) / 4096),
+  // Beast Ball: 5× nas Ultra Beasts (capture.beast), quase nada nos outros (como nos jogos).
+  'beast-ball': (battle, foe, capture) => (capture.beast ? 5 : 0.1),
 };
-const BALL_NAMES = {'poke-ball': 'Poké Ball', 'great-ball': 'Great Ball', 'ultra-ball': 'Ultra Ball', 'master-ball': 'Master Ball', 'quick-ball': 'Quick Ball', 'net-ball': 'Net Ball', 'dusk-ball': 'Dusk Ball', 'timer-ball': 'Timer Ball'};
+const BALL_NAMES = {'poke-ball': 'Poké Ball', 'great-ball': 'Great Ball', 'ultra-ball': 'Ultra Ball', 'master-ball': 'Master Ball', 'quick-ball': 'Quick Ball', 'net-ball': 'Net Ball', 'dusk-ball': 'Dusk Ball', 'timer-ball': 'Timer Ball', 'beast-ball': 'Beast Ball'};
 
 /**
  * Joga a bola no selvagem (a conta dos jogos da 6ª geração em diante):

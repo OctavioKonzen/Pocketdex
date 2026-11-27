@@ -441,6 +441,23 @@ test('Battle Factory: a Master Ball catches the wild Pokémon and ends the battl
   } finally {sim.dispose(game.handle);}
 });
 
+test('Battle Factory: the Beast Ball is 5x on Ultra Beasts (capture.beast) and almost nothing on others', () => {
+  const caught = (beast) => {
+    let n = 0;
+    for (let k = 0; k < 40; k++) {
+      const game = sim.create({teams: [[mon('Pikachu', ['splash'])], [mon('Nihilego', ['splash'])]], seed: [k, 2, 3, 4], capture: {rates: [45], ...(beast ? {beast: true} : {})}, bags: [{'beast-ball': 1}, null]});
+      try {
+        const ball = sim.choose(game.handle, [{kind: 'item', item: 'beast-ball', index: 0}, move(0)]).events.find(e => e.t === 'ball');
+        assert.equal(ball.ball, 'beast-ball');
+        if (ball.caught) n++;
+      } finally {sim.dispose(game.handle);}
+    }
+    return n;
+  };
+  const ultra = caught(true), other = caught(false);
+  assert.ok(ultra > other + 5, `${ultra} vs ${other}`);
+});
+
 test('Battle Factory: critical capture (more species in the run dex) shakes once', () => {
   let crits = 0;
   for (let k = 0; k < 40; k++) {

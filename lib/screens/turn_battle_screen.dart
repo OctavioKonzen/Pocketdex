@@ -1413,7 +1413,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
     _note('hp', side, '${mon.name}: ${diff < 0 ? '−' : '+'}${diff.abs()} HP ($pct%) → ${hp < 0 ? 0 : hp}/${mon.maxHp}');
   }
 
-  late String _text = widget.wild ? tr(widget.battle.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', widget.battle.active(1).name) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
+  late String _text = widget.wild ? _wildIntro(widget.battle.active(1)) : widget.foeName.isNotEmpty ? tr('{0} quer batalhar!').replaceAll('{0}', widget.foeName) : tr('Um treinador quer batalhar!');
   bool _busy = false;
   String _menu = 'main'; // main | fight | party | bag | rotate
 
@@ -1711,7 +1711,7 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       await _wait(650);
       if (!mounted) return;
       setState(() {
-        _text = tr(_b.active(1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', _b.active(1).name);
+        _text = _wildIntro(_b.active(1));
         _note('text', 1, _text);
       });
       await _sparkleIfShiny(1);
@@ -2500,6 +2500,10 @@ class BattleViewState extends State<BattleView> with TickerProviderStateMixin, R
       else { _play(_b.forfeit()); }
     }
   }
+
+  /// O texto do selvagem que aparece (o Alfa, a Ultra Beast pelo Ultra Wormhole). Igual ao site.
+  static String _wildIntro(BattleMon mon) =>
+      tr(mon.alpha ? 'Um {0} Alfa apareceu!' : mon.ultra ? 'Um Ultra Wormhole se abriu! {0} apareceu!' : 'Um {0} selvagem apareceu!').replaceAll('{0}', mon.name);
 
   // O Battle Palace: quando é a sua vez, o seu Pokémon escolhe o golpe sozinho. Igual ao site.
   bool _palaceArmed = false;
@@ -4155,7 +4159,7 @@ class _PortSprite extends StatelessWidget {
     final src = AnimatedSprites.instance.source(id, shiny: mon.shiny, back: back, variant: SpriteVariant.of(id, variant));
     if (src == null) return fallback;
     // O Alfa: maior e com o brilho vermelho. Igual ao site.
-    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : mon.shadow ? const Color(0xFF6B21A8) : null;
+    final glow = dmax ? const Color(0xFFE11D48) : tera.isNotEmpty ? getColorForType(tera) : mon.alpha ? const Color(0xFFDC2626) : mon.totem ? const Color(0xFFF59E0B) : mon.shadow ? const Color(0xFF6B21A8) : null;
     Widget img = Image.network(
       src.url,
       key: ValueKey('port-sprite-$id-$back-$variant'),
@@ -4177,7 +4181,7 @@ class _PortSprite extends StatelessWidget {
         opacity: fainted ? 0 : 1,
         duration: const Duration(milliseconds: 500),
         // No Dynamax, ele cresce aos poucos (como nos jogos).
-        child: AnimatedScale(scale: dmax ? 1.3 : mon.alpha ? 1.25 : 1, alignment: Alignment.bottomCenter, duration: const Duration(milliseconds: 1200), curve: Curves.easeOutBack, child: img),
+        child: AnimatedScale(scale: dmax ? 1.3 : mon.alpha ? 1.25 : mon.totem ? 1.3 : 1, alignment: Alignment.bottomCenter, duration: const Duration(milliseconds: 1200), curve: Curves.easeOutBack, child: img),
       ),
     );
   }
@@ -4287,7 +4291,7 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               // O tamanho dele (pela altura) e, no Dinamax, gigante.
               // A Mega (ou outra forma) com o mesmo tamanho de pixel da forma de antes: uma mais larga não encolhe.
               scale: battleScale(battleHeights[widget.id]) *
-                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : widget.mon.alpha ? 1.25 : 1) *
+                  (widget.dmax ? (widget.back ? 1.35 : 1.15) : widget.mon.alpha ? 1.25 : widget.mon.totem ? 1.3 : 1) *
                   (widget.dmax || widget.id == widget.mon.baseId ? 1 : AnimatedSprites.instance.pixelRatio(widget.mon.baseId, widget.id, shiny: widget.mon.shiny, back: widget.back)),
               alignment: Alignment.bottomCenter,
               // No Dynamax, ele cresce aos poucos (como nos jogos).
@@ -4296,13 +4300,13 @@ class _SpriteState extends State<_Sprite> with TickerProviderStateMixin {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (widget.dmax || widget.mon.alpha || widget.mon.shadow)
+                  if (widget.dmax || widget.mon.alpha || widget.mon.totem || widget.mon.shadow)
                     ImageFiltered(
-                      key: widget.dmax ? null : ValueKey(widget.mon.alpha ? 'alpha-glow' : 'shadow-glow'),
+                      key: widget.dmax ? null : ValueKey(widget.mon.alpha ? 'alpha-glow' : widget.mon.totem ? 'totem-glow' : 'shadow-glow'),
                       imageFilter: ImageFilter.blur(sigmaX: widget.mon.shadow && !widget.mon.alpha && !widget.dmax ? 4 : 3, sigmaY: widget.mon.shadow && !widget.mon.alpha && !widget.dmax ? 4 : 3),
                       child: ColorFiltered(
                         // O Alfa: vermelho; o Sombrio (Orre): roxo. Igual ao site.
-                        colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : widget.mon.alpha ? const Color(0xFFDC2626) : const Color(0xFF6B21A8), BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(widget.dmax ? const Color(0xFFE11D48) : widget.mon.alpha ? const Color(0xFFDC2626) : widget.mon.totem ? const Color(0xFFF59E0B) : const Color(0xFF6B21A8), BlendMode.srcIn),
                         child: PokemonSprite(widget.id, shiny: widget.mon.shiny, back: widget.back, fill: 0.95, alignBottom: true, battle: true, variant: widget.variant),
                       ),
                     ),

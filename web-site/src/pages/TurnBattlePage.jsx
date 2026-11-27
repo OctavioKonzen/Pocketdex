@@ -778,9 +778,9 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
   const [failed, setFailed] = useState(false)
   const kind = back ? (mon.shiny ? 'back-shiny' : 'back') : mon.shiny ? 'shiny' : 'front'
   // O Alfa: maior e com o brilho vermelho (como em Legends: Arceus). Igual ao app.
-  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : mon.shadow ? SHADOW_STYLE.filter : undefined
+  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : mon.totem ? TOTEM_STYLE.filter : mon.shadow ? SHADOW_STYLE.filter : undefined
   return (
-    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
+    <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : mon.totem ? { transform: TOTEM_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined} data-totem={mon.totem ? '' : undefined}>
       <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
         {failed ? (
           <Sprite path={mon.shiny ? shinyPath(`pokemon/${id}${variant ? `-${variant}` : ''}.png`) : `pokemon/${id}${variant ? `-${variant}` : ''}.png`} fill={0.95} align="bottom" back={back} battle alt={mon.name} />
@@ -796,6 +796,10 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
 const ALPHA_STYLE = { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 3px #dc2626) drop-shadow(0 0 7px rgba(220, 38, 38, 0.6))' }
 /** O Pokémon Sombrio (Orre): a aura roxa escura em volta dele. Igual ao app. */
 const SHADOW_STYLE = { filter: 'drop-shadow(0 0 4px #6b21a8) drop-shadow(0 0 9px rgba(76, 29, 149, 0.85))' }
+/** O Pokémon Dominante (Totem, Alola): maior e com a aura dourada. Igual ao app. */
+const TOTEM_STYLE = { transform: 'scale(1.3)', filter: 'drop-shadow(0 0 4px #f59e0b) drop-shadow(0 0 10px rgba(251, 191, 36, 0.75))' }
+/** O texto do selvagem que aparece (o Alfa, a Ultra Beast pelo Ultra Wormhole). Igual ao app. */
+const wildIntro = (mon) => t(mon.alpha ? 'Um {0} Alfa apareceu!' : mon.ultra ? 'Um Ultra Wormhole se abriu! {0} apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', mon.name)
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId, variant = '' }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
@@ -807,8 +811,9 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
-        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : mon.shadow ? SHADOW_STYLE : undefined}
+        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : mon.totem ? TOTEM_STYLE : mon.shadow ? SHADOW_STYLE : undefined}
         data-alpha={mon.alpha ? '' : undefined}
+        data-totem={mon.totem ? '' : undefined}
         data-shadow={mon.shadow ? '' : undefined}
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
@@ -1096,7 +1101,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
     tera: battle.sides.map((s) => teraOf(s.team[s.active])),
   }))
   // No selvagem, a caixa fica vazia até ele aparecer (como no Black & White, o texto vem junto com ele).
-  const [text, setText] = useState(() => (wild ? (!online && battle.turn <= 1 ? '' : t(active(battle, 1).alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', active(battle, 1).name)) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
+  const [text, setText] = useState(() => (wild ? (!online && battle.turn <= 1 ? '' : wildIntro(active(battle, 1))) : foeName ? t('{0} quer batalhar!').replace('{0}', foeName) : t('Um treinador quer batalhar!')))
   // O registro da batalha ao lado dela (no PC): os turnos, cada texto inteiro e o HP que cada um perdeu ou recuperou.
   const [log, setLog] = useState(() => [{ kind: 'text', text }])
   // Contra o computador: depois de derrubar o Pokémon dele, pergunta se quer trocar (estilo "Troca";
@@ -1309,7 +1314,7 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
       setReveal(true)
       setSide(setPoke, 1, '')
       await wait(650)
-      say(t(foeMon.alpha ? 'Um {0} Alfa apareceu!' : 'Um {0} selvagem apareceu!').replace('{0}', foeMon.name), 1)
+      say(wildIntro(foeMon), 1)
       await sparkleIfShiny(1)
       await wait(900)
       setReveal(false)

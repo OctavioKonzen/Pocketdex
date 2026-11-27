@@ -135,7 +135,7 @@ class FactoryRun {
   static const maxTeam = 6, startLevel = 5, startBalls = 5, bossEvery = 10;
 
   /// As Poké Balls (a chance de cada uma está no motor de batalha: BALLS em tool/battle-engine/engine.mjs).
-  static const ballIds = ['poke-ball', 'great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball', 'master-ball'];
+  static const ballIds = ['poke-ball', 'great-ball', 'ultra-ball', 'quick-ball', 'net-ball', 'dusk-ball', 'timer-ball', 'beast-ball', 'master-ball'];
 
   /// A Bolsa do começo da corrida (os itens gastos na batalha não voltam).
   static const startBag = {'poke-ball': startBalls, 'potion': 4, 'super-potion': 1, 'hyper-potion': 0, 'max-potion': 0, 'revive': 1};
@@ -1927,6 +1927,22 @@ class FactoryRun {
   static const shadowChance = 0.45;
   static const shadowPurify = 5;
 
+  /// Pokémon Dominante (Totem, Sun/Moon): em Alola, o desafio de cada Capitão (os Kahunas não) é contra o Totem: o último
+  /// Pokémon dele, [totemLevels] níveis acima, maior, com a aura ([totemBoost] a mais em tudo), e ele chama um aliado (o
+  /// penúltimo do time luta junto, em dupla quando dá). Igual ao site.
+  static const totemRegions = ['Alola'];
+  static const kahunas = ['Hala', 'Olivia', 'Nanu', 'Hapu'];
+  static const totemLevels = 2;
+  static const totemBoost = 0.2;
+
+  /// Ultra Beasts (Ultra Sun / Ultra Moon): em Alola, às vezes um Ultra Wormhole se abre no lugar do selvagem e sai uma
+  /// Ultra Beast ([ultraLevels] níveis acima). Quem não tem, ganha [beastBalls] Beast Balls (5× nas Ultra Beasts, quase
+  /// nada nos outros). Igual ao site.
+  static const ultraBeasts = [793, 794, 795, 796, 797, 798, 799, 803, 804, 805, 806];
+  static const ultraRegions = ['Alola'];
+  static const ultraFloor = 15, ultraLevels = 4, beastBalls = 3;
+  static const ultraChance = 0.07;
+
   static Json takeMysteryEgg(Json run, FactoryData data) {
     final id = mysteryEgg(data, run);
     if (id == null) return run;
@@ -3076,6 +3092,43 @@ class FactoryRun {
           if (facility == 'pyramid') out['scene'] = 'cave';
         }
       }
+      // O Pokémon Dominante (Alola): o desafio do Capitão.
+      final te = out['encounter'] as Map?;
+      final teBoss = te?['boss'] as Map?;
+      if (te != null && totemRegions.contains(region) && teBoss?['kind'] == 'gym' && !kahunas.contains(teBoss?['name']) && (te['foes'] as List).isNotEmpty) {
+        final list = te['foes'] as List;
+        final ace = Map<String, dynamic>.from(list.last as Map);
+        final ally = list.length >= 2 ? list[list.length - 2] : null;
+        final totem = {...ace, 'totem': true, 'level': _int(ace['level']) + totemLevels, 'boost': _round3(((ace['boost'] as num?) ?? 0).toDouble() + totemBoost)};
+        out['encounter'] = {...Map<String, dynamic>.from(te), 'totem': true, 'foes': [totem, if (ally != null) ally], if (ally != null) 'pair': true};
+      }
+      // A Ultra Beast (Alola): o Ultra Wormhole no lugar do selvagem.
+      final ue = out['encounter'] as Map?;
+      if (ue != null &&
+          ultraRegions.contains(region) &&
+          ue['kind'] == 'wild' &&
+          ue['horde'] != true &&
+          (ue['foes'] as List).length == 1 &&
+          ue['alpha'] != true &&
+          ue['radar'] != true &&
+          ue['grotto'] != true &&
+          ue['call'] == null &&
+          _int(out['floor']) >= ultraFloor &&
+          followRoll(out, 2891336453) < ultraChance) {
+        final f = (ue['foes'] as List).first as Map;
+        final id = ultraBeasts[(followRoll(out, 1664525) * ultraBeasts.length).floor()];
+        final gift = _int((out['bag'] as Map?)?['beast-ball'] ?? 0) < beastBalls;
+        if (gift) out['bag'] = {...Map<String, dynamic>.from((out['bag'] as Map?) ?? const {}), 'beast-ball': beastBalls};
+        out['encounter'] = {
+          ...Map<String, dynamic>.from(ue),
+          'ultra': true,
+          if (gift) 'beastBalls': beastBalls,
+          'foes': [
+            {'id': id, 'level': _int(f['level']) + ultraLevels, 'iv': math.max(_int(f['iv'] ?? 0), 20), 'ev': _int(f['ev'] ?? 0), 'ultra': true}
+          ],
+        };
+        out['scene'] = 'space';
+      }
       // Pokémon Sombrios (Orre): um dos Pokémon do treinador.
       final se = out['encounter'] as Map?;
       if (se != null && shadowRegions.contains(region) && (se['kind'] == 'trainer' || (se['boss'] as Map?)?['kind'] == 'villain') && _int(out['floor']) >= 3 && followRoll(out, 4093082899) < shadowChance) {
@@ -3241,6 +3294,7 @@ class FactoryRun {
     return {
       'rates': [for (final f in foesOf(run)) ((data.speciesOf(_int(f['id']))?.elementAtOrNull(5) as num?) ?? 45).toInt()],
       'dusk': darkBiomes.contains(encounter?['biome']),
+      if (run['encounter']?['ultra'] == true) 'beast': true,
       'dex': dexOf(run).length,
       if (run['catchBonus'] != null || mealOn(run, 'sandwich')) 'bonus': ((run['catchBonus'] as num?) ?? 0) + (mealOn(run, 'sandwich') ? sandwichCatch : 0),
     };
@@ -4181,6 +4235,7 @@ class FactoryRun {
       if (purified.isNotEmpty) 'purified': purified,
       if (snag != null && born == null && fossil == null) 'snag': true,
       if (run['encounter']['blackCity'] == true) 'blackCity': true else if (run['encounter']['whiteForest'] == true) 'whiteForest': true,
+      if (run['encounter']['totem'] == true) 'totem': true,
       if (hm != null) 'hm': hm,
       if (badge != null) 'badge': badge,
       if (pokerus.isNotEmpty) 'pokerus': pokerus,
@@ -7199,6 +7254,8 @@ class FactoryRun {
         if (foe['alpha'] == true) 'alpha': true,
         if ('${foe['variant'] ?? ''}'.isNotEmpty) 'variant': foe['variant'],
         if (foe['shadow'] == true) 'shadow': true,
+        if (foe['totem'] == true) 'totem': true,
+        if (foe['ultra'] == true) 'ultra': true,
         if (foe['item'] != null) 'item': foe['item'],
         if (foe['gimmick'] != null) 'gimmick': foe['gimmick'],
         if (foe['tera'] != null) 'tera': foe['tera'],
