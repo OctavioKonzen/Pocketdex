@@ -41,7 +41,7 @@ import { genericTrainer, isPairTrainer, pairTrainer, randomTrainer, trainerPerso
 import { battleRecord } from '../lib/battleLog'
 import { battleAnalysis } from '../lib/battleAnalysis'
 import { isPlaying, lowHpAlarm, playCry, playSound, soundOf, startMusic, stopMusic, syncedStart } from '../lib/battleSound'
-import {simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
+import {simulatorRecommend, simulatorTargets, simulatorTurn} from '../lib/battleSimulator'
 import {newPartyBattle, playPartyTurn, describeEvents} from '../lib/partyBattle'
 import { FactoryHub, FactoryScreen, factoryDataNow, saveFactory } from '../components/FactoryPanels'
 import { expBarOf, factoryAfter, factoryBattle, factoryFoe } from '../lib/factoryBattle'
@@ -778,7 +778,7 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
   const [failed, setFailed] = useState(false)
   const kind = back ? (mon.shiny ? 'back-shiny' : 'back') : mon.shiny ? 'shiny' : 'front'
   // O Alfa: maior e com o brilho vermelho (como em Legends: Arceus). Igual ao app.
-  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : undefined
+  const glow = dmax ? 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' : tera ? `drop-shadow(0 0 6px ${typeColor(tera)}) drop-shadow(0 0 2px #fff)` : mon.alpha ? ALPHA_STYLE.filter : mon.shadow ? SHADOW_STYLE.filter : undefined
   return (
     <div className={`h-full w-full origin-bottom transition-all duration-500 ${fainted ? 'translate-y-[30%] opacity-0' : ''}`} style={dmax ? { transform: 'scale(1.3)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)' } : mon.alpha ? { transform: ALPHA_STYLE.transform } : undefined} data-alpha={mon.alpha ? '' : undefined}>
       <div ref={ref} className="relative h-full w-full" style={{ filter: glow }} data-tera={tera || undefined}>
@@ -794,6 +794,8 @@ const PortSprite = forwardRef(function PortSprite({ mon, id, back, dmax, tera = 
 
 /** O Alfa: maior e com o brilho vermelho em volta (os olhos vermelhos de Legends: Arceus). Igual ao app. */
 const ALPHA_STYLE = { transform: 'scale(1.25)', filter: 'drop-shadow(0 0 3px #dc2626) drop-shadow(0 0 7px rgba(220, 38, 38, 0.6))' }
+/** O Pokémon Sombrio (Orre): a aura roxa escura em volta dele. Igual ao app. */
+const SHADOW_STYLE = { filter: 'drop-shadow(0 0 4px #6b21a8) drop-shadow(0 0 9px rgba(76, 29, 149, 0.85))' }
 const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, dmax, tera = '', byId, variant = '' }, ref) {
   const p = byId?.get(id) ?? byId?.get(mon.id)
   const teraColor = tera ? typeColor(tera) : null
@@ -805,8 +807,9 @@ const BattleSprite = forwardRef(function BattleSprite({ mon, id, back, fainted, 
       <div
         className="h-full w-full origin-bottom transition-transform duration-700"
         // Dinamax: gigante; o do adversário (lá no alto do campo) cresce menos e desce um pouco, para não passar do topo.
-        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : undefined}
+        style={dmax ? { transform: back ? 'scale(1.35)' : 'translateY(6%) scale(1.15)', transition: 'transform 1.2s cubic-bezier(.3,1.5,.5,1)', filter: 'drop-shadow(0 0 6px #e11d48) drop-shadow(0 0 2px #e11d48)' } : mon.alpha ? ALPHA_STYLE : mon.shadow ? SHADOW_STYLE : undefined}
         data-alpha={mon.alpha ? '' : undefined}
+        data-shadow={mon.shadow ? '' : undefined}
       >
         {/* Terastal: brilho de cristal na cor do tipo em volta do Pokémon e a coroa na cabeça (as duas seguem a animação). */}
         <div ref={ref} className={`relative h-full w-full ${teraColor ? 'tera-glow' : ''}`} style={teraColor ? { '--tera': teraColor } : undefined} data-tera={tera || undefined}>
@@ -1143,6 +1146,17 @@ function SingleBattle({ battle, foeName, foeTrainer = null, hit, onExit, onAgain
   const [shine, setShine] = useState(null)
   // As partículas da Poké Ball ao abrir (corações da Love Ball, faíscas da Ultra Ball...) e a silhueta do selvagem.
   const [burst, setBurst] = useState(null)
+  // O Battle Palace: quando é a sua vez, o seu Pokémon escolhe o golpe sozinho. Igual ao app.
+  useEffect(() => {
+    if (!battle.palace || busy || battle.winner != null || battle.needSwitch || battle.shiftPending || intro) return undefined
+    const id = setTimeout(() => {
+      if (actionBusy.current) return
+      const pick = simulatorRecommend(battle, 0)?.[0]
+      const move = pick?.kind === 'move' ? pick.index : 0
+      act(() => playTurn(battle, { move }, hit))
+    }, fast(900))
+    return () => clearTimeout(id)
+  })
   // O HP dos adversários que a barra de XP já contou: ela só enche depois do "ganhou X de XP" (como no Black & White).
   const [expFoe, setExpFoe] = useState(() => battle.sides[1].team.map((m) => m.hp))
   // A câmera viva: aproxima e afasta devagar enquanto você escolhe; para (suave) quando a ação começa. Igual ao app.

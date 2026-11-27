@@ -1565,6 +1565,78 @@ export function wildLoot(foe) {
 }
 /** O nome do item segurado no motor ("Choice Band") como no jogo ('choice-band'). */
 export const itemSlug = (name) => String(name ?? '').toLowerCase().replace(/['’.]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+/**
+ * Black City / White Forest (Black & White): em Unova, uma vez por corrida, um lugar especial pelo jogo da corrida
+ * (semente par: Black City, uma batalha de treinador forte que paga BLACK_MONEY vezes o dinheiro; semente ímpar: White
+ * Forest, um selvagem raro de outra região com mais chance de shiny). Igual ao app.
+ */
+export const BW_FLOOR = 12
+export const BW_CHANCE = 0.18
+export const BW_LEVELS = 3
+export const BLACK_MONEY = 3
+export const WHITE_SHINY = 4
+export const blackWhiteOf = (run) => ((run.seed ?? 0) % 2 === 0 ? 'black' : 'white')
+/**
+ * A Battle Frontier (Emerald, Platinum, HeartGold/SoulSilver): em Hoenn, Sinnoh e Johto, às vezes um treinador da rota
+ * vira um desafio de um prédio: Arcade (a roleta muda a batalha), Palace (seus Pokémon agem sozinhos), Pyramid (no
+ * escuro, e sempre acha um item) ou Pike (3 portas: cura, item ou uma batalha mais forte). Igual ao app.
+ */
+export const FRONTIER_REGIONS = ['Hoenn', 'Sinnoh', 'Johto']
+export const FRONTIER_FLOOR = 18
+export const FRONTIER_CHANCE = 0.16
+export const FRONTIER = ['arcade', 'palace', 'pyramid', 'pike']
+export const ARCADE = ['weak', 'strong', 'heal', 'jackpot', 'sun', 'rain', 'sand', 'snow']
+export const PYRAMID_ITEMS = ['max-potion', 'revive', 'ultra-ball', 'rare-candy', 'leftovers', 'life-orb', 'focus-sash', 'bottle-cap']
+export const PIKE_LEVELS = 3
+/** O que tem atrás de cada porta do Pike (o sorteio vem da semente e do andar: a mesma corrida, as mesmas portas). */
+const PIKE_ORDERS = [['heal', 'item', 'battle'], ['heal', 'battle', 'item'], ['item', 'heal', 'battle'], ['item', 'battle', 'heal'], ['battle', 'heal', 'item'], ['battle', 'item', 'heal']]
+/** As três portas: uma cura, um item e uma luta, em ordem sorteada. */
+export const pikeDoors = (run) => PIKE_ORDERS[Math.floor(followRoll(run, 2246822519) * PIKE_ORDERS.length)]
+/** Abre a porta i do Pike: cura o time, ganha um item ou enfrenta o treinador (mais forte). null se não dá. */
+export function pikeDoor(run, data, i) {
+  const pike = run.pending?.pike
+  if (!pike || !(i >= 0 && i < 3)) return null
+  const door = pikeDoors(run)[i]
+  const out = { ...run, pending: null }
+  if (door === 'battle') {
+    out.encounter = { ...pike.enc, frontier: 'pike', foes: pike.enc.foes.map((f) => ({ ...f, level: f.level + PIKE_LEVELS })) }
+    return out
+  }
+  if (door === 'heal') out.team = run.team.map((m) => ({ ...m, hp: 1, status: undefined }))
+  const item = door === 'item' ? PYRAMID_ITEMS[Math.floor(followRoll(run, 3266489917 + i) * PYRAMID_ITEMS.length)] : null
+  if (item) giveItem(out, item)
+  out.pending = { event: { kind: 'pike', door, ...(item ? { item } : {}) } }
+  return out
+}
+/**
+ * Funfest Missions (Black 2 / White 2): na cidade, uma missão rápida com prazo: capturar FUNFEST_NEED.catch do tipo,
+ * derrotar FUNFEST_NEED.defeat do tipo ou vencer FUNFEST_NEED.trainers treinadores em FUNFEST_FLOORS andares. Cumprida,
+ * dinheiro e um item; passando do prazo, acaba. Uma por cidade. Igual ao app.
+ */
+export const FUNFEST_FLOORS = 6
+export const FUNFEST_NEED = { catch: 2, defeat: 4, trainers: 3 }
+export const FUNFEST_MONEY = 700
+export const FUNFEST_TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'bug', 'flying', 'poison', 'ground', 'rock', 'psychic', 'fighting']
+export function funfestOffer(data, run) {
+  if (!run.town || run.town.funfest || run.funfest || run.encounter || run.pending || inLeague(data, run)) return null
+  const kinds = Object.keys(FUNFEST_NEED)
+  const kind = kinds[Math.floor(townRoll(run, 1597334677) * kinds.length)]
+  const type = kind === 'trainers' ? '' : FUNFEST_TYPES[Math.floor(townRoll(run, 2654435761) * FUNFEST_TYPES.length)]
+  return { kind, type, need: FUNFEST_NEED[kind], floors: FUNFEST_FLOORS }
+}
+export function acceptFunfest(run, data) {
+  const offer = funfestOffer(data, run)
+  if (!offer) return null
+  return { ...run, town: { ...run.town, funfest: true }, funfest: { kind: offer.kind, type: offer.type, need: offer.need, done: 0, until: run.floor + offer.floors } }
+}
+/**
+ * Pokémon Sombrios (Colosseum / XD): em Orre, os treinadores às vezes usam um Pokémon Sombrio (a aura roxa). Vencendo,
+ * você o rouba com a Snag Machine (ele vem para o time). Sombrio, ele não ganha XP: guarda; depois de SHADOW_PURIFY
+ * vitórias lutando, ele é purificado e recebe todo o XP guardado. Igual ao app.
+ */
+export const SHADOW_REGIONS = ['Orre']
+export const SHADOW_CHANCE = 0.45
+export const SHADOW_PURIFY = 5
 /** Aceita o ovo misterioso. */
 export function takeMysteryEgg(run, data) {
   const id = mysteryEgg(data, run)
@@ -2913,6 +2985,45 @@ export function chooseNode(run, data, index, clock = null) {
     if (enc.kind === 'trainer' && (enc.foes?.length ?? 0) >= 3 && ROTATION_REGIONS.includes(regionOf(data, out)) && out.floor >= ROTATION_FLOOR && followRoll(out, 1103515245) < ROTATION_CHANCE) {
       out.encounter = { ...enc, rotation: true }
     }
+    const region = regionOf(data, out)
+    // Black City / White Forest (Unova, uma vez por corrida).
+    if (region === 'Unova' && !run.blackWhite && !out.encounter.boss && !out.encounter.rotation && out.floor >= BW_FLOOR && followRoll(out, 3266489917) < BW_CHANCE) {
+      const e = out.encounter
+      if (blackWhiteOf(run) === 'black' && e.kind === 'trainer') {
+        out.encounter = { ...e, blackCity: true, foes: e.foes.map((f) => ({ ...f, level: f.level + BW_LEVELS, iv: Math.max(f.iv ?? 0, 25) })) }
+        out.blackWhite = 'black'
+        out.scene = 'town-metro'
+      } else if (blackWhiteOf(run) === 'white' && e.kind === 'wild' && !e.horde) {
+        const f = encounterFor(data, out.floor + BW_LEVELS, rand, null, false, { kind: 'wild', rare: true, shiny: WHITE_SHINY }).foes[0]
+        out.encounter = { ...e, whiteForest: true, foes: [f] }
+        out.blackWhite = 'white'
+        out.scene = 'forest'
+      }
+    }
+    // A Battle Frontier (Hoenn, Sinnoh e Johto): um treinador da rota vira o desafio de um dos prédios.
+    const fe = out.encounter
+    if (FRONTIER_REGIONS.includes(region) && fe.kind === 'trainer' && !fe.rotation && out.floor >= FRONTIER_FLOOR && followRoll(out, 1597334677) < FRONTIER_CHANCE) {
+      const facility = FRONTIER[Math.floor(followRoll(out, 2246822519) * FRONTIER.length)]
+      if (facility === 'pike') {
+        out.encounter = null
+        out.pending = { pike: { enc: fe } }
+      } else if (facility === 'arcade') {
+        const arcade = ARCADE[Math.floor(followRoll(out, 3332679573) * ARCADE.length)]
+        const shift = arcade === 'weak' ? -3 : arcade === 'strong' ? 3 : 0
+        out.encounter = { ...fe, frontier: 'arcade', arcade, foes: fe.foes.map((f) => ({ ...f, level: Math.max(2, f.level + shift) })), ...(WEATHER_TYPES[arcade] ? { weather: arcade } : {}) }
+        if (arcade === 'heal') out.team = out.team.map((m) => ({ ...m, hp: (m.hp ?? 1) > 0 ? 1 : m.hp }))
+      } else {
+        out.encounter = { ...fe, frontier: facility }
+        if (facility === 'pyramid') out.scene = 'cave'
+      }
+    }
+    // Pokémon Sombrios (Orre): um dos Pokémon do treinador.
+    const se = out.encounter
+    if (se && SHADOW_REGIONS.includes(region) && (se.kind === 'trainer' || se.boss?.kind === 'villain') && out.floor >= 3 && followRoll(out, 4093082899) < SHADOW_CHANCE) {
+      const k = se.foes.length - 1
+      out.encounter = { ...se, foes: se.foes.map((f, i) => (i === k ? { ...f, shadow: true } : f)) }
+    }
+    if (!out.encounter) return out
     countHunt(data, out)
     // O capanga do plano da equipe vilã (vencendo, o plano atrasa).
     if (node.plot) out.encounter = { ...out.encounter, plot: node.plot }
@@ -3465,7 +3576,8 @@ export function winFloor(run, data, after = {}) {
   const { kind } = run.encounter
   const foes = fled ? [] : run.encounter.foes
   const factor = expFactor(kind)
-  const moneyFactor = kind === 'boss' || kind === 'wildboss' || kind === 'rematch' || kind === 'rival' || kind === 'dboss' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1
+  const moneyFactor = (kind === 'boss' || kind === 'wildboss' || kind === 'rematch' || kind === 'rival' || kind === 'dboss' ? 3 : kind === 'ace' ? 2.5 : kind === 'trainer' ? 2 : 1)
+    * (run.encounter.blackCity ? BLACK_MONEY : 1) * (run.encounter.arcade === 'jackpot' ? 3 : run.encounter.arcade === 'strong' ? 2 : 1)
   let money = 0
   // XP e EVs de cada derrotado: para quem lutou contra ele (after.fought[j]: posições na corrida) e, com o Exp. Share, para o resto do time.
   const gains = out.team.map(() => 0)
@@ -3488,8 +3600,19 @@ export function winFloor(run, data, after = {}) {
   const levels = []
   const exp = Math.max(0, ...gains)
   const before = out.team
+  const purified = []
   out.team = out.team.map((m, index) => {
     if (!gains[index]) return m
+    if (m.shadow > 0 && !fled) {
+      const left = m.shadow - 1
+      const stored = (m.shadowExp ?? 0) + gains[index]
+      if (left > 0) return { ...m, shadow: left, shadowExp: stored }
+      // Purificado: volta a ganhar XP e recebe todo o que guardou.
+      purified.push(index)
+      const { shadow, shadowExp, ...clean } = m
+      gains[index] = stored
+      m = clean
+    }
     const r = gainExp({ ...m, evs: addStats(m.evs, evs[index]) }, gains[index], data, rand, regionOf(data, run), after.night ?? null)
     if (r.mon.level > r.from || r.evolved) levels.push({ index, from: r.from, to: r.mon.level, evolved: r.evolved })
     // O XP da corrida inteira (para o MVP do resumo no fim). Igual ao app.
@@ -3749,6 +3872,32 @@ export function winFloor(run, data, after = {}) {
   // Thief / Covet: o item que ele roubou na luta fica com ele (se não segurava nada).
   if (after.stolen) out.team = out.team.map((m, i) => (after.stolen[i] && !m.item ? { ...m, item: after.stolen[i] } : m))
   out.team = withVivillon(out.team, data, out)
+  // Funfest Mission: conta o que vale, paga se cumpriu, acaba se passou do prazo.
+  let funfest = null
+  if (run.funfest && !fled) {
+    const ff = run.funfest
+    const fits = (f) => !ff.type || (speciesOf(data, f.id)?.[4] ?? []).includes(ff.type)
+    const add = ff.kind === 'catch' ? (after.captured && fits(foes[after.capturedIndex ?? 0] ?? foes[0] ?? {}) ? 1 : 0)
+      : ff.kind === 'defeat' ? foes.filter(fits).length : kind === 'trainer' ? 1 : 0
+    const done = Math.min(ff.need, ff.done + add)
+    if (done >= ff.need) {
+      const item = pickOne(ACE_REWARDS, rand)
+      const cash = Math.round(FUNFEST_MONEY * priceScale(run.floor))
+      giveItem(out, item)
+      out.money += cash
+      out.funfest = null
+      funfest = { ...ff, done, won: true, item, money: cash }
+    } else if (run.floor >= ff.until) {
+      out.funfest = null
+      funfest = { ...ff, done, lost: true }
+    } else out.funfest = { ...ff, done }
+  }
+  // A Pyramid da Battle Frontier: sempre acha um item.
+  const pyramid = run.encounter.frontier === 'pyramid' && !fled ? PYRAMID_ITEMS[Math.floor(followRoll(run, 2654435761) * PYRAMID_ITEMS.length)] : null
+  if (pyramid) giveItem(out, pyramid)
+  // O Pokémon Sombrio do treinador (Orre): roubado com a Snag Machine.
+  const shadowFoe = !fled && (kind === 'trainer' || kind === 'boss') ? foes.find((f) => f.shadow) : null
+  const snag = shadowFoe ? { id: shadowFoe.id, level: shadowFoe.level, shadow: SHADOW_PURIFY, ...(shadowFoe.shiny ? { shiny: true } : {}) } : null
   const born = hatch(out, after.captured && (kind === 'wild' || kind === 'wildboss'))
   // O museu revive um fóssil para quem vence o chefe dele (os de lá: Omanyte, Kabuto e Aerodactyl em Pewter...).
   const fossils = run.dungeon && kind === 'dboss' && !born ? (featuresOf(data, run).museum?.[run.dungeon.place] ?? []).filter((id) => data.species[id] && (!run.mono || (speciesOf(data, id)?.[4] ?? []).some((t) => run.mono.includes(t)))) : []
@@ -3758,7 +3907,7 @@ export function winFloor(run, data, after = {}) {
     ...(picked.length ? { picked } : {}), ...(lost.length ? { lost } : {}), ...(shed ? { shed: true } : {}), ...(dropped ? { pieces } : {}),
     // O capturado ou o ovo que chocou (a mesma tela).
     // No reide, vencendo, o chefe é seu (sem jogar bola).
-    capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil,
+    capture: run.encounter.raid && foes[0] ? raidPrize(foes[0]) : after.captured && (kind === 'wild' || kind === 'wildboss') ? foes[after.capturedIndex ?? 0] ?? foes[0] : born ?? fossil ?? snag,
     ...(coins ? { coins } : {}),
     ...(fossilFound ? { fossil: fossilFound } : {}),
     ...(loot ? { loot } : {}),
@@ -3772,6 +3921,11 @@ export function winFloor(run, data, after = {}) {
     // O chefe que acabou de perder (as falas depois da luta) e a missão completa.
     ...(kind === 'boss' || kind === 'rival' ? { beat: { kind: run.encounter.boss.kind, name: run.encounter.boss.name, region: run.encounter.boss.region, ...(run.encounter.boss.game ? { game: run.encounter.boss.game } : {}), ...(kind === 'boss' && bossCity(data, run) ? { city: bossCity(data, run) } : {}) } } : {}),
     ...(mission ? { mission } : {}),
+    ...(funfest ? { funfest } : {}),
+    ...(pyramid ? { pyramid } : {}),
+    ...(purified.length ? { purified } : {}),
+    ...(snag && !born && !fossil ? { snag: true } : {}),
+    ...(run.encounter.blackCity ? { blackCity: true } : run.encounter.whiteForest ? { whiteForest: true } : {}),
     ...(hm ? { hm } : {}),
     ...(badge ? { badge } : {}),
     ...(pokerus.length ? { pokerus } : {}),
@@ -3862,6 +4016,8 @@ export function capturedMon(run, into = null) {
   let mon = newMon(foe.id, foe.level, rand, foe.egg ? EGG_IVS : foe.minIv ?? 0, Boolean(foe.shiny))
   // O do Hidden Grotto: com a habilidade oculta.
   if (foe.ha) mon = { ...mon, ha: true }
+  // O Pokémon Sombrio roubado continua Sombrio (purifica lutando).
+  if (foe.shadow > 0) mon = { ...mon, shadow: foe.shadow }
   // A letra do Unown e o padrão do Vivillon vêm junto.
   if (foe.variant != null) mon = { ...mon, variant: foe.variant }
   // O item que o selvagem segurava vem junto (como nos jogos).
@@ -5476,7 +5632,7 @@ export function memberOf(run, mon, moveList, data = null) {
     id: mon.id,
     set: {
       level: mon.level, levelCap: 'none', nature: mon.nature, ivs: capStats(mon.ivs, 31), evs: capStats(mon.evs, 252), item: nuzRule(run, 'noHeldItems') ? '' : mon.item ?? '',
-      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : mon.ab ? { ability: 'second' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}), ...(mon.variant ? { variant: mon.variant } : {}),
+      moves: mon.moves?.length ? mon.moves : moveList, lockMoves: true, shiny: Boolean(mon.shiny), ...(gimmick ? { gimmick } : {}), ...(mon.ha ? { ability: 'hidden' } : mon.ab ? { ability: 'second' } : {}), ...(mon.ball ? { ball: mon.ball } : {}), ...(mon.alpha ? { alpha: true } : {}), ...(mon.tera ? { tera: mon.tera } : {}), ...(mon.variant ? { variant: mon.variant } : {}), ...(mon.shadow > 0 ? { shadow: true } : {}),
       bonus: overflowPoints(mon.ivs, mon.evs, mon.level), boost: boostOf(run, mon), hpRatio: mon.hp ?? 1,
     },
   }
@@ -5494,6 +5650,7 @@ export function foeMember(foe, moveList) {
       ...(foe.ha ? { ability: 'hidden' } : {}),
       ...(foe.alpha ? { alpha: true } : {}),
       ...(foe.variant ? { variant: foe.variant } : {}),
+      ...(foe.shadow ? { shadow: true } : {}),
       ...(foe.item ? { item: foe.item } : {}),
       ...(foe.gimmick ? { gimmick: foe.gimmick } : {}),
       ...(foe.tera ? { tera: foe.tera } : {}),

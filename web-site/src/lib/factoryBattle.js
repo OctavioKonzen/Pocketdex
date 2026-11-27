@@ -40,7 +40,8 @@ export async function factoryBattle(run) {
   // E o efeito do lugar (terreno, chuva de diamantes, aura sombria...; no céu, ventos fortes).
   const place = fieldOf(run, scene, data)
   // No inverno (a estação de verdade), neva nos lugares abertos.
-  const weather = weatherOf(run, scene, clockOf().season, data) || (place === 'wind' ? 'wind' : '')
+  // A roleta do Arcade (Battle Frontier) pode começar a luta com um clima.
+  const weather = run.encounter.weather || weatherOf(run, scene, clockOf().season, data) || (place === 'wind' ? 'wind' : '')
   const field = place === 'wind' ? '' : place
   // A barra de XP (expBarOf) e o XP na hora: o XP de cada um agora e quanto cada adversário derrubado dá para cada um (quem lutou: tudo; com o Exp. Share, o resto: a metade).
   const cap = levelCapOf(data, run)
@@ -64,6 +65,8 @@ export async function factoryBattle(run) {
   battle.expBar = expBar
   // O lendário que foge: depois de ROAM_TURNS turnos, ele vai embora.
   if (run.encounter.foes[0]?.roam) battle.fleeAfter = ROAM_TURNS
+  // O Battle Palace: seus Pokémon agem sozinhos (escolhem o golpe por conta própria).
+  if (run.encounter.frontier === 'palace') battle.palace = true
   // O selvagem com Emergency Exit ou Wimp Out (Golisopod, Wimpod): caindo abaixo da metade do HP, foge (como nos jogos).
   if ((run.encounter.kind === 'wild' || run.encounter.kind === 'wildboss') && !doubles && !run.encounter.raid) battle.wildExit = true
   return battle

@@ -1209,7 +1209,7 @@ describe('mapa da corrida', () => {
       for (let seed = 1; seed <= 60; seed++) {
         const run = { ...startRun(emptyFactory(), data, 1, seed), floor: 40, route: { floor: 40, biome: 'grass', options: [{ kind: 'trainer' }] } }
         const out = chooseNode(run, data, 0, night ? { night: true, season: 'spring' } : null)
-        n += out.encounter.foes.filter((f) => (data.species[f.id] ?? data.formSpecies?.[f.id] ?? data.species[data.forms?.[f.id]])?.[4]?.some((t) => t === 'ghost' || t === 'dark')).length
+        n += (out.encounter?.foes ?? []).filter((f) => (data.species[f.id] ?? data.formSpecies?.[f.id] ?? data.species[data.forms?.[f.id]])?.[4]?.some((t) => t === 'ghost' || t === 'dark')).length
       }
       return n
     }
@@ -2805,5 +2805,56 @@ describe('Shiny Charm', () => {
     expect(F.withShinyCharm({ ...done, caught: [] }, data).charm).toBe(true)
     expect(F.startRun({ ...F.emptyFactory(), charm: true }, data, 1, 42).shinyRate).toBe(F.SHINY_CHARM)
     expect(F.startRun(F.emptyFactory(), data, 1, 42).shinyRate).toBeUndefined()
+  })
+})
+
+// Para gerar de novo: UPDATE_FACTORY_TRACE=1 npx vitest run src/lib/factoryRun.test.js -t "round16.json"
+function round16Trace(F) {
+  const base = { ...F.startRun(F.emptyFactory(), data, 1, 42), encounter: null, pending: null }
+  const at = (game) => data.bosses.findIndex((b) => b.game === game)
+  const sum = (r) => r.encounter ? [r.encounter.kind, r.encounter.frontier ?? null, r.encounter.arcade ?? null, r.encounter.weather ?? null, !!r.encounter.blackCity, !!r.encounter.whiteForest, r.encounter.foes.map((f) => [f.id, f.level, !!f.shadow, !!f.shiny]), r.scene ?? null, r.blackWhite ?? null] : [r.pending ? Object.keys(r.pending) : null]
+  const nodes = ['Black/White', 'Emerald', 'Platinum', 'Crystal', 'Colosseum/XD'].flatMap((g) => Array.from({ length: 40 }, (_, k) => {
+    const floor = 20 + (k % 7)
+    const r = F.chooseNode({ ...base, seed: k + 1, floor, boss: { region: at(g), step: 1 }, route: { floor, biome: 'grass', options: [{ kind: k % 3 ? 'trainer' : 'wild' }] } }, data, 0)
+    return [g, k, sum(r)]
+  }))
+  const pike = Array.from({ length: 8 }, (_, k) => {
+    const r = { ...base, seed: k + 5, floor: 22, pending: { pike: { enc: { kind: 'trainer', foes: [{ id: 19, level: 20, iv: 0, ev: 0 }] } } } }
+    return [F.pikeDoors(r), [0, 1, 2].map((i) => { const o = F.pikeDoor(r, data, i); return [o.encounter?.foes[0].level ?? null, o.pending?.event ?? null] })]
+  })
+  const town = { ...base, floor: 1 + F.ROUTE_LENGTH, leg: 1, town: { leg: 1 } }
+  const fun = Array.from({ length: 12 }, (_, k) => F.funfestOffer(data, { ...town, seed: k + 1 }))
+  const ff = F.acceptFunfest({ ...town, seed: 3 }, data)
+  const won = F.winFloor({ ...ff, town: null, funfest: { kind: 'trainers', type: '', need: 1, done: 0, until: ff.floor + 6 }, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+  const shadowWin = F.winFloor({ ...base, floor: 9, encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0, shadow: true }] } }, data, { hp: [1] })
+  const pyr = F.winFloor({ ...base, floor: 25, encounter: { kind: 'trainer', frontier: 'pyramid', foes: [{ id: 19, level: 25, iv: 0, ev: 0 }] } }, data, { hp: [1] })
+  const shadowTeam = { ...base, floor: 9, team: [{ ...base.team[0], shadow: 1, shadowExp: 40 }], encounter: { kind: 'trainer', foes: [{ id: 19, level: 5, iv: 0, ev: 0 }] } }
+  const purified = F.winFloor(shadowTeam, data, { hp: [1] })
+  return {
+    nodes, pike, fun, ff: ff.funfest,
+    won: [won.pending.funfest, won.money, won.funfest ?? null],
+    snag: [shadowWin.pending.capture, shadowWin.pending.snag ?? null],
+    pyramid: pyr.pending.pyramid ?? null,
+    purified: [purified.pending.purified ?? null, purified.team[0].shadow ?? null, purified.team[0].level, purified.team[0].exp ?? null],
+  }
+}
+
+describe('Frontier, Funfest, Black City/White Forest e Sombrios', () => {
+  it('dá o mesmo que test/fixtures/round16.json', async () => {
+    const F = await import('./factoryRun')
+    const trace = JSON.parse(JSON.stringify(round16Trace(F)))
+    const url = new URL('../../../test/fixtures/round16.json', import.meta.url)
+    const { writeFileSync } = await import('node:fs')
+    if (process.env.UPDATE_FACTORY_TRACE) writeFileSync(url, JSON.stringify(trace) + '\n')
+    expect(trace).toEqual(JSON.parse(readFileSync(url, 'utf8')))
+    // Cada coisa aparece pelo menos uma vez.
+    const flat = JSON.stringify(trace.nodes)
+    for (const s of ['"arcade"', '"palace"', '"pyramid"', '"pike"']) expect(flat).toContain(s)
+    expect(trace.nodes.some(([g, , s]) => g === 'Colosseum/XD' && s[6]?.some((f) => f[2]))).toBe(true)
+    expect(trace.snag[1]).toBe(true)
+    expect(trace.snag[0]).toMatchObject({ id: 19, shadow: 5 })
+    expect(trace.won[0]).toMatchObject({ won: true })
+    expect(trace.purified[0]).toEqual([0])
+    expect(trace.pyramid).toBeTruthy()
   })
 })

@@ -30,7 +30,7 @@ import {
   cutPath, smashPath, strengthPath, weatherOf, outbreakOf, ROAM_TURNS, nodeBlocked, hmNeeded, hasHm, clockOf, healerOf, inTown, DARK_BIOMES, dexOf, dexRewardFor, leaveDaycare, takeDaycare, DAYCARE_EGG, EGG_BATTLES, withSeen,
   mapMusic,
   heartsOf, FRIEND_HEARTS, roamerSeen, villainPlot, fieldOf, mysteryEgg, takeMysteryEgg, MINTS, ABILITY_CAPSULE, ABILITY_PATCH, fossilReady, reviveFossil, FOSSILS, X_BAG, EXP_CANDIES, eatCandy, UNOWN_LETTERS, unownLetter, LEAGUE_FLAWLESS,
-  expAt,
+  expAt, pikeDoors, pikeDoor, funfestOffer, acceptFunfest,
 } from '../lib/factoryRun'
 import { playCry, playSound, startMusic, stopMusic } from '../lib/battleSound'
 import { REGION_MAPS, regionMap } from '../lib/regionMaps'
@@ -1365,8 +1365,10 @@ const EVENT_TEXT = {
   betLost: 'Você perdeu a aposta: −💰{0}.',
   injuredJoined: 'Você usou {0} e o Pokémon ferido quis ir com você!',
   noPotion: 'Sem nenhuma poção na Bolsa, não deu para curar o Pokémon ferido.',
+  pikeHeal: 'Atrás da porta, uma enfermeira curou o seu time!',
+  pikeItem: 'Atrás da porta havia um item: {0}!',
 }
-const EVENT_ICON = { grotto: '🕳️', clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹' }
+const EVENT_ICON = { grotto: '🕳️', clue: '🔍', bike: '🚲', money: '💰', berries: '🍒', tutor: '📀', declined: '👣', helped: '🤝', secretFound: '💎', secretEmpty: '🕳️', bought: '🧳', betWon: '🎰', betLost: '🎰', injuredJoined: '💚', noPotion: '🩹', pike: '🐍' }
 /** O símbolo de cada melhoria (no círculo da árvore). */
 const UPGRADE_ICONS = {
   level: '🎓', ivs: '🧬', balls: '⚪', potions: '🧪', revive: '💖', money: '💰', shop: '🏷️', exp: '✨',
@@ -1592,6 +1594,7 @@ function eventText(event) {
   if (event.kind === 'money' || event.kind === 'betWon' || event.kind === 'betLost') return t(EVENT_TEXT[event.kind]).replace('{0}', event.money)
   if (event.kind === 'clue') return `${t(QUEST_CLUE_TEXT[Math.min(QUEST_CLUE_TEXT.length, event.clues) - 1])} (${t('pista')} ${event.clues}/${QUEST_CLUES})`.replace('{0}', event.lair)
   if (event.kind === 'secretFound') return t(EVENT_TEXT.secretFound).replace('{0}', item).replace('{1}', event.money)
+  if (event.kind === 'pike') return t(EVENT_TEXT[event.door === 'heal' ? 'pikeHeal' : 'pikeItem']).replace('{0}', item)
   return t(EVENT_TEXT[event.kind]).replace('{0}', item).replace('{1}', event.count ?? '')
 }
 /** As escolhas da rota: o que aparece, o ícone e os botões. */
@@ -1731,9 +1734,15 @@ function MapHud({ run, data, scene, clock, monName, inline = false }) {
 }
 
 /** O passo da tela depois do andar: o que ainda falta ver ou escolher (ou nada: o mapa). */
+/** O objetivo da missão da Funfest (com o tipo traduzido). */
+function funfestGoal(f) {
+  const type = f.type ? t(TYPE_PT[f.type] ?? f.type) : ''
+  return t(f.kind === 'catch' ? 'Capture {0} Pokémon do tipo {1} em {n} andares.' : f.kind === 'defeat' ? 'Derrote {0} Pokémon do tipo {1} em {n} andares.' : 'Vença {0} treinadores em {n} andares.').replace('{0}', f.need).replace('{1}', type)
+}
 function stepOf(p) {
   if (!p) return null
   if (p.choice) return 'choice'
+  if (p.pike) return 'pike'
   if (!p.seen && (p.exp != null || p.center || p.event)) return 'result'
   if (p.capture) return 'capture'
   if (p.cards) return 'cards'
@@ -2935,6 +2944,7 @@ function BattleFrame({ field, run, byId, data = null, frame = null, text, menu, 
             {(run.keyItems ?? []).map((k) => <span key={k} title={KEY_ITEMS[k]} data-testid={`factory-key-${k}`}>{KEY_INFO[k]?.icon}</span>)}
             {(run.gcCoins ?? 0) > 0 && <span title={t('Fichas do Game Corner')} data-testid="factory-coins">🎰 {run.gcCoins}</span>}
             {(run.gimmiCoins ?? 0) > 0 && <span title={t('Moedas de Gimmighoul: com {0}, o Gimmighoul vira Gholdengo').replace('{0}', GIMMI_COINS)} data-testid="factory-gimmi">🪙 {run.gimmiCoins}/{GIMMI_COINS}</span>}
+            {run.funfest && <span title={`${t('Missão da Funfest')}: ${funfestGoal(run.funfest).replace('{n}', Math.max(0, run.funfest.until - run.floor))}`} data-testid="factory-funfest">🎪{run.funfest.done}/{run.funfest.need}</span>}
             {repelOn(run) && <span title={t('Repelente')} data-testid="factory-repel-on">🧴{repelLeft(run)}</span>}
             {SEASON_EVENTS[run.event] && <span title={`${t(SEASON_EVENTS[run.event].label)}: ${t(SEASON_EVENTS[run.event].help)}`} data-testid="factory-event">{SEASON_EVENTS[run.event].icon}</span>}
             {run.honey && <span title={t('Mel na árvore')} data-testid="factory-honey">🍯{Math.max(0, HONEY_FLOORS - (run.floor - run.honey.floor))}</span>}
@@ -3435,6 +3445,12 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
         {/* O item que o selvagem capturado segurava (e o roubado com Thief/Covet). Igual ao app. */}
         {p.loot && <p className="text-sm font-semibold text-amber-200" data-testid="factory-loot">🎁 {t(p.loot[1] === 'held' ? 'Ele segurava {0}! Continua com ele.' : p.loot[1] === 'money' ? 'Ele segurava {0}! Vendido por 💰{1}.' : 'Ele segurava {0}! Foi para a Bolsa.').replace('{0}', prettySlug(p.loot[0])).replace('{1}', p.loot[2])}</p>}
         {p.stolen?.map((it, i) => it && run.team[i] && <p key={i} className="text-sm font-semibold text-amber-200" data-testid="factory-stolen">🫳 {t('{0} pegou {1} na luta!').replace('{0}', run.team[i].nick ?? name(run.team[i].id)).replace('{1}', prettySlug(it))}</p>)}
+        {p.funfest && <p className={`text-sm font-semibold ${p.funfest.won ? 'text-amber-300' : 'text-slate-400'}`} data-testid="factory-funfest-end">🎪 {p.funfest.won ? t('Missão da Funfest cumprida! +💰{0} e {1}.').replace('{0}', p.funfest.money).replace('{1}', prettySlug(p.funfest.item)) : t('O prazo da missão da Funfest acabou.')}</p>}
+        {p.pyramid && <p className="text-sm font-semibold text-amber-200" data-testid="factory-pyramid">🔺 {t('Na Battle Pyramid você achou {0}!').replace('{0}', prettySlug(p.pyramid))}</p>}
+        {p.snag && <p className="text-sm font-semibold text-purple-400" data-testid="factory-snag">🟣 {t('A Snag Machine pegou o Pokémon Sombrio do treinador!')}</p>}
+        {p.purified?.map((i) => run.team[i] && <p key={`pur-${i}`} className="text-sm font-semibold text-sky-300" data-testid="factory-purified">🕊️ {t('{0} foi purificado! Ganhou a experiência guardada.').replace('{0}', run.team[i].nick ?? name(run.team[i].id))}</p>)}
+        {p.blackCity && <p className="text-sm font-semibold" data-testid="factory-black-city">🏙️ {t('Black City: os treinadores daqui pagam muito mais!')}</p>}
+        {p.whiteForest && <p className="text-sm font-semibold text-emerald-300" data-testid="factory-white-forest">🌳 {t('White Forest: os Pokémon raros vivem aqui.')}</p>}
         {p.fossil && <p className="text-sm font-semibold text-amber-200" data-testid="factory-fossil-found">🦴 {t('Você achou um {0}! O laboratório da próxima cidade revive.').replace('{0}', prettySlug(p.fossil))}</p>}
         {p.coins > 0 && <p className="text-sm font-semibold text-amber-300" data-testid="factory-gimmi-found">🪙 {t('Você achou {0} moedas de Gimmighoul! ({1}/{2})').replace('{0}', p.coins).replace('{1}', run.gimmiCoins ?? 0).replace('{2}', GIMMI_COINS)}</p>}
         {/* O reide vencido: o chefe é seu e, no Reide Tera, as Tera Shards. Igual ao app. */}
@@ -3536,6 +3552,28 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
       <>
         <MenuButton onClick={() => decide(true)} disabled={busy || poor || (choice.kind === 'follow' && teamDown(run))} testid="choice-yes">{t(info.yes)}</MenuButton>
         <MenuButton onClick={() => decide(false)} disabled={busy} testid="choice-no">{t(info.no)}</MenuButton>
+      </>
+    )
+  } else if (step === 'pike') {
+    // O Battle Pike (Battle Frontier): três portas; atrás de cada uma, uma cura, um item ou uma luta mais forte.
+    const door = (i) => {
+      const next = pikeDoor(run, data, i)
+      if (!next) return
+      if (next.encounter) {
+        saveFactory({ ...factoryOf(useStore.getState().league), run: next })
+        onBattle(next)
+      } else save(next)
+    }
+    field = (
+      <Field biome={run.scene ?? 'grass'} fieldRef={fieldRef} testid="factory-pike">
+        <FarStand scene={run.scene ?? 'grass'}><span className="text-7xl">🐍</span></FarStand>
+        {lead && <FieldMon mon={lead} byId={byId} back scene={run.scene} />}
+      </Field>
+    )
+    text = <p data-testid="factory-pike-text">🐍 {t('Battle Pike: três portas. Atrás de uma pode ter uma cura, um item ou um treinador mais forte. Qual você abre?')}</p>
+    menu = (
+      <>
+        {[0, 1, 2].map((i) => <MenuButton key={i} onClick={() => door(i)} disabled={busy} testid={`pike-door-${i}`}>🚪 {t('PORTA {0}').replace('{0}', i + 1)}</MenuButton>)}
       </>
     )
   } else if (step === 'capture') {
@@ -4103,6 +4141,15 @@ export function FactoryScreen({ onBattle, onExit, busy = false }) {
             🦴 {t('REVIVER O FÓSSIL')}
           </MenuButton>
         )}
+        {/* A missão da Funfest (Black 2 / White 2): um objetivo rápido com prazo. Igual ao app. */}
+        {town && funfestOffer(data, run) && (() => {
+          const o = funfestOffer(data, run)
+          return (
+            <MenuButton testid="town-funfest" disabled={busy} onClick={() => save(acceptFunfest(run, data) ?? run)} sub={funfestGoal(o).replace('{n}', o.floors)}>
+              🎪 {t('MISSÃO DA FUNFEST')}
+            </MenuButton>
+          )
+        })()}
         {/* O ovo misterioso: um morador te dá um ovo sem dizer de quem é. */}
         {town && mysteryEgg(data, run) != null && (
           <MenuButton testid="town-mystery-egg" disabled={busy} onClick={() => save(takeMysteryEgg(run, data))} sub={t('Um morador quer que você cuide de um ovo. De quem será? Choca depois de {0} vitórias.').replace('{0}', EGG_BATTLES)}>

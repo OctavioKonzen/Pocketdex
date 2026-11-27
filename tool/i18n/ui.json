@@ -15802,5 +15802,101 @@
   "fr": "Faites glisser un Pokémon vers une autre case pour l'échanger.",
   "es": "Arrastra un Pokémon a otro hueco para cambiarlo.",
   "pt": "Arraste um Pokémon para outra vaga para trocar."
+ },
+ "Atrás da porta, uma enfermeira curou o seu time!": {
+  "en": "Behind the door, a nurse healed your team!",
+  "fr": "Derrière la porte, une infirmière a soigné votre équipe !",
+  "es": "¡Tras la puerta, una enfermera curó a tu equipo!",
+  "pt": "Atrás da porta, uma enfermeira curou o seu time!"
+ },
+ "Atrás da porta havia um item: {0}!": {
+  "en": "Behind the door there was an item: {0}!",
+  "fr": "Derrière la porte, il y avait un objet : {0} !",
+  "es": "¡Tras la puerta había un objeto: {0}!",
+  "pt": "Atrás da porta havia um item: {0}!"
+ },
+ "Battle Pike: três portas. Atrás de uma pode ter uma cura, um item ou um treinador mais forte. Qual você abre?": {
+  "en": "Battle Pike: three doors. Behind them are a heal, an item and a stronger Trainer. Which one do you open?",
+  "fr": "Battle Pike : trois portes. Derrière elles, un soin, un objet et un Dresseur plus fort. Laquelle ouvrez-vous ?",
+  "es": "Battle Pike: tres puertas. Tras ellas hay una cura, un objeto y un Entrenador más fuerte. ¿Cuál abres?",
+  "pt": "Battle Pike: três portas. Atrás de uma pode ter uma cura, um item ou um treinador mais forte. Qual você abre?"
+ },
+ "PORTA {0}": {
+  "en": "DOOR {0}",
+  "fr": "PORTE {0}",
+  "es": "PUERTA {0}",
+  "pt": "PORTA {0}"
+ },
+ "Missão da Funfest cumprida! +💰{0} e {1}.": {
+  "en": "Funfest Mission complete! +💰{0} and {1}.",
+  "fr": "Mission Festival réussie ! +💰{0} et {1}.",
+  "es": "¡Misión Festival cumplida! +💰{0} y {1}.",
+  "pt": "Missão da Funfest cumprida! +💰{0} e {1}."
+ },
+ "O prazo da missão da Funfest acabou.": {
+  "en": "The Funfest Mission ran out of time.",
+  "fr": "Le temps de la Mission Festival est écoulé.",
+  "es": "Se acabó el tiempo de la Misión Festival.",
+  "pt": "O prazo da missão da Funfest acabou."
+ },
+ "Na Battle Pyramid você achou {0}!": {
+  "en": "In the Battle Pyramid you found {0}!",
+  "fr": "Dans la Battle Pyramid, vous avez trouvé {0} !",
+  "es": "¡En la Battle Pyramid encontraste {0}!",
+  "pt": "Na Battle Pyramid você achou {0}!"
+ },
+ "A Snag Machine pegou o Pokémon Sombrio do treinador!": {
+  "en": "The Snag Machine snagged the Trainer's Shadow Pokémon!",
+  "fr": "La Snag Machine a capturé le Pokémon Obscur du Dresseur !",
+  "es": "¡La Snag Machine capturó el Pokémon Oscuro del Entrenador!",
+  "pt": "A Snag Machine pegou o Pokémon Sombrio do treinador!"
+ },
+ "{0} foi purificado! Ganhou a experiência guardada.": {
+  "en": "{0} was purified! It gained its stored Exp.",
+  "fr": "{0} a été purifié ! Il gagne l'Exp. accumulée.",
+  "es": "¡{0} fue purificado! Ganó la experiencia acumulada.",
+  "pt": "{0} foi purificado! Ganhou a experiência guardada."
+ },
+ "Black City: os treinadores daqui pagam muito mais!": {
+  "en": "Black City: the Trainers here pay a lot more!",
+  "fr": "Ville Noire : les Dresseurs d'ici paient bien plus !",
+  "es": "Ciudad Negra: ¡los Entrenadores de aquí pagan mucho más!",
+  "pt": "Black City: os treinadores daqui pagam muito mais!"
+ },
+ "White Forest: os Pokémon raros vivem aqui.": {
+  "en": "White Forest: rare Pokémon live here.",
+  "fr": "Forêt Blanche : des Pokémon rares vivent ici.",
+  "es": "Bosque Blanco: aquí viven Pokémon raros.",
+  "pt": "White Forest: os Pokémon raros vivem aqui."
+ },
+ "MISSÃO DA FUNFEST": {
+  "en": "FUNFEST MISSION",
+  "fr": "MISSION FESTIVAL",
+  "es": "MISIÓN FESTIVAL",
+  "pt": "MISSÃO DA FUNFEST"
+ },
+ "Missão da Funfest": {
+  "en": "Funfest Mission",
+  "fr": "Mission Festival",
+  "es": "Misión Festival",
+  "pt": "Missão da Funfest"
+ },
+ "Capture {0} Pokémon do tipo {1} em {n} andares.": {
+  "en": "Catch {0} {1}-type Pokémon within {n} floors.",
+  "fr": "Capturez {0} Pokémon de type {1} en {n} étages.",
+  "es": "Captura {0} Pokémon de tipo {1} en {n} pisos.",
+  "pt": "Capture {0} Pokémon do tipo {1} em {n} andares."
+ },
+ "Derrote {0} Pokémon do tipo {1} em {n} andares.": {
+  "en": "Defeat {0} {1}-type Pokémon within {n} floors.",
+  "fr": "Battez {0} Pokémon de type {1} en {n} étages.",
+  "es": "Derrota a {0} Pokémon de tipo {1} en {n} pisos.",
+  "pt": "Derrote {0} Pokémon do tipo {1} em {n} andares."
+ },
+ "Vença {0} treinadores em {n} andares.": {
+  "en": "Beat {0} Trainers within {n} floors.",
+  "fr": "Battez {0} Dresseurs en {n} étages.",
+  "es": "Vence a {0} Entrenadores en {n} pisos.",
+  "pt": "Vença {0} treinadores em {n} andares."
  }
 }
